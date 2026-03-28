@@ -1,0 +1,41 @@
+{
+  "name": "noda-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx server/index.ts",
+    "dev:full": "concurrently -k \"npm run dev\" \"npm run dev:server\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "typecheck:server": "tsc --project tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.0.0",
+    "@tensorflow-models/knn-classifier": "^1.2.6",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
+    "antd": "^5.27.0",
+    "blockly": "^11.1.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "idb": "^8.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}
