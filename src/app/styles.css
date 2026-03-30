@@ -24,20 +24,15 @@ body,
   justify-content: space-between;
   gap: 16px;
   background: #1677ff;
-  padding: 0 16px;
 }
 
 .app-title.ant-typography {
   margin: 0;
   color: #fff;
-  font-size: 18px;
 }
 
 .header-actions {
   margin-left: auto;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .header-input {
@@ -59,63 +54,4 @@ body,
   border: 1px solid #d9d9d9;
   border-radius: 8px;
   overflow: hidden;
-}
-
-/* Мобильная адаптивность */
-@media (max-width: 768px) {
-  .app-header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 8px 16px;
-  }
-
-  .app-title.ant-typography {
-    font-size: 16px;
-  }
-
-  .header-actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .header-input {
-    width: 120px;
-    flex: 1;
-  }
-
-  .app-content {
-    padding: 16px;
-  }
-
-  .blockly-container {
-    height: 300px;
-  }
-
-  .placeholder-text.ant-typography {
-    font-size: 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  .app-header {
-    padding: 8px;
-  }
-
-  .header-actions {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .header-input {
-    width: 100%;
-  }
-
-  .app-content {
-    padding: 8px;
-  }
-
-  .blockly-container {
-    height: 250px;
-  }
 }

@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Card, Divider, Input, Space, Tabs, Typography, Upload } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Divider, Input, Space, Tabs, Typography, Upload, Progress, Modal, Image, List, Input as AntInput } from "antd";
+import { UploadOutlined, DeleteOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
+
+const { Paragraph, Text } = Typography;
+const { Search } = AntInput;
 
 const { Paragraph, Text } = Typography;
 
@@ -15,6 +18,10 @@ export function DataLibrary() {
   const [tabularPredictionName, setTabularPredictionName] = useState("");
   const [tabularPredictionValue, setTabularPredictionValue] = useState("");
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const {
     imageDatasets,
     tabularDatasets,
@@ -25,12 +32,21 @@ export function DataLibrary() {
     addSamplesToClass,
     addTabularDataset,
     addImagePredictionInput,
-    addTabularPredictionInput
+    addTabularPredictionInput,
+    removeImageDataset,
+    removeTabularDataset,
+    removeImagePredictionInput,
+    removeTabularPredictionInput
   } = useAppStore();
 
-  const canAddImageDataset = useMemo(
-    () => newImageDatasetName.trim().length > 0,
-    [newImageDatasetName]
+  const filteredImageDatasets = useMemo(
+    () => imageDatasets.filter((ds) => ds.title.toLowerCase().includes(searchQuery.toLowerCase())),
+    [imageDatasets, searchQuery]
+  );
+
+  const filteredTabularDatasets = useMemo(
+    () => tabularDatasets.filter((ds) => ds.title.toLowerCase().includes(searchQuery.toLowerCase())),
+    [tabularDatasets, searchQuery]
   );
 
   return (
@@ -43,7 +59,12 @@ export function DataLibrary() {
             label: "Данные для обучения",
             children: (
               <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Paragraph>Image dataset: создавай набор, классы и загружай изображения по классам.</Paragraph>
+                <Search
+                  placeholder="Поиск датасетов..."
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: 200 }}
+                />
+                <Paragraph>Image dataset: создавай набор, классы и загружай изображения по классам. <Text type="secondary">Макс 500 изображений, до 10MB на файл.</Text></Paragraph>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={newImageDatasetName}
@@ -61,8 +82,8 @@ export function DataLibrary() {
                     Создать
                   </Button>
                 </Space.Compact>
-                {imageDatasets.map((dataset) => (
-                  <Card key={dataset.id} size="small" title={dataset.title}>
+                {filteredImageDatasets.map((dataset) => (
+                  <Card key={dataset.id} size="small" title={dataset.title} extra={<Button icon={<DeleteOutlined />} onClick={() => removeImageDataset(dataset.id)} />}>
                     <Space direction="vertical" size={8} style={{ width: "100%" }}>
                       <Space.Compact style={{ width: "100%" }}>
                         <Input
@@ -87,9 +108,14 @@ export function DataLibrary() {
                           multiple: true,
                           showUploadList: false,
                           beforeUpload: (file) => {
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert("Файл слишком большой (макс 10MB)");
+                              return false;
+                            }
                             addSamplesToClass(dataset.id, datasetClass.labelId, [file]);
                             return false;
-                          }
+                          },
+                          customRequest: () => {} // Disable default upload
                         };
                         return (
                           <Card key={datasetClass.labelId} size="small">
@@ -97,11 +123,24 @@ export function DataLibrary() {
                             <br />
                             <Text type="secondary">Снимков: {datasetClass.files.length}</Text>
                             <Divider style={{ margin: "8px 0" }} />
-                            <Upload {...uploadProps}>
-                              <Button block icon={<UploadOutlined />}>
-                                Загрузить изображения
-                              </Button>
-                            </Upload>
+                            <Space>
+                              <Upload {...uploadProps} style={{ width: '100%' }}>
+                                <Button icon={<UploadOutlined />} size="small" style={{ width: '100%' }}>Добавить (или перетащите файлы)</Button>
+                              </Upload>
+                              {datasetClass.files.length > 0 && (
+                                <Button
+                                  icon={<EyeOutlined />}
+                                  size="small"
+                                  onClick={() => {
+                                    const urls = datasetClass.files.map(f => URL.createObjectURL(f));
+                                    setPreviewImages(urls);
+                                    setPreviewVisible(true);
+                                  }}
+                                >
+                                  Просмотр
+                                </Button>
+                              )}
+                            </Space>
                           </Card>
                         );
                       })}
@@ -137,8 +176,22 @@ export function DataLibrary() {
                     <Button icon={<UploadOutlined />}>Загрузить CSV</Button>
                   </Upload>
                 </Space.Compact>
-                {tabularDatasets.map((dataset) => (
-                  <Card key={dataset.id} size="small">
+                {filteredTabularDatasets.map((dataset) => (
+                  <Card key={dataset.id} size="small" extra={
+                    <Space>
+                      <Button icon={<DownloadOutlined />} size="small" onClick={() => {
+                        const csv = [dataset.dataset.headers.join(','), ...dataset.dataset.rows.map(r => r.join(','))].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${dataset.title}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }} />
+                      <Button icon={<DeleteOutlined />} size="small" onClick={() => removeTabularDataset(dataset.id)} />
+                    </Space>
+                  }>
                     <Text strong>{dataset.title}</Text>
                     <br />
                     <Text type="secondary">
@@ -175,7 +228,7 @@ export function DataLibrary() {
                   </Upload>
                 </Space.Compact>
                 {imagePredictionInputs.map((item) => (
-                  <Card key={item.id} size="small">
+                  <Card key={item.id} size="small" extra={<Button icon={<DeleteOutlined />} onClick={() => removeImagePredictionInput(item.id)} />}>
                     <Text strong>{item.title}</Text>
                   </Card>
                 ))}
@@ -203,7 +256,7 @@ export function DataLibrary() {
                   </Button>
                 </Space.Compact>
                 {tabularPredictionInputs.map((item) => (
-                  <Card key={item.id} size="small">
+                  <Card key={item.id} size="small" extra={<Button icon={<DeleteOutlined />} onClick={() => removeTabularPredictionInput(item.id)} />}>
                     <Text strong>{item.title}</Text>
                     <br />
                     <Text type="secondary">{item.input}</Text>
@@ -214,6 +267,23 @@ export function DataLibrary() {
           }
         ]}
       />
+      <Modal
+        open={previewVisible}
+        onCancel={() => setPreviewVisible(false)}
+        footer={null}
+        width={800}
+        title="Предпросмотр изображений"
+      >
+        <List
+          grid={{ gutter: 16, column: 4 }}
+          dataSource={previewImages}
+          renderItem={(src) => (
+            <List.Item>
+              <Image src={src} alt="preview" style={{ width: '100%', height: 100, objectFit: 'cover' }} />
+            </List.Item>
+          )}
+        />
+      </Modal>
     </Card>
   );
 }

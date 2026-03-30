@@ -28,6 +28,10 @@ interface AppState {
   addTabularDataset: (title: string, dataset: TabularDataset) => void;
   addImagePredictionInput: (title: string, file: File) => void;
   addTabularPredictionInput: (title: string, input: string) => void;
+  removeImageDataset: (id: string) => void;
+  removeTabularDataset: (id: string) => void;
+  removeImagePredictionInput: (id: string) => void;
+  removeTabularPredictionInput: (id: string) => void;
   setPrediction: (result: PredictionResult | null) => void;
   setLastModelType: (modelType: ModelType | null) => void;
   setBlocklyState: (value: string) => void;
@@ -118,6 +122,22 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...state.tabularPredictionInputs,
         { id: createId(), title: title.trim(), input: input.trim() }
       ]
+    })),
+  removeImageDataset: (id) =>
+    set((state) => ({
+      imageDatasets: state.imageDatasets.filter((ds) => ds.id !== id)
+    })),
+  removeTabularDataset: (id) =>
+    set((state) => ({
+      tabularDatasets: state.tabularDatasets.filter((ds) => ds.id !== id)
+    })),
+  removeImagePredictionInput: (id) =>
+    set((state) => ({
+      imagePredictionInputs: state.imagePredictionInputs.filter((item) => item.id !== id)
+    })),
+  removeTabularPredictionInput: (id) =>
+    set((state) => ({
+      tabularPredictionInputs: state.tabularPredictionInputs.filter((item) => item.id !== id)
     })),
   setPrediction: (result) => set({ prediction: result }),
   setLastModelType: (modelType) => set({ lastModelType: modelType }),

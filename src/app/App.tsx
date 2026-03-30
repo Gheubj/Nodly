@@ -133,7 +133,7 @@ export function App() {
       <Drawer
         title={`Проекты пользователя: ${userId || "-"}`}
         open={libraryOpen}
-        width={window.innerWidth < 768 ? "80%" : 460}
+        width={460}
         onClose={() => setLibraryOpen(false)}
       >
         <List
