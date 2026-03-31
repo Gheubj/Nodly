@@ -66,13 +66,98 @@ body,
   max-width: 100%;
 }
 
-.blockly-container {
+.workspace-card .ant-card-body {
+  overflow-x: auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.blockly-layout {
   width: 100%;
+  min-width: 720px; /* палитра слева + комфортная зона перетаскивания */
   min-height: 420px;
   height: 55vh;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
+  display: flex;
+  background: #f5f5f5;
+}
+
+.blockly-palette {
+  width: 260px;
+  flex-shrink: 0;
+  background: #f7f7f7;
+  border-right: 1px solid #e5e5e5;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.blockly-palette-btn {
+  text-align: left;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+  font-weight: 500;
+  border: 0;
+  min-height: 30px;
+  padding-left: 12px;
+  position: relative;
+}
+
+.blockly-palette-btn--stack {
+  clip-path: polygon(
+    0 0,
+    14px 0,
+    18px 4px,
+    34px 4px,
+    38px 0,
+    100% 0,
+    100% 100%,
+    38px 100%,
+    34px calc(100% - 4px),
+    18px calc(100% - 4px),
+    14px 100%,
+    0 100%
+  );
+}
+
+.blockly-palette-btn--hat {
+  border-radius: 16px 16px 8px 8px;
+}
+
+.blockly-palette-btn--value {
+  border-radius: 999px;
+  min-height: 28px;
+  font-style: italic;
+}
+
+.blockly-palette-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blockly-palette-group + .blockly-palette-group {
+  margin-top: 8px;
+}
+
+.blockly-palette-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #8c8c8c;
+  margin-bottom: 2px;
+}
+
+.blockly-container {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   position: relative;
   touch-action: none;
   overscroll-behavior: contain;
@@ -118,7 +203,7 @@ body,
     padding: 12px;
   }
 
-  .blockly-container {
+  .blockly-layout {
     min-height: 360px;
     height: 60vh;
   }

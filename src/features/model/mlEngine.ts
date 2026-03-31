@@ -16,6 +16,10 @@ const imageClassifier = knnClassifier.create();
 let tabularModel: tf.LayersModel | null = null;
 let tabularMode: "regression" | "classification" | null = null;
 let classIndexToLabel: string[] = [];
+type TabularFeatureSpec =
+  | { kind: "numeric" }
+  | { kind: "categorical"; categories: string[] };
+let tabularFeatureSpecs: TabularFeatureSpec[] = [];
 /** Подписи для KNN по картинкам (в т.ч. кластеры cluster_0 … после обучения без учителя) */
 let imageKnnExtraLabels: Record<string, string> = {};
 
@@ -208,12 +212,42 @@ function parseTabular(dataset: TabularDataset) {
     throw new Error("Для табличных моделей нужно минимум 2 строки данных.");
   }
   const featureCount = rows[0].length - 1;
-  const x = rows.map((row) => row.slice(0, featureCount).map((value) => Number(value.trim())));
-  if (x.some((row) => row.some((value) => Number.isNaN(value)))) {
-    throw new Error("Все признаки в CSV должны быть числовыми.");
+  const rawX = rows.map((row) => row.slice(0, featureCount).map((value) => value.trim()));
+  const specs: TabularFeatureSpec[] = [];
+  for (let col = 0; col < featureCount; col++) {
+    const columnValues = rawX.map((row) => row[col]);
+    const numericValues = columnValues.map((value) => Number(value));
+    const allNumeric = numericValues.every((value) => !Number.isNaN(value));
+    if (allNumeric) {
+      specs.push({ kind: "numeric" });
+    } else {
+      const categories = [...new Set(columnValues)];
+      specs.push({ kind: "categorical", categories });
+    }
   }
+  const encode = (rawRow: string[]) => {
+    const out: number[] = [];
+    for (let col = 0; col < featureCount; col++) {
+      const spec = specs[col];
+      const value = rawRow[col];
+      if (spec.kind === "numeric") {
+        const num = Number(value);
+        if (Number.isNaN(num)) {
+          throw new Error("Числовой признак содержит нечисловое значение.");
+        }
+        out.push(num);
+      } else {
+        for (const category of spec.categories) {
+          out.push(value === category ? 1 : 0);
+        }
+      }
+    }
+    return out;
+  };
+  const x = rawX.map((row) => encode(row));
+  tabularFeatureSpecs = specs;
   const yRaw = rows.map((row) => row[featureCount].trim());
-  return { x, yRaw, featureCount };
+  return { x, yRaw, featureCount: x[0]?.length ?? featureCount };
 }
 
 async function trainTabularModel(
@@ -414,14 +448,39 @@ export async function trainByModelType(args: {
 }
 
 function parsePredictionFeatures(input: string) {
-  const values = input
+  const raw = input
     .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => !Number.isNaN(item));
-  if (values.length === 0) {
-    throw new Error("Введите признаки для предсказания, например: 1.2, 3.4, 5");
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  if (tabularFeatureSpecs.length === 0) {
+    const numeric = raw.map((item) => Number(item)).filter((item) => !Number.isNaN(item));
+    if (numeric.length === 0) {
+      throw new Error("Введите признаки для предсказания, например: 1.2, 3.4, 5");
+    }
+    return numeric;
   }
-  return values;
+  if (raw.length !== tabularFeatureSpecs.length) {
+    throw new Error(
+      `Нужно ${tabularFeatureSpecs.length} признаков через запятую. Сейчас: ${raw.length}.`
+    );
+  }
+  const out: number[] = [];
+  for (let i = 0; i < tabularFeatureSpecs.length; i++) {
+    const spec = tabularFeatureSpecs[i];
+    const value = raw[i];
+    if (spec.kind === "numeric") {
+      const num = Number(value);
+      if (Number.isNaN(num)) {
+        throw new Error(`Признак #${i + 1} должен быть числом.`);
+      }
+      out.push(num);
+    } else {
+      for (const category of spec.categories) {
+        out.push(value === category ? 1 : 0);
+      }
+    }
+  }
+  return out;
 }
 
 async function predictTabularByInput(input: string): Promise<PredictionResult | null> {
