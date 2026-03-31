@@ -1,0 +1,110 @@
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { randomBytes, createHash } from "crypto";
+import type { Request, Response, NextFunction } from "express";
+import type { UserRole } from "@prisma/client";
+import { prisma } from "./db.js";
+import { config } from "./config.js";
+
+export interface SessionPayload {
+  sub: string;
+  role: UserRole;
+}
+
+export function hashPassword(password: string) {
+  return bcrypt.hash(password, 10);
+}
+
+export function verifyPassword(password: string, hash: string) {
+  return bcrypt.compare(password, hash);
+}
+
+export function signAccessToken(payload: SessionPayload) {
+  return jwt.sign(payload, config.jwtAccessSecret, { expiresIn: config.accessTokenTtlSec });
+}
+
+export function signRefreshToken(payload: SessionPayload) {
+  return jwt.sign(payload, config.jwtRefreshSecret, { expiresIn: config.refreshTokenTtlSec });
+}
+
+export function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function persistRefreshToken(userId: string, refreshToken: string) {
+  const tokenHash = hashToken(refreshToken);
+  const expiresAt = new Date(Date.now() + config.refreshTokenTtlSec * 1000);
+  await prisma.refreshToken.create({
+    data: { userId, tokenHash, expiresAt }
+  });
+}
+
+export function setRefreshCookie(res: Response, refreshToken: string) {
+  res.cookie("noda_refresh", refreshToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    path: "/api/auth",
+    maxAge: config.refreshTokenTtlSec * 1000
+  });
+}
+
+export function clearRefreshCookie(res: Response) {
+  res.clearCookie("noda_refresh", {
+    path: "/api/auth"
+  });
+}
+
+export async function rotateRefreshToken(oldToken: string | undefined) {
+  if (!oldToken) {
+    return null;
+  }
+  try {
+    const decoded = jwt.verify(oldToken, config.jwtRefreshSecret) as SessionPayload;
+    const stored = await prisma.refreshToken.findFirst({
+      where: { userId: decoded.sub, tokenHash: hashToken(oldToken) }
+    });
+    if (!stored || stored.expiresAt.getTime() < Date.now()) {
+      return null;
+    }
+    await prisma.refreshToken.delete({ where: { id: stored.id } });
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+export function randomJoinCode() {
+  return randomBytes(3).toString("hex").toUpperCase();
+}
+
+export interface AuthenticatedRequest extends Request {
+  session?: SessionPayload;
+}
+
+export function authRequired(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const raw = req.headers.authorization;
+  const token = raw?.startsWith("Bearer ") ? raw.slice(7) : "";
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  try {
+    req.session = jwt.verify(token, config.jwtAccessSecret) as SessionPayload;
+    next();
+  } catch {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+}
+
+export function roleGuard(roles: UserRole[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const role = req.session?.role;
+    if (!role || !roles.includes(role)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  };
+}
+

@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
 import { predictByModelType, trainByModelType } from "@/features/model/mlEngine";
 import type { ModelEvaluation, ModelType } from "@/shared/types/ai";
+import { trackEvent } from "@/features/analytics/analytics";
 
 const { Paragraph, Text } = Typography;
 
@@ -728,6 +729,7 @@ export function BlocklyWorkspace() {
         continue;
       }
       if (command.type === "train") {
+        await trackEvent("training_started", { modelType: command.modelType });
         state.setLastModelType(command.modelType);
         const [kind, id] = command.datasetRef.split(":");
         const imageDataset =
@@ -768,6 +770,10 @@ export function BlocklyWorkspace() {
         });
         lastEvaluationRef.current = evalResult;
         state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено." });
+        await trackEvent("training_completed", {
+          modelType: command.modelType,
+          summary: evalResult.summary
+        });
         if (!fromEvent) {
           await runEventChain("trained");
         }
@@ -809,6 +815,10 @@ export function BlocklyWorkspace() {
           tabularInput: tabularInput || manualFallback
         });
         state.setPrediction(result);
+        await trackEvent("prediction_run", {
+          modelType: command.modelType,
+          label: result?.title ?? null
+        });
         if (!fromEvent) {
           await runEventChain("predicted");
         }

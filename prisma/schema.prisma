@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  teacher
+  student
+}
+
+enum StudentMode {
+  school
+  direct
+}
+
+enum AuthProvider {
+  email
+  yandex
+}
+
+model User {
+  id             String      @id @default(cuid())
+  email          String      @unique
+  passwordHash   String?
+  provider       AuthProvider @default(email)
+  providerUserId String?
+  role           UserRole    @default(student)
+  studentMode    StudentMode @default(direct)
+  displayName    String?
+  avatarUrl      String?
+  lastActiveAt   DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  schoolsOwned      School[]
+  classroomsTaught  Classroom[]
+  enrollments       Enrollment[]
+  projects          Project[]
+  assignmentsOwned  Assignment[] @relation("AssignmentOwner")
+  submissions       Submission[]
+  learningProgress  LearningProgress[]
+  modelRunStats     ModelRunStat[]
+  analyticsEvents   AnalyticsEvent[]
+  spriteSelection   UserSpriteSelection?
+  refreshTokens     RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model School {
+  id          String   @id @default(cuid())
+  name        String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  classrooms Classroom[]
+}
+
+model Classroom {
+  id          String   @id @default(cuid())
+  schoolId    String
+  teacherId   String
+  title       String
+  code        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher     User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  inviteCodes InviteCode[]
+  assignments Assignment[]
+}
+
+model Enrollment {
+  id          String   @id @default(cuid())
+  classroomId String
+  studentId   String
+  joinedAt    DateTime @default(now())
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+}
+
+model InviteCode {
+  id          String   @id @default(cuid())
+  classroomId String
+  code        String   @unique
+  active      Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id          String   @id
+  userId      String
+  title       String
+  isCloud     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshot  ProjectSnapshot?
+  datasets  DatasetMeta[]
+}
+
+model ProjectSnapshot {
+  id         String   @id @default(cuid())
+  projectId  String   @unique
+  payload    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model DatasetMeta {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  kind        String
+  sampleCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model LearningProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  moduleKey   String
+  topicKey    String
+  progress    Float    @default(0)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleKey, topicKey])
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  classroomId String
+  ownerId     String
+  title       String
+  description String?
+  maxScore    Int      @default(100)
+  dueAt       DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classroom Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  owner     User         @relation("AssignmentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+}
+
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  studentId    String
+  projectId    String?
+  score        Int?
+  status       String   @default("submitted")
+  teacherNote  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+}
+
+model ModelRunStat {
+  id              String   @id @default(cuid())
+  userId          String
+  projectId       String?
+  modelType       String
+  runs            Int      @default(0)
+  trainCount      Int      @default(0)
+  predictCount    Int      @default(0)
+  avgDurationMs   Float?
+  lastResultLabel String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AvatarCharacter {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String?
+  previewUrl  String?
+  createdAt   DateTime @default(now())
+
+  selections UserSpriteSelection[]
+}
+
+model SpritePack {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String?
+  previewUrl  String?
+  createdAt   DateTime @default(now())
+
+  selections UserSpriteSelection[]
+}
+
+model UserSpriteSelection {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  characterId String?
+  spritePackId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  character AvatarCharacter? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  spritePack SpritePack?     @relation(fields: [spritePackId], references: [id], onDelete: SetNull)
+}
