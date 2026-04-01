@@ -66,7 +66,7 @@ export function App() {
   const [projectTitle, setProjectTitle] = useState("");
   const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
   const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
-  const { user, register, login, logout, refreshMe } = useSessionStore();
+  const { user, register, login, refreshMe } = useSessionStore();
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -161,7 +161,7 @@ export function App() {
   return (
     <Layout className="app-layout">
       {contextHolder}
-      <Header className="app-header">
+      <Header className={`app-header${user ? " app-header--authed" : ""}`}>
         <Title level={3} className="app-title">
           <Link to="/" className="app-title-link">
             Noda PoC - AI в браузере
@@ -175,14 +175,7 @@ export function App() {
               </Button>
               <Button onClick={handleYandexLogin}>Войти через Яндекс</Button>
             </>
-          ) : (
-            <>
-              <Link to="/account" aria-label="Личный кабинет">
-                <Button type="text" icon={<UserOutlined />} className="header-user-btn" />
-              </Link>
-              <Button onClick={() => void logout()}>Выйти</Button>
-            </>
-          )}
+          ) : null}
           <Input
             value={userId}
             onChange={(event) => {
@@ -204,6 +197,16 @@ export function App() {
           </Button>
           <Button onClick={() => setLibraryOpen(true)}>Библиотека проектов</Button>
         </Space>
+        {user ? (
+          <Link to="/account" className="app-header-account" aria-label="Личный кабинет">
+            <Button
+              type="text"
+              size="large"
+              icon={<UserOutlined className="app-header-account-icon" />}
+              className="header-user-btn app-header-account-btn"
+            />
+          </Link>
+        ) : null}
       </Header>
       <Routes>
         <Route

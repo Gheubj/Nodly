@@ -5,6 +5,7 @@ import type {
   ModelType,
   ModelEvaluation,
   PredictionResult,
+  SavedModelEntry,
   TabularDataset,
   TabularDatasetEntry,
   TabularPredictionInput,
@@ -30,11 +31,11 @@ interface AppState {
   tabularDatasets: TabularDatasetEntry[];
   imagePredictionInputs: ImagePredictionInput[];
   tabularPredictionInputs: TabularPredictionInput[];
+  savedModels: SavedModelEntry[];
   prediction: PredictionResult | null;
   evaluation: ModelEvaluation | null;
   lastModelType: ModelType | null;
   blocklyState: string;
-  workspaceTabularInput: string;
   workspaceLevel: WorkspaceLevel;
   training: TrainingState;
   setActiveProject: (project: NodaProjectMeta | null) => void;
@@ -50,9 +51,10 @@ interface AppState {
   removeTabularDataset: (id: string) => void;
   removeImagePredictionInput: (id: string) => void;
   removeTabularPredictionInput: (id: string) => void;
+  addSavedModel: (entry: SavedModelEntry) => void;
+  removeSavedModel: (id: string) => void;
   setPrediction: (result: PredictionResult | null) => void;
   setEvaluation: (value: ModelEvaluation | null) => void;
-  setWorkspaceTabularInput: (value: string) => void;
   setLastModelType: (modelType: ModelType | null) => void;
   setBlocklyState: (value: string) => void;
   getProjectSnapshot: () => NodaProjectSnapshot;
@@ -71,11 +73,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   tabularDatasets: [],
   imagePredictionInputs: [],
   tabularPredictionInputs: [],
+  savedModels: [],
   prediction: null,
   evaluation: null,
   lastModelType: null,
   blocklyState: "",
-  workspaceTabularInput: "",
   workspaceLevel: readWorkspaceLevel(),
   training: {
     isTraining: false,
@@ -189,9 +191,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       tabularPredictionInputs: state.tabularPredictionInputs.filter((item) => item.id !== id)
     })),
+  addSavedModel: (entry) =>
+    set((state) => ({
+      savedModels: [...state.savedModels.filter((m) => m.id !== entry.id), entry]
+    })),
+  removeSavedModel: (id) =>
+    set((state) => ({
+      savedModels: state.savedModels.filter((m) => m.id !== id)
+    })),
   setPrediction: (result) => set({ prediction: result }),
   setEvaluation: (value) => set({ evaluation: value }),
-  setWorkspaceTabularInput: (value) => set({ workspaceTabularInput: value }),
   setLastModelType: (modelType) => set({ lastModelType: modelType }),
   setBlocklyState: (value) => set({ blocklyState: value }),
   getProjectSnapshot: () => {
@@ -201,6 +210,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       tabularDatasets: state.tabularDatasets,
       imagePredictionInputs: state.imagePredictionInputs,
       tabularPredictionInputs: state.tabularPredictionInputs,
+      savedModels: state.savedModels,
       blocklyState: state.blocklyState
     };
   },
@@ -210,10 +220,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       tabularDatasets: snapshot.tabularDatasets,
       imagePredictionInputs: snapshot.imagePredictionInputs,
       tabularPredictionInputs: snapshot.tabularPredictionInputs,
+      savedModels: snapshot.savedModels ?? [],
       blocklyState: snapshot.blocklyState,
       prediction: null,
       evaluation: null,
-      workspaceTabularInput: "",
       training: { isTraining: false, progress: 0, message: "Проект загружен" }
     }),
   setTraining: (nextState) =>

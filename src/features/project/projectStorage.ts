@@ -2,6 +2,7 @@ import { openDB } from "idb";
 import type {
   ImageDataset,
   ImagePredictionInput,
+  SavedModelEntry,
   TabularDatasetEntry,
   TabularPredictionInput
 } from "@/shared/types/ai";
@@ -40,6 +41,7 @@ interface StoredNodaProject {
     tabularDatasets: TabularDatasetEntry[];
     imagePredictionInputs: EncodedImagePredictionInput[];
     tabularPredictionInputs: TabularPredictionInput[];
+    savedModels?: SavedModelEntry[];
     blocklyState: string;
   };
 }
@@ -147,6 +149,7 @@ export async function saveProject(project: NodaProject) {
       tabularDatasets: project.snapshot.tabularDatasets,
       imagePredictionInputs: await encodeImageInputs(project.snapshot.imagePredictionInputs),
       tabularPredictionInputs: project.snapshot.tabularPredictionInputs,
+      savedModels: project.snapshot.savedModels ?? [],
       blocklyState: project.snapshot.blocklyState
     }
   };
@@ -173,6 +176,7 @@ export async function loadProject(projectId: string): Promise<NodaProject | null
     tabularDatasets: stored.snapshot.tabularDatasets,
     imagePredictionInputs: await decodeImageInputs(stored.snapshot.imagePredictionInputs),
     tabularPredictionInputs: stored.snapshot.tabularPredictionInputs,
+    savedModels: stored.snapshot.savedModels ?? [],
     blocklyState: stored.snapshot.blocklyState
   };
   return { meta: stored.meta, snapshot };

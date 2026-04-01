@@ -1,6 +1,7 @@
 import type {
   ImageDataset,
   ImagePredictionInput,
+  SavedModelEntry,
   TabularDatasetEntry,
   TabularPredictionInput
 } from "@/shared/types/ai";
@@ -18,6 +19,8 @@ export interface NodaProjectSnapshot {
   tabularDatasets: TabularDatasetEntry[];
   imagePredictionInputs: ImagePredictionInput[];
   tabularPredictionInputs: TabularPredictionInput[];
+  /** Сохранённые модели: метаданные в проекте, веса в IndexedDB по id */
+  savedModels?: SavedModelEntry[];
   blocklyState: string;
 }
 

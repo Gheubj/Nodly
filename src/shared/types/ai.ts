@@ -73,3 +73,11 @@ export interface ModelEvaluation {
   summary: string;
   metrics: Record<string, number>;
 }
+
+/** Запись в библиотеке сохранённых моделей (веса в IndexedDB, метаданные в проекте). */
+export interface SavedModelEntry {
+  id: string;
+  title: string;
+  modelType: ModelType;
+  createdAt: string;
+}

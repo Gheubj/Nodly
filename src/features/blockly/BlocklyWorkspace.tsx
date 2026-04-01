@@ -3,11 +3,27 @@ import { Alert, Button, Card, Segmented, Space, Tag, Tooltip, Typography } from 
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
-import { predictByModelType, trainByModelType } from "@/features/model/mlEngine";
-import type { ModelEvaluation, ModelType } from "@/shared/types/ai";
+import {
+  canPersistCurrentModel,
+  loadModelFromLibraryEntry,
+  persistCurrentModelToLibrary,
+  predictByModelType,
+  trainByModelType
+} from "@/features/model/mlEngine";
+import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types/ai";
 import { trackEvent } from "@/features/analytics/analytics";
 
 const { Paragraph, Text } = Typography;
+
+const BLOCK_COLOR = {
+  events: 20,
+  model: 220,
+  modelTypes: 200,
+  predict: 160,
+  control: 45,
+  data: 260,
+  output: 290
+} as const;
 
 const DEFAULT_TRAIN_CONFIG = {
   trainSplit: 0.7,
@@ -21,7 +37,7 @@ type BlockCommand =
   | { type: "start" }
   | {
       type: "train";
-      modelType: ModelType;
+      modelTypeRef: string;
       datasetRef: string;
       trainSplit: number;
       valSplit: number;
@@ -29,8 +45,8 @@ type BlockCommand =
       epochs: number;
       learningRate: number;
     }
-  | { type: "set_input"; value: string }
-  | { type: "predict"; modelType: ModelType; inputRef: string }
+  | { type: "predict"; savedModelId: string; inputRef: string; inlineTabular: string }
+  | { type: "save_model"; title: string }
   | { type: "wait"; seconds: number }
   | { type: "if"; condition: LogicExpr; thenCommands: BlockCommand[]; elseCommands: BlockCommand[] }
   | { type: "show_message"; text: string }
@@ -53,6 +69,18 @@ function isImageModel(modelType: ModelType) {
   return modelType === "image_knn";
 }
 
+function parseModelTypeRef(ref: string): ModelType {
+  if (
+    ref === "image_knn" ||
+    ref === "tabular_regression" ||
+    ref === "tabular_classification" ||
+    ref === "tabular_neural"
+  ) {
+    return ref;
+  }
+  return "image_knn";
+}
+
 function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
@@ -72,18 +100,43 @@ function getTrainDatasetOptions(modelType: ModelType) {
   return merged.length > 0 ? merged : ([["нет данных", "none"]] as [string, string][]);
 }
 
-function getPredictInputOptions(modelType: ModelType) {
+const TABULAR_MANUAL_REF = "tabular:__manual__";
+
+function getSavedModelBlocklyOptions(): [string, string][] {
+  const models = useAppStore.getState().savedModels;
+  if (models.length === 0) {
+    return [["нет сохранённых моделей", "__none__"]];
+  }
+  return models.map((m) => [`${m.title} (${m.modelType})`, m.id]);
+}
+
+function getSavedModelEntryById(id: string): SavedModelEntry | null {
+  if (!id || id === "__none__") {
+    return null;
+  }
+  return useAppStore.getState().savedModels.find((m) => m.id === id) ?? null;
+}
+
+function getPredictInputOptions(savedModelId: string): [string, string][] {
+  const model = getSavedModelEntryById(savedModelId);
+  if (!model) {
+    return [["сначала выбери модель", "none"]];
+  }
   const state = useAppStore.getState();
-  const merged = isImageModel(modelType)
-    ? state.imagePredictionInputs.map(
-        (item) => [`Image input: ${item.title}`, `image:${item.id}`] as [string, string]
-      )
-    : state.tabularPredictionInputs.map(
-        (item) => [`Tabular input: ${item.title}`, `tabular:${item.id}`] as [string, string]
-      );
-  return merged.length > 0
-    ? merged
-    : ([["нет входных данных", "none"]] as [string, string][]);
+  if (isImageModel(model.modelType)) {
+    const merged = state.imagePredictionInputs.map(
+      (item) => [`Image: ${item.title}`, `image:${item.id}`] as [string, string]
+    );
+    return merged.length > 0 ? merged : [["нет изображения", "none"]];
+  }
+  const fromLibrary = state.tabularPredictionInputs.map(
+    (item) => [`Таблица: ${item.title}`, `tabular:${item.id}`] as [string, string]
+  );
+  const manual: [string, string] = ["Вручную (строка в блоке)", TABULAR_MANUAL_REF];
+  if (fromLibrary.length === 0) {
+    return [manual];
+  }
+  return [...fromLibrary, manual];
 }
 
 /** Уровень 3 пока как 2 — только набор блоков в палитре */
@@ -91,7 +144,7 @@ function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
   return level === 1 ? 1 : 2;
 }
 
-type PaletteGroupId = "events" | "data" | "model" | "predict";
+type PaletteGroupId = "events" | "data" | "model" | "predict" | "model_types";
 type PaletteGroupIdExt = PaletteGroupId | "evaluate" | "control" | "output";
 
 type PaletteItem = {
@@ -106,6 +159,7 @@ const PALETTE_GROUP_TITLES: Record<PaletteGroupIdExt, string> = {
   events: "События",
   data: "Данные",
   model: "Модель и обучение",
+  model_types: "Типы моделей",
   predict: "Предсказание",
   evaluate: "Оценка",
   control: "Управление",
@@ -123,6 +177,20 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         description: "Запускает основной сценарий проекта"
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
+      { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
+      {
+        type: "noda_model_tabular_regression",
+        title: "Модель: регрессия",
+        group: "model_types",
+        shape: "value"
+      },
+      {
+        type: "noda_model_tabular_classification",
+        title: "Модель: классификация",
+        group: "model_types",
+        shape: "value"
+      },
+      { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
       { type: "noda_predict_class", title: "Предсказать", group: "predict", shape: "stack" },
       { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
       { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
@@ -133,8 +201,8 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       { type: "noda_op_not", title: "не [ ]", group: "control", shape: "value" },
       { type: "noda_value_confidence", title: "уверенность", group: "predict", shape: "value" },
       { type: "noda_value_predicted_class", title: "предсказанный класс", group: "predict", shape: "value" },
-      { type: "math_number", title: "число", group: "data", shape: "value" },
-      { type: "text", title: "текст", group: "data", shape: "value" },
+      { type: "noda_number", title: "число", group: "data", shape: "value" },
+      { type: "noda_text", title: "текст", group: "data", shape: "value" },
       { type: "noda_show_result", title: "показать результат", group: "output", shape: "stack" },
       { type: "noda_show_message", title: "показать сообщение", group: "output", shape: "stack" },
       { type: "noda_add_journal", title: "добавить в журнал", group: "output", shape: "stack" }
@@ -163,8 +231,44 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       description: "Срабатывает после команды предсказать"
     },
     { type: "noda_train_model", title: "Обучить модель", group: "model", shape: "stack" },
-    { type: "noda_set_predict_input", title: "Ввести данные", group: "data", shape: "stack" },
-    { type: "noda_predict_class", title: "Предсказать", group: "predict", shape: "stack" },
+    { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
+    {
+      type: "noda_model_tabular_regression",
+      title: "Модель: регрессия",
+      group: "model_types",
+      shape: "value"
+    },
+    {
+      type: "noda_model_tabular_classification",
+      title: "Модель: классификация",
+      group: "model_types",
+      shape: "value"
+    },
+    { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
+    {
+      type: "noda_show_eval",
+      title: "Показать оценку модели",
+      group: "model",
+      shape: "stack",
+      description:
+        "Показывает метрики последнего обучения (после «Обучить модель»). Для регрессии: MSE, MAE, RMSE; для классификации: точность и loss."
+    },
+    {
+      type: "noda_save_model",
+      title: "Сохранить модель в библиотеку",
+      group: "model",
+      shape: "stack",
+      description:
+        "После обучения сохраняет модель в IndexedDB и список в библиотеке (вкладка «Библиотека»). Таблица: веса нейросети; картинки: примеры KNN."
+    },
+    {
+      type: "noda_predict_class",
+      title: "Предсказать",
+      group: "predict",
+      shape: "stack",
+      description:
+        "Выбери сохранённую модель из библиотеки. Вход: либо строка из библиотеки, либо «Вручную» — тогда заполни второй ряд. Для картинок — только файл из библиотеки."
+    },
     { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
     { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
     { type: "noda_wait_seconds", title: "ждать ... сек", group: "control", shape: "stack" },
@@ -174,13 +278,38 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
     { type: "noda_op_not", title: "не [ ]", group: "control", shape: "value" },
     { type: "noda_value_confidence", title: "уверенность", group: "predict", shape: "value" },
     { type: "noda_value_predicted_class", title: "предсказанный класс", group: "predict", shape: "value" },
-    { type: "math_number", title: "число", group: "data", shape: "value" },
-    { type: "text", title: "текст", group: "data", shape: "value" },
+    { type: "noda_number", title: "число", group: "data", shape: "value" },
+    { type: "noda_text", title: "текст", group: "data", shape: "value" },
     { type: "noda_show_result", title: "показать результат", group: "output", shape: "stack" },
     { type: "noda_show_message", title: "показать сообщение", group: "output", shape: "stack" },
-    { type: "noda_add_journal", title: "добавить в журнал", group: "output", shape: "stack" },
-    { type: "noda_show_eval", title: "показать оценку модели", group: "evaluate", shape: "stack" }
+    { type: "noda_add_journal", title: "добавить в журнал", group: "output", shape: "stack" }
   ];
+}
+
+function collectPaletteColors(ws: Blockly.WorkspaceSvg, level: 1 | 2): Record<string, string> {
+  const next: Record<string, string> = {};
+  for (const item of getPaletteItems(level)) {
+    try {
+      const block = ws.newBlock(item.type);
+      next[item.type] = block.getColour();
+      block.dispose(false);
+    } catch {
+      // тип ещё не зарегистрирован (например стандартные блоки до импорта)
+    }
+  }
+  return next;
+}
+
+function refreshNodaPredictInlineRow(block: Blockly.Block) {
+  const model = getSavedModelEntryById(block.getFieldValue("SAVED_MODEL_ID"));
+  const ref = block.getFieldValue("INPUT_REF");
+  const manual = ref === TABULAR_MANUAL_REF || ref === "none";
+  const show = !!model && model.modelType !== "image_knn" && manual;
+  block.getInput("INLINE_ROW")?.setVisible(show);
+  const svg = block as Blockly.BlockSvg;
+  if (svg.rendered) {
+    svg.render();
+  }
 }
 
 function registerBlocks() {
@@ -191,68 +320,60 @@ function registerBlocks() {
     init() {
       this.appendDummyInput().appendField("Старт");
       this.setNextStatement(true, null);
-      this.setColour(20);
+      this.setColour(BLOCK_COLOR.events);
     }
   };
   Blockly.Blocks.noda_on_trained = {
     init() {
       this.appendDummyInput().appendField("когда модель обучена");
       this.setNextStatement(true, null);
-      this.setColour(20);
+      this.setColour(BLOCK_COLOR.events);
     }
   };
   Blockly.Blocks.noda_on_predicted = {
     init() {
       this.appendDummyInput().appendField("когда получено предсказание");
       this.setNextStatement(true, null);
-      this.setColour(20);
+      this.setColour(BLOCK_COLOR.events);
     }
   };
   /** Уровень 1: только модель и датасет */
   Blockly.Blocks.noda_train_model_simple = {
     init() {
-      this.appendDummyInput()
+      this.appendValueInput("MODEL")
+        .setCheck("ModelType")
         .appendField("обучить модель")
-        .appendField(
-          new Blockly.FieldDropdown([
-            ["Image KNN (картинки)", "image_knn"],
-            ["Регрессия (linear)", "tabular_regression"],
-            ["Классификация (логистическая)", "tabular_classification"],
-            ["Нейросеть (MLP)", "tabular_neural"]
-          ]),
-          "MODEL_TYPE"
-        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
-            const modelType = this.getSourceBlock()?.getFieldValue("MODEL_TYPE") as ModelType;
+            const source = this.getSourceBlock();
+            const modelBlock = source?.getInputTargetBlock("MODEL");
+            const modelType = parseModelTypeRef(
+              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? "image_knn")
+            );
             return getTrainDatasetOptions(modelType);
           }),
           "DATASET_REF"
         );
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(220);
+      this.setColour(BLOCK_COLOR.model);
     }
   };
   /** Уровень 2+: сплит, эпохи, lr */
   Blockly.Blocks.noda_train_model = {
     init() {
-      this.appendDummyInput()
+      this.appendValueInput("MODEL")
+        .setCheck("ModelType")
         .appendField("обучить модель")
-        .appendField(
-          new Blockly.FieldDropdown([
-            ["Image KNN (картинки)", "image_knn"],
-            ["Регрессия (linear)", "tabular_regression"],
-            ["Классификация (логистическая)", "tabular_classification"],
-            ["Нейросеть (MLP)", "tabular_neural"]
-          ]),
-          "MODEL_TYPE"
-        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
-            const modelType = this.getSourceBlock()?.getFieldValue("MODEL_TYPE") as ModelType;
+            const source = this.getSourceBlock();
+            const modelBlock = source?.getInputTargetBlock("MODEL");
+            const modelType = parseModelTypeRef(
+              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? "image_knn")
+            );
             return getTrainDatasetOptions(modelType);
           }),
           "DATASET_REF"
@@ -271,43 +392,105 @@ function registerBlocks() {
         .appendField(new Blockly.FieldNumber(0.02, 0.0001, 1, 0.001), "LR");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(220);
+      this.setColour(BLOCK_COLOR.model);
     }
   };
-  Blockly.Blocks.noda_set_predict_input = {
+  Blockly.Blocks.noda_model_image_knn = {
     init() {
       this.appendDummyInput()
-        .appendField("ввести данные для распознавания")
-        .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "MANUAL_INPUT");
+        .appendField("картинки (KNN)")
+        .appendField(new Blockly.FieldDropdown([["image_knn", "image_knn"]]), "MODEL_TYPE_REF");
+      this.setOutput(true, "ModelType");
+      this.setColour(BLOCK_COLOR.modelTypes);
+    }
+  };
+  Blockly.Blocks.noda_model_tabular_regression = {
+    init() {
+      this.appendDummyInput()
+        .appendField("регрессия (linear)")
+        .appendField(
+          new Blockly.FieldDropdown([["tabular_regression", "tabular_regression"]]),
+          "MODEL_TYPE_REF"
+        );
+      this.setOutput(true, "ModelType");
+      this.setColour(BLOCK_COLOR.modelTypes);
+    }
+  };
+  Blockly.Blocks.noda_model_tabular_classification = {
+    init() {
+      this.appendDummyInput()
+        .appendField("классификация (логистическая)")
+        .appendField(
+          new Blockly.FieldDropdown([["tabular_classification", "tabular_classification"]]),
+          "MODEL_TYPE_REF"
+        );
+      this.setOutput(true, "ModelType");
+      this.setColour(BLOCK_COLOR.modelTypes);
+    }
+  };
+  Blockly.Blocks.noda_model_tabular_neural = {
+    init() {
+      this.appendDummyInput()
+        .appendField("нейросеть (MLP)")
+        .appendField(new Blockly.FieldDropdown([["tabular_neural", "tabular_neural"]]), "MODEL_TYPE_REF");
+      this.setOutput(true, "ModelType");
+      this.setColour(BLOCK_COLOR.modelTypes);
+    }
+  };
+  /** Устаревший тип: оставлен только чтобы старые проекты открывались; не показывается в палитре. */
+  Blockly.Blocks.noda_set_predict_input = {
+    init() {
+      this.appendDummyInput().appendField("Удали блок — ввод в «Предсказать»");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(120);
     }
   };
+  Blockly.Blocks.noda_save_model = {
+    init() {
+      this.appendDummyInput()
+        .appendField("сохранить модель")
+        .appendField(new Blockly.FieldTextInput("Моя модель"), "SAVE_TITLE");
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(BLOCK_COLOR.model);
+    }
+  };
   Blockly.Blocks.noda_predict_class = {
     init() {
+      const block = this;
       this.appendDummyInput()
         .appendField("предсказать")
         .appendField(
-          new Blockly.FieldDropdown([
-            ["Image KNN (картинки)", "image_knn"],
-            ["Регрессия (linear)", "tabular_regression"],
-            ["Классификация (логистическая)", "tabular_classification"],
-            ["Нейросеть (MLP)", "tabular_neural"]
-          ]),
-          "MODEL_TYPE"
+          new Blockly.FieldDropdown(function () {
+            return getSavedModelBlocklyOptions();
+          }),
+          "SAVED_MODEL_ID"
         )
         .appendField("вход")
         .appendField(
           new Blockly.FieldDropdown(function () {
-            const modelType = this.getSourceBlock()?.getFieldValue("MODEL_TYPE") as ModelType;
-            return getPredictInputOptions(modelType);
+            const savedModelId = String(this.getSourceBlock()?.getFieldValue("SAVED_MODEL_ID") ?? "__none__");
+            return getPredictInputOptions(savedModelId);
           }),
           "INPUT_REF"
         );
+      this.appendDummyInput("INLINE_ROW")
+        .appendField("если вручную — признаки")
+        .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "INLINE_TABULAR");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(160);
+      this.setColour(BLOCK_COLOR.predict);
+      refreshNodaPredictInlineRow(block);
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (e.type !== Blockly.Events.BLOCK_CHANGE || (e as Blockly.Events.BlockChange).blockId !== this.id) {
+          return;
+        }
+        const ce = e as Blockly.Events.BlockChange;
+        if (ce.element === "field" && (ce.name === "INPUT_REF" || ce.name === "SAVED_MODEL_ID")) {
+          refreshNodaPredictInlineRow(this);
+        }
+      });
     }
   };
   Blockly.Blocks.noda_wait_seconds = {
@@ -318,7 +501,7 @@ function registerBlocks() {
         .appendField("сек");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_if_then = {
@@ -328,7 +511,7 @@ function registerBlocks() {
       this.appendStatementInput("ELSE").appendField("иначе");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_if_then_only = {
@@ -337,7 +520,7 @@ function registerBlocks() {
       this.appendStatementInput("THEN").appendField("то");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_op_compare = {
@@ -346,7 +529,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField(new Blockly.FieldDropdown([[" >", ">"], ["<", "<"], ["=", "="]]), "OP");
       this.appendValueInput("B");
       this.setOutput(true, "Boolean");
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_op_and = {
@@ -355,7 +538,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField("и");
       this.appendValueInput("B");
       this.setOutput(true, "Boolean");
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_op_or = {
@@ -364,7 +547,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField("или");
       this.appendValueInput("B");
       this.setOutput(true, "Boolean");
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_op_not = {
@@ -372,21 +555,35 @@ function registerBlocks() {
       this.appendDummyInput().appendField("не");
       this.appendValueInput("A");
       this.setOutput(true, "Boolean");
-      this.setColour(45);
+      this.setColour(BLOCK_COLOR.control);
     }
   };
   Blockly.Blocks.noda_value_confidence = {
     init() {
       this.appendDummyInput().appendField("уверенность");
       this.setOutput(true, "Number");
-      this.setColour(160);
+      this.setColour(BLOCK_COLOR.predict);
     }
   };
   Blockly.Blocks.noda_value_predicted_class = {
     init() {
       this.appendDummyInput().appendField("предсказанный класс");
       this.setOutput(true, "String");
-      this.setColour(160);
+      this.setColour(BLOCK_COLOR.predict);
+    }
+  };
+  Blockly.Blocks.noda_number = {
+    init() {
+      this.appendDummyInput().appendField(new Blockly.FieldNumber(0), "NUM");
+      this.setOutput(true, "Number");
+      this.setColour(BLOCK_COLOR.data);
+    }
+  };
+  Blockly.Blocks.noda_text = {
+    init() {
+      this.appendDummyInput().appendField(new Blockly.FieldTextInput("текст"), "TEXT");
+      this.setOutput(true, "String");
+      this.setColour(BLOCK_COLOR.data);
     }
   };
   Blockly.Blocks.noda_show_message = {
@@ -396,7 +593,7 @@ function registerBlocks() {
         .appendField(new Blockly.FieldTextInput("Готово!"), "TEXT");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(290);
+      this.setColour(BLOCK_COLOR.output);
     }
   };
   Blockly.Blocks.noda_show_result = {
@@ -404,7 +601,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField("показать результат");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(290);
+      this.setColour(BLOCK_COLOR.output);
     }
   };
   Blockly.Blocks.noda_add_journal = {
@@ -414,7 +611,7 @@ function registerBlocks() {
         .appendField(new Blockly.FieldTextInput("Шаг выполнен"), "TEXT");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(290);
+      this.setColour(BLOCK_COLOR.output);
     }
   };
   Blockly.Blocks.noda_show_eval = {
@@ -422,7 +619,7 @@ function registerBlocks() {
       this.appendDummyInput().appendField("показать оценку модели");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(35);
+      this.setColour(BLOCK_COLOR.model);
     }
   };
 }
@@ -433,10 +630,7 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
     { type: trainBlockType, x: 20, y: 100 }
   ];
   if (trainBlockType === "noda_train_model") {
-    blocks.push(
-      { type: "noda_set_predict_input", x: 20, y: 180 },
-      { type: "noda_predict_class", x: 20, y: 260 }
-    );
+    blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
   } else {
     blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
   }
@@ -470,20 +664,8 @@ export function BlocklyWorkspace() {
     if (!ws) {
       return;
     }
-    const types = getPaletteItems(effectiveToolboxLevel(useAppStore.getState().workspaceLevel)).map(
-      (item) => item.type
-    );
-    const next: Record<string, string> = {};
-    for (const type of types) {
-      try {
-        const block = ws.newBlock(type);
-        next[type] = block.getColour();
-        block.dispose(false);
-      } catch {
-        // ignore missing block types
-      }
-    }
-    setPaletteColors(next);
+    const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
+    setPaletteColors(collectPaletteColors(ws, level));
   }, [workspaceLevel]);
 
   const spawnBlock = (type: string) => {
@@ -536,10 +718,10 @@ export function BlocklyWorkspace() {
     if (!block) {
       return { type: "bool", value: false };
     }
-    if (block.type === "math_number") {
+    if (block.type === "math_number" || block.type === "noda_number") {
       return { type: "num", value: Number(block.getFieldValue("NUM")) || 0 };
     }
-    if (block.type === "text") {
+    if (block.type === "text" || block.type === "noda_text") {
       return { type: "text", value: String(block.getFieldValue("TEXT") ?? "") };
     }
     if (block.type === "noda_value_confidence") {
@@ -584,16 +766,26 @@ export function BlocklyWorkspace() {
     let current = first;
     while (current) {
       if (current.type === "noda_train_model_simple") {
+        const modelTypeRef = String(
+          current.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ??
+            current.getFieldValue("MODEL_TYPE") ??
+            "image_knn"
+        );
         commands.push({
           type: "train",
-          modelType: current.getFieldValue("MODEL_TYPE") as ModelType,
+          modelTypeRef,
           datasetRef: current.getFieldValue("DATASET_REF"),
           ...DEFAULT_TRAIN_CONFIG
         });
       } else if (current.type === "noda_train_model") {
+        const modelTypeRef = String(
+          current.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ??
+            current.getFieldValue("MODEL_TYPE") ??
+            "image_knn"
+        );
         commands.push({
           type: "train",
-          modelType: current.getFieldValue("MODEL_TYPE") as ModelType,
+          modelTypeRef,
           datasetRef: current.getFieldValue("DATASET_REF"),
           trainSplit: Number(current.getFieldValue("TRAIN_SPLIT")) || 0.7,
           valSplit: Number(current.getFieldValue("VAL_SPLIT")) || 0.15,
@@ -601,13 +793,24 @@ export function BlocklyWorkspace() {
           epochs: Number(current.getFieldValue("EPOCHS")) || 80,
           learningRate: Number(current.getFieldValue("LR")) || 0.02
         });
-      } else if (current.type === "noda_set_predict_input") {
-        commands.push({ type: "set_input", value: String(current.getFieldValue("MANUAL_INPUT") ?? "") });
+      } else if (current.type === "noda_save_model") {
+        commands.push({
+          type: "save_model",
+          title: String(current.getFieldValue("SAVE_TITLE") ?? "")
+        });
       } else if (current.type === "noda_predict_class") {
+        const savedModelId = String(current.getFieldValue("SAVED_MODEL_ID") ?? "");
+        if (!savedModelId || savedModelId === "__none__") {
+          current = current.getNextBlock();
+          continue;
+        }
         commands.push({
           type: "predict",
-          modelType: current.getFieldValue("MODEL_TYPE") as ModelType,
-          inputRef: current.getFieldValue("INPUT_REF")
+          savedModelId,
+          inputRef: current.getFieldValue("INPUT_REF"),
+          inlineTabular: String(
+            current.getFieldValue("INLINE_TABULAR") ?? ""
+          ).trim()
         });
       } else if (current.type === "noda_wait_seconds") {
         commands.push({ type: "wait", seconds: Number(current.getFieldValue("SECONDS")) || 0 });
@@ -672,6 +875,7 @@ export function BlocklyWorkspace() {
 
   const lastEvaluationRef = useRef<ModelEvaluation | null>(null);
   const spawnOffsetRef = useRef(0);
+  const loadedSavedModelIdRef = useRef<string | null>(null);
 
   const resolveExpr = (expr: LogicExpr): string | number | boolean => {
     const state = useAppStore.getState();
@@ -729,8 +933,10 @@ export function BlocklyWorkspace() {
         continue;
       }
       if (command.type === "train") {
-        await trackEvent("training_started", { modelType: command.modelType });
-        state.setLastModelType(command.modelType);
+        const modelType = parseModelTypeRef(command.modelTypeRef);
+        await trackEvent("training_started", { modelType });
+        state.setLastModelType(modelType);
+        loadedSavedModelIdRef.current = null;
         const [kind, id] = command.datasetRef.split(":");
         const imageDataset =
           kind === "image" ? state.imageDatasets.find((item) => item.id === id) : null;
@@ -738,23 +944,23 @@ export function BlocklyWorkspace() {
           kind === "tabular"
             ? state.tabularDatasets.find((item) => item.id === id)?.dataset ?? null
             : null;
-        if (command.modelType === "image_knn" && !imageDataset) {
+        if (modelType === "image_knn" && !imageDataset) {
           throw new Error("Для image модели выбери image dataset в блоке обучения.");
         }
-        if (command.modelType !== "image_knn" && !tabularDataset) {
+        if (modelType !== "image_knn" && !tabularDataset) {
           throw new Error("Для tabular модели выбери tabular dataset в блоке обучения.");
         }
         state.setTraining({
           isTraining: true,
           progress: 0,
-          message: `Запуск обучения: ${command.modelType}`
+          message: `Запуск обучения: ${modelType}`
         });
         const splitSum = command.trainSplit + command.valSplit + command.testSplit;
         if (Math.abs(splitSum - 1) > 0.02) {
           throw new Error("Сумма train/val/test должна быть около 1.0");
         }
         const evalResult = await trainByModelType({
-          modelType: command.modelType,
+          modelType,
           imageDataset: imageDataset ?? null,
           tabularDataset,
           config: {
@@ -771,56 +977,101 @@ export function BlocklyWorkspace() {
         lastEvaluationRef.current = evalResult;
         state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено." });
         await trackEvent("training_completed", {
-          modelType: command.modelType,
+          modelType,
           summary: evalResult.summary
         });
         if (!fromEvent) {
           await runEventChain("trained");
         }
       }
-      if (command.type === "set_input") {
-        state.setWorkspaceTabularInput(command.value);
+      if (command.type === "save_model") {
+        if (!canPersistCurrentModel()) {
+          throw new Error("Нечего сохранить: сначала обучи модель (или загрузи сохранённую).");
+        }
+        const modelId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        const { modelType } = await persistCurrentModelToLibrary(modelId);
+        const title = command.title.trim() || "Модель";
+        state.addSavedModel({
+          id: modelId,
+          title,
+          modelType,
+          createdAt: new Date().toISOString()
+        });
+        state.setTraining({
+          isTraining: false,
+          message: `Модель «${title}» (${modelType}) в библиотеке`
+        });
       }
       if (command.type === "wait") {
         await sleep(Math.max(0, command.seconds) * 1000);
       }
       if (command.type === "predict") {
-        state.setLastModelType(command.modelType);
-        const [kind, id] = command.inputRef.split(":");
-        const imageInput =
-          kind === "image" ? state.imagePredictionInputs.find((item) => item.id === id) : null;
-        const tabularInput =
-          kind === "tabular"
-            ? state.tabularPredictionInputs.find((item) => item.id === id)?.input ?? ""
-            : "";
-        if (command.modelType === "image_knn" && !imageInput) {
-          throw new Error("Для image предсказания выбери image input в блоке предсказания.");
+        const entry = state.savedModels.find((m) => m.id === command.savedModelId);
+        if (!entry) {
+          throw new Error("Сохранённая модель не найдена. Выбери модель из библиотеки в блоке «предсказать».");
         }
-        const manualFallback = state.workspaceTabularInput.trim();
-        if (command.modelType !== "image_knn" && !tabularInput && !manualFallback) {
-          throw new Error(
-            "Для таблиц: добавь вход в библиотеке (вкладка «Данные для предсказания») или на уровне 2 поставь блок «ввести данные для распознавания» перед «предсказать»."
-          );
+        if (loadedSavedModelIdRef.current !== entry.id) {
+          await loadModelFromLibraryEntry(entry);
+          loadedSavedModelIdRef.current = entry.id;
         }
+        state.setLastModelType(entry.modelType);
         const labelsMap = state.imageDatasets
           .flatMap((dataset) => dataset.classes)
           .reduce<Record<string, string>>((acc, item) => {
             acc[item.labelId] = item.title;
             return acc;
           }, {});
-        const result = await predictByModelType({
-          modelType: command.modelType,
-          predictionFile: imageInput?.file ?? null,
-          labelsMap,
-          tabularInput: tabularInput || manualFallback
-        });
-        state.setPrediction(result);
-        await trackEvent("prediction_run", {
-          modelType: command.modelType,
-          label: result?.title ?? null
-        });
-        if (!fromEvent) {
-          await runEventChain("predicted");
+
+        if (entry.modelType === "image_knn") {
+          const [kind, id] = command.inputRef.split(":");
+          const imageInput =
+            kind === "image" ? state.imagePredictionInputs.find((item) => item.id === id) : null;
+          if (!imageInput) {
+            throw new Error("Для картинок выбери файл из библиотеки во входе «Image: …».");
+          }
+          const result = await predictByModelType({
+            modelType: "image_knn",
+            predictionFile: imageInput.file,
+            labelsMap,
+            tabularInput: ""
+          });
+          state.setPrediction(result);
+          await trackEvent("prediction_run", {
+            modelType: entry.modelType,
+            label: result?.title ?? null
+          });
+          if (!fromEvent) {
+            await runEventChain("predicted");
+          }
+        } else {
+          const ref = command.inputRef;
+          let tabularLine = "";
+          if (ref === TABULAR_MANUAL_REF || ref === "none") {
+            tabularLine = command.inlineTabular.trim();
+          } else if (ref.startsWith("tabular:")) {
+            const sid = ref.slice("tabular:".length);
+            tabularLine =
+              state.tabularPredictionInputs.find((item) => item.id === sid)?.input.trim() ?? "";
+          }
+          if (!tabularLine) {
+            throw new Error(
+              "Для таблиц: либо выбери строку из библиотеки во «вход», либо «Вручную» и заполни признаки через запятую."
+            );
+          }
+          const result = await predictByModelType({
+            modelType: entry.modelType,
+            predictionFile: null,
+            labelsMap,
+            tabularInput: tabularLine
+          });
+          state.setPrediction(result);
+          await trackEvent("prediction_run", {
+            modelType: entry.modelType,
+            label: result?.title ?? null
+          });
+          if (!fromEvent) {
+            await runEventChain("predicted");
+          }
         }
       }
       if (command.type === "show_message") {
@@ -975,6 +1226,7 @@ export function BlocklyWorkspace() {
       vv.addEventListener("scroll", resizeHandler);
     }
     resizeHandler();
+    setPaletteColors(collectPaletteColors(workspaceRef.current, effLevel));
     return () => {
       workspaceRef.current?.removeChangeListener(clickHandler);
       workspaceRef.current?.removeChangeListener(persistHandler);
@@ -1006,7 +1258,7 @@ export function BlocklyWorkspace() {
     }
   }, [blocklyState]);
 
-  const showManualInputHint = effectiveToolboxLevel(workspaceLevel) === 2;
+  const showPredictHint = effectiveToolboxLevel(workspaceLevel) === 2;
 
   return (
     <Card
@@ -1034,17 +1286,26 @@ export function BlocklyWorkspace() {
       <Paragraph>
         Выполняется цепочка от блока <Text strong>Старт</Text>. Нажми на «Старт», чтобы запустить.
       </Paragraph>
-      {showManualInputHint ? (
+      {showPredictHint ? (
         <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          <Tooltip title="Для табличных моделей: если не создавал вход в библиотеке, впиши числа в блок «ввести данные для распознавания» перед «предсказать».">
-            <span>Подсказка уровня 2: ручной ввод чисел для таблиц — см. блок ниже в палитре.</span>
+          <Tooltip
+            title={
+              "В блоке «Предсказать» второй ряд: «таблица: числа через запятую» — признаки в том же порядке, что столбцы CSV (без колонки ответа). Либо выбери готовый вход из библиотеки. Для Image KNN поле таблицы не используется."
+            }
+          >
+            <span>
+              Уровень 2: для таблиц впиши числа в блоке «Предсказать» (поле «таблица») или выбери вход из
+              библиотеки.
+            </span>
           </Tooltip>
         </Paragraph>
       ) : null}
       <Space direction="vertical" size={10} style={{ width: "100%" }}>
         <div className="blockly-layout">
           <div className="blockly-palette">
-            {(["events", "data", "model", "predict", "evaluate", "control", "output"] as PaletteGroupIdExt[])
+            {(
+              ["events", "model_types", "data", "model", "predict", "evaluate", "control", "output"] as PaletteGroupIdExt[]
+            )
               .map((group) => ({
                 group,
                 items: paletteItems.filter((item) => item.group === group)

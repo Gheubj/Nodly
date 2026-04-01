@@ -7,21 +7,32 @@ import type {
   ModelEvaluation,
   ModelType,
   PredictionResult,
+  SavedModelEntry,
   TabularDataset,
   TrainConfig
 } from "@/shared/types/ai";
+import {
+  deleteModelLibraryRecord,
+  getModelLibraryRecord,
+  putModelLibraryRecord,
+  type TabularModelLibraryPayload
+} from "@/features/model/modelLibraryMeta";
 
 let mobileNetModel: mobilenet.MobileNet | null = null;
 const imageClassifier = knnClassifier.create();
 let tabularModel: tf.LayersModel | null = null;
 let tabularMode: "regression" | "classification" | null = null;
 let classIndexToLabel: string[] = [];
-type TabularFeatureSpec =
+export type TabularFeatureSpec =
   | { kind: "numeric" }
   | { kind: "categorical"; categories: string[] };
 let tabularFeatureSpecs: TabularFeatureSpec[] = [];
 /** Подписи для KNN по картинкам (в т.ч. кластеры cluster_0 … после обучения без учителя) */
 let imageKnnExtraLabels: Record<string, string> = {};
+/** Последняя успешно обученная модель (для сохранения в библиотеку). */
+let lastTrainedModelType: ModelType | null = null;
+
+const TABULAR_IDB_URL = (id: string) => `indexeddb://noda_tabular_${id}`;
 
 function pickClusterCount(sampleCount: number): number {
   return Math.min(sampleCount, Math.min(8, Math.max(2, Math.round(Math.sqrt(sampleCount / 2)))));
@@ -320,6 +331,14 @@ async function trainTabularModel(
     const testEval = tabularModel.evaluate(xTest, yTest) as tf.Tensor | tf.Tensor[];
     const evalTensor = Array.isArray(testEval) ? testEval[0] : testEval;
     const mseValue = (await evalTensor.data())[0] ?? 0;
+
+    const preds = tabularModel.predict(xTest) as tf.Tensor;
+    const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
+    const maeValue = (await maeTensor.data())[0] ?? 0;
+    preds.dispose();
+    maeTensor.dispose();
+    const rmseValue = Math.sqrt(mseValue);
+
     tabularMode = "regression";
     classIndexToLabel = [];
     xTrain.dispose();
@@ -329,8 +348,8 @@ async function trainTabularModel(
     yVal.dispose();
     yTest.dispose();
     return {
-      summary: `Regression test MSE: ${mseValue.toFixed(4)}`,
-      metrics: { testMSE: mseValue }
+      summary: `Регрессия (тест): MSE ${mseValue.toFixed(4)}, MAE ${maeValue.toFixed(4)}, RMSE ${rmseValue.toFixed(4)}`,
+      metrics: { testMSE: mseValue, testMAE: maeValue, testRMSE: rmseValue }
     };
   }
 
@@ -425,6 +444,7 @@ export async function trainByModelType(args: {
         throw new Error("В наборе для кластеризации нужно минимум 2 изображения.");
       }
       await trainKnnClustering(pool, args.onProgress);
+      lastTrainedModelType = "image_knn";
       return {
         summary: `Кластеризация: ${pool.length} изображений, группы по сходству (K-means + KNN)`,
         metrics: { samples: pool.length }
@@ -436,6 +456,7 @@ export async function trainByModelType(args: {
     }
     await trainKnnModel(ds.classes, args.onProgress);
     const sampleCount = ds.classes.reduce((sum, item) => sum + item.files.length, 0);
+    lastTrainedModelType = "image_knn";
     return {
       summary: `Image KNN обучен на ${sampleCount} изображениях`,
       metrics: { samples: sampleCount }
@@ -444,7 +465,116 @@ export async function trainByModelType(args: {
   if (!args.tabularDataset) {
     throw new Error("Для табличной модели сначала загрузи CSV в библиотеке.");
   }
-  return trainTabularModel(args.modelType, args.tabularDataset, args.config, args.onProgress);
+  const tabularEval = await trainTabularModel(
+    args.modelType,
+    args.tabularDataset,
+    args.config,
+    args.onProgress
+  );
+  lastTrainedModelType = args.modelType;
+  return tabularEval;
+}
+
+export function getLastTrainedModelType(): ModelType | null {
+  return lastTrainedModelType;
+}
+
+export function canPersistCurrentModel(): boolean {
+  if (tabularModel && tabularMode && lastTrainedModelType && lastTrainedModelType !== "image_knn") {
+    return true;
+  }
+  if (lastTrainedModelType === "image_knn" && imageClassifier.getNumClasses() > 0) {
+    return true;
+  }
+  return false;
+}
+
+function disposeTabularInMemory() {
+  tabularModel?.dispose();
+  tabularModel = null;
+  tabularMode = null;
+  classIndexToLabel = [];
+  tabularFeatureSpecs = [];
+}
+
+function clearKnnInMemory() {
+  imageClassifier.clearAllClasses();
+  imageKnnExtraLabels = {};
+}
+
+/** Сохраняет текущую модель в IndexedDB + метаданные (таблица: tf.io; KNN: один JSON в meta-БД). */
+export async function persistCurrentModelToLibrary(modelId: string): Promise<{ modelType: ModelType }> {
+  if (tabularModel && tabularMode && lastTrainedModelType && lastTrainedModelType !== "image_knn") {
+    await tabularModel.save(TABULAR_IDB_URL(modelId));
+    const payload: TabularModelLibraryPayload = {
+      kind: "tabular",
+      modelType: lastTrainedModelType,
+      tabularMode,
+      classIndexToLabel: [...classIndexToLabel],
+      tabularFeatureSpecs: tabularFeatureSpecs.map((s) =>
+        s.kind === "numeric" ? { kind: "numeric" } : { kind: "categorical", categories: [...s.categories] }
+      )
+    };
+    await putModelLibraryRecord({ id: modelId, ...payload });
+    return { modelType: lastTrainedModelType };
+  }
+  if (lastTrainedModelType === "image_knn" && imageClassifier.getNumClasses() > 0) {
+    const ds = imageClassifier.getClassifierDataset();
+    const dataset: Record<string, { shape: number[]; data: number[] }> = {};
+    for (const [label, tensor] of Object.entries(ds)) {
+      const t = tensor as tf.Tensor2D;
+      dataset[label] = { shape: t.shape.slice(), data: Array.from(t.dataSync()) };
+    }
+    await putModelLibraryRecord({
+      id: modelId,
+      kind: "knn",
+      extraLabels: { ...imageKnnExtraLabels },
+      dataset
+    });
+    return { modelType: "image_knn" };
+  }
+  throw new Error("Нет обученной модели: сначала выполни блок «Обучить модель».");
+}
+
+export async function loadModelFromLibraryEntry(entry: SavedModelEntry): Promise<void> {
+  const rec = await getModelLibraryRecord(entry.id);
+  if (!rec) {
+    throw new Error("Файлы модели не найдены в браузере (очищен IndexedDB или другой браузер).");
+  }
+  if (rec.kind === "tabular") {
+    clearKnnInMemory();
+    disposeTabularInMemory();
+    tabularModel = await tf.loadLayersModel(TABULAR_IDB_URL(entry.id));
+    tabularMode = rec.tabularMode;
+    classIndexToLabel = [...rec.classIndexToLabel];
+    tabularFeatureSpecs = rec.tabularFeatureSpecs.map((s) =>
+      s.kind === "numeric" ? { kind: "numeric" } : { kind: "categorical", categories: [...s.categories] }
+    );
+    lastTrainedModelType = entry.modelType;
+    return;
+  }
+  disposeTabularInMemory();
+  imageClassifier.clearAllClasses();
+  imageKnnExtraLabels = { ...rec.extraLabels };
+  const tensors: Record<string, tf.Tensor2D> = {};
+  for (const [label, payload] of Object.entries(rec.dataset)) {
+    const [rows, cols] = payload.shape;
+    tensors[label] = tf.tensor2d(payload.data, [rows, cols]);
+  }
+  imageClassifier.setClassifierDataset(tensors);
+  lastTrainedModelType = "image_knn";
+}
+
+export async function removeStoredModelFiles(entry: SavedModelEntry): Promise<void> {
+  await deleteModelLibraryRecord(entry.id);
+  if (entry.modelType === "image_knn") {
+    return;
+  }
+  try {
+    await tf.io.removeModel(TABULAR_IDB_URL(entry.id));
+  } catch {
+    /* ignore */
+  }
 }
 
 function parsePredictionFeatures(input: string) {

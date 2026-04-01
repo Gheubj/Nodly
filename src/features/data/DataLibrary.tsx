@@ -27,6 +27,15 @@ import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
 import { extractImageFilesFromZip } from "@/features/data/zipImages";
+import { removeStoredModelFiles } from "@/features/model/mlEngine";
+import type { SavedModelEntry } from "@/shared/types/ai";
+
+const MODEL_TYPE_LABEL: Record<SavedModelEntry["modelType"], string> = {
+  image_knn: "Картинки (KNN)",
+  tabular_regression: "Таблица, регрессия",
+  tabular_classification: "Таблица, классификация",
+  tabular_neural: "Таблица, нейросеть"
+};
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -72,7 +81,9 @@ export function DataLibrary() {
     removeImageDataset,
     removeTabularDataset,
     removeImagePredictionInput,
-    removeTabularPredictionInput
+    removeTabularPredictionInput,
+    savedModels,
+    removeSavedModel
   } = useAppStore();
 
   const filteredImageDatasets = useMemo(
@@ -419,10 +430,17 @@ export function DataLibrary() {
     </Space>
   );
 
+  const handleRemoveSavedModel = async (entry: SavedModelEntry) => {
+    await removeStoredModelFiles(entry);
+    removeSavedModel(entry.id);
+    message.success("Модель удалена из библиотеки");
+  };
+
   const predictTabContent = (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Paragraph>
-        Эти входы появляются в блоке <Text strong>«предсказать»</Text> в Blockly. Выбери их в выпадающем списке «вход».
+        Для таблицы в блоке <Text strong>«предсказать»</Text> выбери либо один из этих входов, либо режим «Вручную» (строка
+        только в блоке). Для картинок — только вход из библиотеки.
       </Paragraph>
       <Collapse
         defaultActiveKey={["img", "tab"]}
@@ -514,6 +532,35 @@ export function DataLibrary() {
     </Space>
   );
 
+  const modelsTabContent = (
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Paragraph type="secondary">
+        Сохраняются блоком «Сохранить модель в библиотеку» после обучения. Веса лежат в IndexedDB этого браузера; в проект
+        попадает только список имён — на другом устройстве загрузка не подтянет файлы, пока модель не сохранена там же.
+      </Paragraph>
+      {savedModels.length === 0 ? (
+        <Text type="secondary">Пока нет сохранённых моделей</Text>
+      ) : null}
+      {savedModels.map((m) => (
+        <Card
+          key={m.id}
+          size="small"
+          extra={
+            <Button danger size="small" icon={<DeleteOutlined />} onClick={() => void handleRemoveSavedModel(m)}>
+              Удалить
+            </Button>
+          }
+        >
+          <Text strong>{m.title}</Text>
+          <br />
+          <Text type="secondary">
+            {MODEL_TYPE_LABEL[m.modelType]} · {new Date(m.createdAt).toLocaleString("ru-RU")}
+          </Text>
+        </Card>
+      ))}
+    </Space>
+  );
+
   return (
     <Card title="Библиотека данных" size="small">
       <Tabs
@@ -528,6 +575,11 @@ export function DataLibrary() {
             key: "predict",
             label: "Данные для предсказания",
             children: predictTabContent
+          },
+          {
+            key: "models",
+            label: "Сохранённые модели",
+            children: modelsTabContent
           }
         ]}
       />
