@@ -4,12 +4,23 @@ const ACCESS_STORAGE_KEY = "noda_access_token";
 
 let accessToken = "";
 
-if (typeof sessionStorage !== "undefined") {
-  const stored = sessionStorage.getItem(ACCESS_STORAGE_KEY);
-  if (stored) {
-    accessToken = stored;
+function readPersistedAccessToken(): string {
+  if (typeof window === "undefined") {
+    return "";
   }
+  let stored = localStorage.getItem(ACCESS_STORAGE_KEY);
+  if (!stored && typeof sessionStorage !== "undefined") {
+    const legacy = sessionStorage.getItem(ACCESS_STORAGE_KEY);
+    if (legacy) {
+      localStorage.setItem(ACCESS_STORAGE_KEY, legacy);
+      sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+      stored = legacy;
+    }
+  }
+  return stored ?? "";
 }
+
+accessToken = readPersistedAccessToken();
 
 export function getApiBaseUrl() {
   return API_BASE;
@@ -17,11 +28,14 @@ export function getApiBaseUrl() {
 
 export function setAccessToken(token: string) {
   accessToken = token;
-  if (typeof sessionStorage !== "undefined") {
+  if (typeof window !== "undefined") {
     if (token) {
-      sessionStorage.setItem(ACCESS_STORAGE_KEY, token);
+      localStorage.setItem(ACCESS_STORAGE_KEY, token);
     } else {
-      sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+      localStorage.removeItem(ACCESS_STORAGE_KEY);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+      }
     }
   }
 }
