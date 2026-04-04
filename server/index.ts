@@ -406,7 +406,16 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
-      enrollments: { include: { classroom: true } },
+      enrollments: {
+        include: {
+          classroom: {
+            include: {
+              school: { select: { id: true, name: true } },
+              teacher: { select: { id: true, nickname: true, email: true } }
+            }
+          }
+        }
+      },
       schoolsOwned: true,
       spriteSelection: { include: { character: true, spritePack: true } }
     }
@@ -422,11 +431,26 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
     role: user.role,
     studentMode: user.studentMode,
     schoolsOwned: user.schoolsOwned,
-    enrollments: user.enrollments.map((e: { id: string; classroomId: string; classroom: { title: string } }) => ({
-      id: e.id,
-      classroomId: e.classroomId,
-      classroomTitle: e.classroom.title
-    })),
+    enrollments: user.enrollments.map(
+      (e: {
+        id: string;
+        classroomId: string;
+        classroom: {
+          title: string;
+          code: string;
+          school: { id: string; name: string };
+          teacher: { id: string; nickname: string; email: string };
+        };
+      }) => ({
+        id: e.id,
+        classroomId: e.classroomId,
+        classroomTitle: e.classroom.title,
+        classCode: e.classroom.code,
+        schoolName: e.classroom.school.name,
+        teacherNickname: e.classroom.teacher.nickname,
+        teacherEmail: e.classroom.teacher.email
+      })
+    ),
     spriteSelection: user.spriteSelection
   });
 });

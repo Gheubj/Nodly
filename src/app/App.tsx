@@ -1,10 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
   Button,
-  Drawer,
   Input,
   Layout,
-  List,
   Modal,
   Select,
   Space,
@@ -14,59 +12,18 @@ import {
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { Link, Route, Routes } from "react-router-dom";
-import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
-import { DataLibrary } from "@/features/data/DataLibrary";
 import { AccountPage } from "@/app/AccountPage";
+import { HomePage } from "@/app/HomePage";
 import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
-import { useAppStore } from "@/store/useAppStore";
-import type { NodaProjectMeta } from "@/shared/types/project";
-import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { setAccessToken } from "@/shared/api/client";
 
-const { Header, Content } = Layout;
+const { Header } = Layout;
 const { Title, Paragraph } = Typography;
-const GUEST_USER_ID_KEY = "noda_guest_user_id";
-const DEFAULT_PROJECT_TITLE = "Новый проект";
-
-function WorkspaceHome() {
-  return (
-    <>
-      <Paragraph className="placeholder-text">
-        MVP Модуль A. Запуск только через блок Старт в Blockly.
-      </Paragraph>
-      <Tabs
-        defaultActiveKey="workspace"
-        items={[
-          {
-            key: "workspace",
-            label: "Workspace",
-            children: <BlocklyWorkspace />
-          },
-          {
-            key: "library",
-            label: "Библиотека",
-            children: <DataLibrary />
-          }
-        ]}
-      />
-    </>
-  );
-}
 
 export function App() {
   const [messageApi, contextHolder] = message.useMessage();
-  const [guestUserId] = useState(() => {
-    const stored = localStorage.getItem(GUEST_USER_ID_KEY);
-    if (stored) {
-      return stored;
-    }
-    const next = `guest_${Math.random().toString(36).slice(2, 8)}`;
-    localStorage.setItem(GUEST_USER_ID_KEY, next);
-    return next;
-  });
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
@@ -80,18 +37,7 @@ export function App() {
   const [authLoginTab, setAuthLoginTab] = useState<"email" | "yandex">("email");
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
-  const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
-  const { getProjectSnapshot, loadProjectSnapshot, activeProject, setActiveProject } = useAppStore();
   const { user, register, login, requestRegistrationCode, requestForgotPassword } = useSessionStore();
-  const resolvedUserId = user?.id ?? guestUserId;
-  const currentProjectTitle = activeProject?.title ?? DEFAULT_PROJECT_TITLE;
-
-  const refreshProjects = async (nextUserId: string) => {
-    const list = await listProjects(nextUserId.trim());
-    setProjectItems(list);
-  };
 
   useLayoutEffect(() => {
     const url = new URL(window.location.href);
@@ -110,53 +56,6 @@ export function App() {
   useEffect(() => {
     void useSessionStore.getState().restoreSession();
   }, []);
-
-  useEffect(() => {
-    void refreshProjects(resolvedUserId);
-  }, [resolvedUserId]);
-
-  const handleSave = async () => {
-    const normalizedUserId = resolvedUserId.trim();
-    const normalizedTitle = saveTitle.trim();
-    if (!normalizedTitle) {
-      messageApi.error("Укажи название проекта.");
-      return;
-    }
-    const now = new Date().toISOString();
-    const projectId = activeProject?.id ?? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await saveProjectSmart({
-      meta: {
-        id: projectId,
-        userId: normalizedUserId,
-        title: normalizedTitle,
-        createdAt: activeProject?.createdAt ?? now,
-        updatedAt: now
-      },
-      snapshot: getProjectSnapshot()
-    });
-    setActiveProject({
-      id: projectId,
-      userId: normalizedUserId,
-      title: normalizedTitle,
-      createdAt: activeProject?.createdAt ?? now,
-      updatedAt: now
-    });
-    await refreshProjects(normalizedUserId);
-    setSaveOpen(false);
-    messageApi.success("Проект сохранен");
-  };
-
-  const handleLoadProject = async (projectId: string) => {
-    const project = await loadProjectSmart(projectId);
-    if (!project) {
-      messageApi.error("Проект не найден");
-      return;
-    }
-    setActiveProject(project.meta);
-    loadProjectSnapshot(project.snapshot);
-    setLibraryOpen(false);
-    messageApi.success(`Загружен проект: ${project.meta.title}`);
-  };
 
   const handleSendRegistrationCode = async () => {
     const normalized = email.trim();
@@ -228,36 +127,20 @@ export function App() {
             Noda PoC - AI в браузере
           </Link>
         </Title>
-        <Space className="header-actions">
+        <div className="app-header-right">
           {!user ? (
             <Button type="primary" onClick={() => setAuthOpen(true)}>
               Войти
             </Button>
           ) : null}
-          <Button type="default" className="header-input">
-            {user ? `Ник: ${user.nickname}` : "Гость"}
-          </Button>
-          <Button type="default" className="header-input">
-            {currentProjectTitle}
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => {
-              setSaveTitle(currentProjectTitle);
-              setSaveOpen(true);
-            }}
-          >
-            Сохранить проект
-          </Button>
-          <Button onClick={() => setLibraryOpen(true)}>Библиотека проектов</Button>
           {user?.role === "teacher" ? (
             <Link to="/teacher">
-              <Button type="default" className="header-input">
+              <Button type="default" className="app-header-teacher-btn">
                 Кабинет учителя
               </Button>
             </Link>
           ) : null}
-        </Space>
+        </div>
         {user ? (
           <Link to="/account" className="app-header-account" aria-label="Личный кабинет">
             <Button
@@ -266,47 +149,18 @@ export function App() {
               icon={<UserOutlined className="app-header-account-icon" />}
               className="header-user-btn app-header-account-btn"
             />
+            <span className="app-header-nickname" title={user.nickname}>
+              {user.nickname}
+            </span>
           </Link>
         ) : null}
       </Header>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <Content className="app-content">
-              <WorkspaceHome />
-            </Content>
-          }
-        />
+        <Route path="/" element={<HomePage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/teacher" element={<TeacherPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
-      <Drawer
-        title={`Проекты: ${user?.nickname ?? "Гость"}`}
-        open={libraryOpen}
-        width={460}
-        onClose={() => setLibraryOpen(false)}
-      >
-        <List
-          dataSource={projectItems}
-          locale={{ emptyText: "Проекты не найдены" }}
-          renderItem={(item) => (
-            <List.Item
-              actions={[
-                <Button key="load" type="link" onClick={() => void handleLoadProject(item.id)}>
-                  Загрузить
-                </Button>
-              ]}
-            >
-              <List.Item.Meta
-                title={item.title}
-                description={`Обновлен: ${new Date(item.updatedAt).toLocaleString("ru-RU")}`}
-              />
-            </List.Item>
-          )}
-        />
-      </Drawer>
       <Modal
         open={authOpen}
         title="Вход"
@@ -473,17 +327,6 @@ export function App() {
             onChange={(e) => setForgotEmail(e.target.value)}
             placeholder="Email аккаунта"
           />
-        </Space>
-      </Modal>
-      <Modal
-        open={saveOpen}
-        title="Сохранить проект"
-        okText="Сохранить"
-        onOk={() => void handleSave()}
-        onCancel={() => setSaveOpen(false)}
-      >
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="Название проекта" />
         </Space>
       </Modal>
     </Layout>

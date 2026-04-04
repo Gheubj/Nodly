@@ -4,12 +4,23 @@ import { apiClient, getApiBaseUrl, setAccessToken } from "@/shared/api/client";
 export type UserRole = "teacher" | "student";
 export type StudentMode = "school" | "direct";
 
+export interface SessionEnrollment {
+  id: string;
+  classroomId: string;
+  classroomTitle: string;
+  classCode: string;
+  schoolName: string;
+  teacherNickname: string;
+  teacherEmail: string;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
   nickname: string;
   role: UserRole;
   studentMode: StudentMode;
+  enrollments?: SessionEnrollment[];
   spriteSelection?: {
     character?: { id: string; title: string } | null;
     spritePack?: { id: string; title: string } | null;
@@ -49,7 +60,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         password
       });
       setAccessToken(data.accessToken);
-      set({ user: data.user, loading: false });
+      set({ loading: false });
+      await get().refreshMe();
     } catch (error) {
       set({ loading: false });
       throw error;
@@ -70,7 +82,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         studentMode
       });
       setAccessToken(data.accessToken);
-      set({ user: data.user, loading: false });
+      set({ loading: false });
+      await get().refreshMe();
     } catch (error) {
       set({ loading: false });
       throw error;

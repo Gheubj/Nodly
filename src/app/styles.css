@@ -35,7 +35,7 @@ body,
 }
 
 .app-header--authed {
-  padding-right: 64px;
+  padding-right: 100px;
 }
 
 .app-title.ant-typography {
@@ -52,18 +52,57 @@ body,
   color: #f0f0f0;
 }
 
+.app-header-right {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-teacher-btn.ant-btn {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.65);
+  background: transparent;
+}
+
+.app-header-teacher-btn.ant-btn:hover {
+  color: #1677ff !important;
+  border-color: #fff !important;
+  background: #fff !important;
+}
+
 .app-header-account {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 10px;
   transform: translateY(-50%);
-  line-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  line-height: 1;
+  max-width: 92px;
+  text-decoration: none;
+}
+
+.app-header-nickname {
+  display: block;
+  max-width: 100%;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header-account-btn.ant-btn {
-  width: 48px;
-  height: 40px;
-  min-width: 48px;
+  width: 44px;
+  height: 36px;
+  min-width: 44px;
   padding: 0;
   display: inline-flex;
   align-items: center;
