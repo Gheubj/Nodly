@@ -20,6 +20,7 @@ export interface SessionUser {
   nickname: string;
   role: UserRole;
   studentMode: StudentMode;
+  isAdmin?: boolean;
   enrollments?: SessionEnrollment[];
   spriteSelection?: {
     character?: { id: string; title: string } | null;

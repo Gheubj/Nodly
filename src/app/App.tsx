@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
+  Badge,
   Button,
   Input,
   Layout,
@@ -11,7 +12,7 @@ import {
   message
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AccountPage } from "@/app/AccountPage";
 import { LandingPage } from "@/app/LandingPage";
 import { StudioPage } from "@/app/StudioPage";
@@ -19,13 +20,15 @@ import { ClassPage } from "@/app/ClassPage";
 import { LearningPage } from "@/app/LearningPage";
 import { TeacherPage } from "@/app/TeacherPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
+import { ShareImportPage } from "@/app/ShareImportPage";
 import { useSessionStore } from "@/store/useSessionStore";
-import { setAccessToken } from "@/shared/api/client";
+import { apiClient, setAccessToken } from "@/shared/api/client";
 
 const { Header } = Layout;
 const { Title, Paragraph } = Typography;
 
 export function App() {
+  const location = useLocation();
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
@@ -41,6 +44,27 @@ export function App() {
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const { user, register, login, requestRegistrationCode, requestForgotPassword } = useSessionStore();
+  const [meSummary, setMeSummary] = useState<{
+    pendingReviewCount?: number;
+    assignmentAttentionCount?: number;
+  }>({});
+
+  useEffect(() => {
+    if (!user) {
+      setMeSummary({});
+      return;
+    }
+    const track =
+      (user.role === "student" && user.studentMode === "school") || user.role === "teacher";
+    if (!track) {
+      setMeSummary({});
+      return;
+    }
+    void apiClient
+      .get<{ pendingReviewCount?: number; assignmentAttentionCount?: number }>("/api/me/summary")
+      .then(setMeSummary)
+      .catch(() => setMeSummary({}));
+  }, [user?.id, user?.role, user?.studentMode, location.pathname]);
 
   useLayoutEffect(() => {
     const url = new URL(window.location.href);
@@ -133,35 +157,41 @@ export function App() {
             Noda PoC - AI в браузере
           </Link>
         </Title>
-        <nav className="app-header-nav" aria-label="Основные разделы">
-          <NavLink to="/" end className={headerNavClass}>
-            Главная
-          </NavLink>
-          <NavLink to="/studio" className={headerNavClass}>
-            Разработка
-          </NavLink>
-          {user?.role === "student" && user.studentMode === "school" ? (
-            <NavLink to="/class" className={headerNavClass}>
-              Класс
+        <div className="app-header-trailing">
+          <nav className="app-header-nav" aria-label="Основные разделы">
+            <NavLink to="/" end className={headerNavClass}>
+              Главная
             </NavLink>
-          ) : null}
-          {user?.role === "student" && user.studentMode === "direct" ? (
-            <NavLink to="/learning" className={headerNavClass}>
-              Обучение
+            <NavLink to="/studio" className={headerNavClass}>
+              Разработка
             </NavLink>
-          ) : null}
-          {user?.role === "teacher" ? (
-            <NavLink to="/teacher" className={headerNavClass}>
-              Кабинет учителя
-            </NavLink>
-          ) : null}
-        </nav>
-        <div className="app-header-right">
-          {!user ? (
-            <Button type="primary" onClick={() => setAuthOpen(true)}>
-              Войти
-            </Button>
-          ) : null}
+            {user?.role === "student" && user.studentMode === "school" ? (
+              <Badge count={meSummary.assignmentAttentionCount ?? 0} size="small" offset={[8, 2]}>
+                <NavLink to="/class" className={headerNavClass} style={{ display: "inline-block" }}>
+                  Класс
+                </NavLink>
+              </Badge>
+            ) : null}
+            {user?.role === "student" && user.studentMode === "direct" ? (
+              <NavLink to="/learning" className={headerNavClass}>
+                Обучение
+              </NavLink>
+            ) : null}
+            {user?.role === "teacher" ? (
+              <Badge count={meSummary.pendingReviewCount ?? 0} size="small" offset={[8, 2]}>
+                <NavLink to="/teacher" className={headerNavClass} style={{ display: "inline-block" }}>
+                  Кабинет учителя
+                </NavLink>
+              </Badge>
+            ) : null}
+          </nav>
+          <div className="app-header-right">
+            {!user ? (
+              <Button type="primary" onClick={() => setAuthOpen(true)}>
+                Войти
+              </Button>
+            ) : null}
+          </div>
         </div>
         {user ? (
           <Link to="/account" className="app-header-account" aria-label="Личный кабинет">
@@ -184,6 +214,7 @@ export function App() {
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/teacher" element={<TeacherPage />} />
+        <Route path="/share/:token" element={<ShareImportPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
       <Modal

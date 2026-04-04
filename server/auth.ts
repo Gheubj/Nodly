@@ -149,3 +149,24 @@ export function roleGuard(roles: UserRole[]) {
   };
 }
 
+export async function adminRequired(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const userId = req.session?.sub;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const row = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isAdmin: true }
+    });
+    if (!row?.isAdmin) {
+      res.status(403).json({ error: "Admin only" });
+      return;
+    }
+    next();
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+}
+

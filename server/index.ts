@@ -26,12 +26,15 @@ import {
   type AuthenticatedRequest
 } from "./auth.js";
 import { sendPasswordResetLink, sendRegistrationCode } from "./email.js";
+import { ensureLessonTemplateSeed, registerLmsRoutes } from "./lms.js";
 
 const app = express();
 
 app.use(cors({ origin: config.appBaseUrl, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+
+registerLmsRoutes(app);
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -430,6 +433,7 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
     nickname: user.nickname,
     role: user.role,
     studentMode: user.studentMode,
+    isAdmin: user.isAdmin,
     schoolsOwned: user.schoolsOwned,
     enrollments: user.enrollments.map(
       (e: {
@@ -794,6 +798,12 @@ app.listen(config.port, async () => {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn("Sprite seed skipped:", error);
+  }
+  try {
+    await ensureLessonTemplateSeed();
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("Lesson template seed skipped:", error);
   }
   // eslint-disable-next-line no-console
   console.log(`Server started at http://localhost:${config.port}`);

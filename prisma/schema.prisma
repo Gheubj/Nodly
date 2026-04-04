@@ -22,6 +22,20 @@ enum AuthProvider {
   yandex
 }
 
+enum AssignmentKind {
+  classwork
+  homework
+  project
+}
+
+enum SubmissionStatus {
+  not_started
+  draft
+  submitted
+  needs_revision
+  graded
+}
+
 model User {
   id             String      @id @default(cuid())
   email          String      @unique
@@ -34,6 +48,7 @@ model User {
   avatarUrl      String?
   lastActiveAt   DateTime?
   emailVerifiedAt DateTime?
+  isAdmin           Boolean     @default(false)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -49,6 +64,7 @@ model User {
   spriteSelection   UserSpriteSelection?
   refreshTokens     RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  projectSharesCreated ProjectShare[]
 }
 
 // Одноразовый код подтверждения email перед регистрацией
@@ -143,6 +159,8 @@ model Project {
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshot  ProjectSnapshot?
   datasets  DatasetMeta[]
+  submissions Submission[]
+  sharesSource ProjectShare[] @relation("ShareSourceProject")
 }
 
 model ProjectSnapshot {
@@ -181,37 +199,74 @@ model LearningProgress {
   @@unique([userId, moduleKey, topicKey])
 }
 
-model Assignment {
-  id          String   @id @default(cuid())
-  classroomId String
-  ownerId     String
-  title       String
-  description String?
-  maxScore    Int      @default(100)
-  dueAt       DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model LessonTemplate {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  moduleKey      String
+  sortOrder      Int      @default(0)
+  starterPayload Json
+  published      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  classroom Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
-  owner     User         @relation("AssignmentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  submissions Submission[]
+  assignments Assignment[]
+}
+
+model Assignment {
+  id               String         @id @default(cuid())
+  classroomId      String
+  ownerId          String
+  title            String
+  description      String?
+  kind             AssignmentKind @default(homework)
+  maxScore         Int            @default(10)
+  published        Boolean        @default(true)
+  templateSnapshot Json?
+  lessonTemplateId String?
+  dueAt            DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  classroom       Classroom        @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  owner           User             @relation("AssignmentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  lessonTemplate  LessonTemplate?  @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+  submissions     Submission[]
 }
 
 model Submission {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   assignmentId String
   studentId    String
   projectId    String?
   score        Int?
-  status       String   @default("submitted")
+  status       SubmissionStatus @default(not_started)
   teacherNote  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  revisionNote String?
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  teacherSeenAt DateTime?
+  gradedSeenAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  project    Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@unique([assignmentId, studentId])
+}
+
+model ProjectShare {
+  id              String    @id @default(cuid())
+  token           String    @unique
+  sourceProjectId String
+  createdById     String
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  sourceProject Project @relation("ShareSourceProject", fields: [sourceProjectId], references: [id], onDelete: Cascade)
+  createdBy     User    @relation(fields: [createdById], references: [id], onDelete: Cascade)
 }
 
 model ModelRunStat {

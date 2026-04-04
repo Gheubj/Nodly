@@ -39,15 +39,26 @@ body,
   flex-shrink: 0;
 }
 
+.app-header-trailing {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-right: 8px;
+}
+
+.app-header--authed .app-header-trailing {
+  padding-right: 96px;
+}
+
 .app-header-nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 4px 4px;
-  flex: 1;
   min-width: 0;
-  padding: 0 4px;
 }
 
 .app-header-nav-link {
@@ -71,7 +82,7 @@ body,
 }
 
 .app-header--authed {
-  padding-right: 100px;
+  padding-right: 16px;
 }
 
 .app-title.ant-typography {
@@ -89,11 +100,11 @@ body,
 }
 
 .app-header-right {
-  margin-left: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .app-header-teacher-btn.ant-btn {
@@ -326,16 +337,26 @@ body,
     padding-right: 16px;
   }
 
+  .app-header-trailing {
+    margin-left: 0;
+    width: 100%;
+    padding-right: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .app-header-nav {
-    flex: none;
     width: 100%;
     justify-content: flex-start;
     padding: 0;
   }
 
   .app-header-right {
-    margin-left: 0;
     width: 100%;
+  }
+
+  .app-header--authed .app-header-trailing {
+    padding-right: 0;
   }
 
   .app-header--authed {
