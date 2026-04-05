@@ -25,7 +25,7 @@ import {
   verifyPassword,
   type AuthenticatedRequest
 } from "./auth.js";
-import { sendPasswordResetLink, sendRegistrationCode } from "./email.js";
+import { sendPasswordResetLink, sendRegistrationCode, sendTeacherNewStudentEmail } from "./email.js";
 import { ensureLessonTemplateSeed, registerLmsRoutes } from "./lms.js";
 
 const app = express();
@@ -597,6 +597,14 @@ app.post("/api/classrooms/join", authRequired, roleGuard(["student"]), async (re
     res.status(404).json({ error: "Invite code not found" });
     return;
   }
+  const existedEnrollment = await prisma.enrollment.findUnique({
+    where: {
+      classroomId_studentId: {
+        classroomId: invite.classroomId,
+        studentId: req.session!.sub
+      }
+    }
+  });
   const enrollment = await prisma.enrollment.upsert({
     where: {
       classroomId_studentId: {
@@ -611,6 +619,23 @@ app.post("/api/classrooms/join", authRequired, roleGuard(["student"]), async (re
     where: { id: req.session!.sub },
     data: { studentMode: "school" }
   });
+  if (!existedEnrollment) {
+    const [room, stud] = await Promise.all([
+      prisma.classroom.findUnique({
+        where: { id: invite.classroomId },
+        include: { teacher: { select: { email: true } } }
+      }),
+      prisma.user.findUnique({ where: { id: req.session!.sub }, select: { nickname: true } })
+    ]);
+    if (room?.teacher?.email && stud) {
+      const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/teacher`;
+      void sendTeacherNewStudentEmail(room.teacher.email, {
+        studentNickname: stud.nickname,
+        classTitle: room.title,
+        appUrl
+      }).catch(() => {});
+    }
+  }
   res.json({ enrollmentId: enrollment.id, classroom: invite.classroom });
 });
 

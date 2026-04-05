@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import {
   Badge,
   Button,
@@ -12,7 +12,7 @@ import {
   message
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
-import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AccountPage } from "@/app/AccountPage";
 import { LandingPage } from "@/app/LandingPage";
 import { StudioPage } from "@/app/StudioPage";
@@ -26,6 +26,21 @@ import { apiClient, setAccessToken } from "@/shared/api/client";
 
 const { Header } = Layout;
 const { Title, Paragraph } = Typography;
+
+function RequireUser({ children }: { children: ReactElement }) {
+  const { user, loading } = useSessionStore();
+  if (loading) {
+    return (
+      <div className="app-content">
+        <Paragraph style={{ marginTop: 24 }}>Загрузка…</Paragraph>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
 
 export function App() {
   const location = useLocation();
@@ -47,6 +62,7 @@ export function App() {
   const [meSummary, setMeSummary] = useState<{
     pendingReviewCount?: number;
     assignmentAttentionCount?: number;
+    newEnrollmentCount?: number;
   }>({});
   const prevPathRef = useRef<string | null>(null);
 
@@ -63,6 +79,7 @@ export function App() {
       const data = await apiClient.get<{
         pendingReviewCount?: number;
         assignmentAttentionCount?: number;
+        newEnrollmentCount?: number;
       }>("/api/me/summary");
       setMeSummary(data);
     } catch {
@@ -208,9 +225,11 @@ export function App() {
             <NavLink to="/" end className={headerNavClass}>
               Главная
             </NavLink>
-            <NavLink to="/studio" className={headerNavClass}>
-              Разработка
-            </NavLink>
+            {user ? (
+              <NavLink to="/studio" className={headerNavClass}>
+                Разработка
+              </NavLink>
+            ) : null}
             {user?.role === "student" && user.studentMode === "school" ? (
               <Badge count={meSummary.assignmentAttentionCount ?? 0} size="small" offset={[8, 2]}>
                 <NavLink
@@ -234,7 +253,13 @@ export function App() {
               </NavLink>
             ) : null}
             {user?.role === "teacher" ? (
-              <Badge count={meSummary.pendingReviewCount ?? 0} size="small" offset={[8, 2]}>
+              <Badge
+                count={
+                  (meSummary.pendingReviewCount ?? 0) + (meSummary.newEnrollmentCount ?? 0)
+                }
+                size="small"
+                offset={[8, 2]}
+              >
                 <NavLink
                   to="/teacher"
                   className={headerNavClass}
@@ -242,7 +267,8 @@ export function App() {
                   onClick={() =>
                     setMeSummary((s) => ({
                       ...s,
-                      pendingReviewCount: 0
+                      pendingReviewCount: 0,
+                      newEnrollmentCount: 0
                     }))
                   }
                 >
@@ -275,11 +301,46 @@ export function App() {
       </Header>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/studio" element={<StudioPage />} />
-        <Route path="/class" element={<ClassPage />} />
-        <Route path="/learning" element={<LearningPage />} />
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="/teacher" element={<TeacherPage />} />
+        <Route
+          path="/studio"
+          element={
+            <RequireUser>
+              <StudioPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/class"
+          element={
+            <RequireUser>
+              <ClassPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/learning"
+          element={
+            <RequireUser>
+              <LearningPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <RequireUser>
+              <AccountPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/teacher"
+          element={
+            <RequireUser>
+              <TeacherPage />
+            </RequireUser>
+          }
+        />
         <Route path="/share/:token" element={<ShareImportPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>

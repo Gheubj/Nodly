@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Badge,
   Button,
   Card,
   DatePicker,
@@ -18,7 +19,7 @@ import {
   message
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -111,6 +112,9 @@ const KIND_RU: Record<string, string> = {
 export function TeacherPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const { user } = useSessionStore();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState("classes");
+  const [tabBadges, setTabBadges] = useState({ newEnroll: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState<TeacherDashboard | null>(null);
   const [schoolModalOpen, setSchoolModalOpen] = useState(false);
@@ -152,6 +156,17 @@ export function TeacherPage() {
   );
   const [adminSubmitting, setAdminSubmitting] = useState(false);
 
+  const syncTeacherBadges = useCallback(async () => {
+    try {
+      const s = await apiClient.get<{ newEnrollmentCount?: number; pendingReviewCount?: number }>(
+        "/api/me/summary"
+      );
+      setTabBadges({ newEnroll: s.newEnrollmentCount ?? 0, pending: s.pendingReviewCount ?? 0 });
+    } catch {
+      setTabBadges({ newEnroll: 0, pending: 0 });
+    }
+  }, []);
+
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
@@ -171,6 +186,42 @@ export function TeacherPage() {
       setLoading(false);
     }
   }, [messageApi]);
+
+  useEffect(() => {
+    if (user?.role === "teacher") {
+      void syncTeacherBadges();
+    }
+  }, [user?.role, location.pathname, syncTeacherBadges]);
+
+  const handleTeacherTabChange = (key: string) => {
+    setActiveTab(key);
+  };
+
+  /** Срабатывает и при повторном клике по уже открытой вкладке — можно сбросить бейдж, не переключаясь */
+  const handleTeacherTabClick = (key: string) => {
+    if (key === "classes") {
+      void (async () => {
+        try {
+          await apiClient.post("/api/teacher/mark-new-enrollments-seen", {});
+          await syncTeacherBadges();
+          window.dispatchEvent(new Event("noda-refresh-header-summary"));
+        } catch {
+          messageApi.error("Не удалось обновить отметки");
+        }
+      })();
+    }
+    if (key === "assignments") {
+      void (async () => {
+        try {
+          await apiClient.post("/api/teacher/mark-assignments-queue-seen", {});
+          await syncTeacherBadges();
+          window.dispatchEvent(new Event("noda-refresh-header-summary"));
+        } catch {
+          messageApi.error("Не удалось обновить отметки");
+        }
+      })();
+    }
+  };
 
   const loadAssignments = useCallback(
     async (classroomId: string) => {
@@ -410,6 +461,8 @@ export function TeacherPage() {
       setGradeOpen(false);
       setGradingSubmission(null);
       await loadSubmissions(lmsClassroomId, filterAssignmentId);
+      await syncTeacherBadges();
+      window.dispatchEvent(new Event("noda-refresh-header-summary"));
     } catch (e) {
       if (e instanceof Error) {
         messageApi.error(e.message);
@@ -819,8 +872,24 @@ export function TeacherPage() {
   );
 
   const tabItems = [
-    { key: "classes", label: "Классы и ученики", children: classesTab },
-    { key: "assignments", label: "Задания и проверка", children: assignmentsTab },
+    {
+      key: "classes",
+      label: (
+        <Badge count={tabBadges.newEnroll} size="small" offset={[10, 0]}>
+          <span>Классы и ученики</span>
+        </Badge>
+      ),
+      children: classesTab
+    },
+    {
+      key: "assignments",
+      label: (
+        <Badge count={tabBadges.pending} size="small" offset={[10, 0]}>
+          <span>Задания и проверка</span>
+        </Badge>
+      ),
+      children: assignmentsTab
+    },
     { key: "gradebook", label: "Журнал", children: gradebookTab },
     { key: "roadmap", label: "Планы развития", children: roadmapTab }
   ];
@@ -838,7 +907,12 @@ export function TeacherPage() {
         <Title level={4} style={{ margin: 0 }}>
           Кабинет учителя
         </Title>
-        <Tabs defaultActiveKey="classes" items={tabItems} />
+        <Tabs
+          activeKey={activeTab}
+          items={tabItems}
+          onChange={handleTeacherTabChange}
+          onTabClick={(key) => handleTeacherTabClick(key)}
+        />
       </Space>
 
       <Modal

@@ -4,7 +4,11 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
 import { config } from "./config.js";
-import { sendStudentNewAssignmentEmail, sendTeacherSubmissionEmail } from "./email.js";
+import {
+  sendStudentGradedEmail,
+  sendStudentNewAssignmentEmail,
+  sendTeacherSubmissionEmail
+} from "./email.js";
 import {
   adminRequired,
   authRequired,
@@ -76,14 +80,22 @@ export function registerLmsRoutes(app: Express) {
         select: { id: true }
       });
       const ids = classrooms.map((c) => c.id);
-      const pendingReview = await prisma.submission.count({
-        where: {
-          status: "submitted",
-          teacherSeenAt: null,
-          assignment: { classroomId: { in: ids } }
-        }
-      });
-      res.json({ pendingReviewCount: pendingReview });
+      const [pendingReview, newEnrollmentCount] = await Promise.all([
+        prisma.submission.count({
+          where: {
+            status: "submitted",
+            teacherSeenAt: null,
+            assignment: { classroomId: { in: ids } }
+          }
+        }),
+        prisma.enrollment.count({
+          where: {
+            teacherSeenJoinAt: null,
+            classroomId: { in: ids }
+          }
+        })
+      ]);
+      res.json({ pendingReviewCount: pendingReview, newEnrollmentCount });
       return;
     }
     if (user.role === "student" && user.studentMode === "school") {
@@ -432,7 +444,69 @@ export function registerLmsRoutes(app: Express) {
           }
         })
         .catch(() => {});
+      if (parsed.data.decision === "grade") {
+        const sc = parsed.data.score!;
+        void prisma.user
+          .findUnique({ where: { id: sub.studentId }, select: { email: true } })
+          .then((stu) => {
+            if (!stu?.email) {
+              return;
+            }
+            const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/class`;
+            return sendStudentGradedEmail(stu.email, {
+              assignmentTitle: sub.assignment.title,
+              score: sc,
+              maxScore: sub.assignment.maxScore,
+              appUrl,
+              comment: parsed.data.teacherNote
+            });
+          })
+          .catch(() => {});
+      }
       res.json({ ok: true });
+    }
+  );
+
+  app.post(
+    "/api/teacher/mark-new-enrollments-seen",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const teacherId = req.session!.sub;
+      const classrooms = await prisma.classroom.findMany({
+        where: { teacherId },
+        select: { id: true }
+      });
+      const ids = classrooms.map((c) => c.id);
+      if (ids.length === 0) {
+        res.json({ ok: true, updated: 0 });
+        return;
+      }
+      const now = new Date();
+      const result = await prisma.enrollment.updateMany({
+        where: { classroomId: { in: ids }, teacherSeenJoinAt: null },
+        data: { teacherSeenJoinAt: now }
+      });
+      res.json({ ok: true, updated: result.count });
+    }
+  );
+
+  app.post(
+    "/api/teacher/mark-assignments-queue-seen",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const teacherId = req.session!.sub;
+      const now = new Date();
+      const result = await prisma.submission.updateMany({
+        where: {
+          status: "submitted",
+          teacherSeenAt: null,
+          assignment: { ownerId: teacherId }
+        },
+        data: { teacherSeenAt: now }
+      });
+      res.json({ ok: true, updated: result.count });
     }
   );
 

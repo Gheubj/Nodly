@@ -126,10 +126,12 @@ model Classroom {
 }
 
 model Enrollment {
-  id          String   @id @default(cuid())
-  classroomId String
-  studentId   String
-  joinedAt    DateTime @default(now())
+  id                 String    @id @default(cuid())
+  classroomId        String
+  studentId          String
+  joinedAt           DateTime  @default(now())
+  // Учитель отметил просмотр нового ученика (вкладка «Классы»)
+  teacherSeenJoinAt  DateTime?
 
   classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   student   User      @relation(fields: [studentId], references: [id], onDelete: Cascade)

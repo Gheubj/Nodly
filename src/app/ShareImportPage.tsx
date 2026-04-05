@@ -81,7 +81,7 @@ export function ShareImportPage() {
           </>
         )}
         <div style={{ marginTop: 16 }}>
-          <Link to="/studio">В разработку</Link>
+          {user ? <Link to="/studio">В разработку</Link> : <Link to="/">На главную</Link>}
         </div>
       </Card>
     </Content>

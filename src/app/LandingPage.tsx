@@ -15,8 +15,8 @@ export function LandingPage() {
         визуальное программирование (Blockly).
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Войди, чтобы сохранять проекты в облаке, или открой «Разработку» и попробуй как гость (черновик на
-        этом устройстве).
+        Войди через кнопку «Войти» в шапке — после входа откроется раздел «Разработка» с Blockly и сохранением
+        проектов в облаке.
       </Paragraph>
     </Card>
   );
@@ -78,9 +78,11 @@ export function LandingPage() {
         {roleCard}
         <Card size="small" title="Быстрые ссылки">
           <Space wrap>
-            <Link to="/studio">
-              <Button type="primary">Разработка</Button>
-            </Link>
+            {user ? (
+              <Link to="/studio">
+                <Button type="primary">Разработка</Button>
+              </Link>
+            ) : null}
             {user?.role === "student" && user.studentMode === "school" ? (
               <Link to="/class">
                 <Button>Класс</Button>

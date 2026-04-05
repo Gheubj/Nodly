@@ -99,3 +99,27 @@ export async function sendTeacherSubmissionEmail(
   const html = `<p>Ученик <strong>${args.studentNickname}</strong> сдал задание <strong>${args.assignmentTitle}</strong>.</p><p><a href="${args.appUrl}">Открыть кабинет учителя</a></p>`;
   await deliver(teacherEmail, subject, html, text);
 }
+
+export async function sendStudentGradedEmail(
+  studentEmail: string,
+  args: { assignmentTitle: string; score: number; maxScore: number; appUrl: string; comment?: string | null }
+) {
+  const subject = `Оценка: ${args.assignmentTitle}`;
+  const scoreLine = `Балл: ${args.score} из ${args.maxScore}.`;
+  const commentBlock = args.comment ? `\n\nКомментарий учителя:\n${args.comment}` : "";
+  const text = `По заданию «${args.assignmentTitle}» выставлена оценка. ${scoreLine}${commentBlock}\n\nОткрыть раздел «Класс»: ${args.appUrl}`;
+  const html = `<p>По заданию <strong>${args.assignmentTitle}</strong> выставлена оценка: <strong>${args.score}</strong> из ${args.maxScore}.</p>${
+    args.comment ? `<p>Комментарий учителя:<br/>${args.comment.replace(/\n/g, "<br/>")}</p>` : ""
+  }<p><a href="${args.appUrl}">Открыть кабинет</a></p>`;
+  await deliver(studentEmail, subject, html, text);
+}
+
+export async function sendTeacherNewStudentEmail(
+  teacherEmail: string,
+  args: { studentNickname: string; classTitle: string; appUrl: string }
+) {
+  const subject = `Новый ученик в классе «${args.classTitle}»`;
+  const text = `${args.studentNickname} присоединился к классу «${args.classTitle}».\n\nКабинет учителя: ${args.appUrl}`;
+  const html = `<p><strong>${args.studentNickname}</strong> присоединился к классу <strong>${args.classTitle}</strong>.</p><p><a href="${args.appUrl}">Открыть кабинет</a></p>`;
+  await deliver(teacherEmail, subject, html, text);
+}
