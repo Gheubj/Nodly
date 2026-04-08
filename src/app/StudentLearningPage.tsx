@@ -3,7 +3,7 @@ import { Button, Card, List, Space, Typography, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import type { NodaProjectSnapshot } from "@/shared/types/project";
+import type { NodlyProjectSnapshot } from "@/shared/types/project";
 
 const { Title, Paragraph } = Typography;
 
@@ -53,7 +53,7 @@ export function StudentLearningPage() {
     }
     setOpeningId(t.id);
     try {
-      const { starterPayload } = await apiClient.get<{ starterPayload: NodaProjectSnapshot }>(
+      const { starterPayload } = await apiClient.get<{ starterPayload: NodlyProjectSnapshot }>(
         `/api/lesson-templates/${t.id}/starter`
       );
       const projectId = randomProjectId();

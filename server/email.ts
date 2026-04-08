@@ -67,14 +67,14 @@ async function deliver(to: string, subject: string, html: string, text: string) 
 }
 
 export async function sendRegistrationCode(email: string, code: string) {
-  const subject = "Код подтверждения Noda";
+  const subject = "Код подтверждения Nodly";
   const text = `Ваш код для регистрации: ${code}\n\nКод действует ${config.registrationOtpTtlMin} минут.`;
   const html = `<p>Ваш код для регистрации: <strong>${code}</strong></p><p>Код действует ${config.registrationOtpTtlMin} минут.</p>`;
   await deliver(email, subject, html, text);
 }
 
 export async function sendPasswordResetLink(email: string, resetUrl: string) {
-  const subject = "Сброс пароля Noda";
+  const subject = "Сброс пароля Nodly";
   const text = `Перейдите по ссылке, чтобы задать новый пароль (действует ${config.passwordResetTtlMin} мин):\n${resetUrl}\n\nЕсли вы не запрашивали сброс, проигнорируйте письмо.`;
   const html = `<p>Перейдите по ссылке, чтобы задать новый пароль (действует ${config.passwordResetTtlMin} мин):</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Если вы не запрашивали сброс, проигнорируйте письмо.</p>`;
   await deliver(email, subject, html, text);

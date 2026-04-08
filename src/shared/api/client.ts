@@ -1,6 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
 
-const ACCESS_STORAGE_KEY = "noda_access_token";
+const ACCESS_STORAGE_KEY = "nodly_access_token";
+const LEGACY_ACCESS_STORAGE_KEY = "noda_access_token";
 
 let accessToken = "";
 
@@ -13,17 +14,25 @@ function readPersistedAccessToken(): string {
   const fromQuery = new URLSearchParams(window.location.search).get("access_token");
   if (fromQuery) {
     localStorage.setItem(ACCESS_STORAGE_KEY, fromQuery);
+    localStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+      sessionStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
     }
     return fromQuery;
   }
-  let stored = localStorage.getItem(ACCESS_STORAGE_KEY);
+  let stored = localStorage.getItem(ACCESS_STORAGE_KEY) ?? localStorage.getItem(LEGACY_ACCESS_STORAGE_KEY);
+  if (stored && !localStorage.getItem(ACCESS_STORAGE_KEY)) {
+    localStorage.setItem(ACCESS_STORAGE_KEY, stored);
+    localStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
+  }
   if (!stored && typeof sessionStorage !== "undefined") {
-    const legacy = sessionStorage.getItem(ACCESS_STORAGE_KEY);
+    const legacy =
+      sessionStorage.getItem(ACCESS_STORAGE_KEY) ?? sessionStorage.getItem(LEGACY_ACCESS_STORAGE_KEY);
     if (legacy) {
       localStorage.setItem(ACCESS_STORAGE_KEY, legacy);
       sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+      sessionStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
       stored = legacy;
     }
   }
@@ -41,10 +50,13 @@ export function setAccessToken(token: string) {
   if (typeof window !== "undefined") {
     if (token) {
       localStorage.setItem(ACCESS_STORAGE_KEY, token);
+      localStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
     } else {
       localStorage.removeItem(ACCESS_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+        sessionStorage.removeItem(LEGACY_ACCESS_STORAGE_KEY);
       }
     }
   }

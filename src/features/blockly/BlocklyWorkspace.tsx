@@ -16,8 +16,8 @@ import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 
 const { Paragraph, Text } = Typography;
 
-const NODA_BLOCKLY_DARK = Blockly.Theme.defineTheme("noda_dark", {
-  name: "noda_dark",
+const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
+  name: "nodly_dark",
   base: Blockly.Themes.Classic,
   componentStyles: {
     workspaceBackgroundColour: "#1e293b",
@@ -315,7 +315,7 @@ function collectPaletteColors(ws: Blockly.WorkspaceSvg, level: 1 | 2): Record<st
   return next;
 }
 
-function refreshNodaPredictInlineRow(block: Blockly.Block) {
+function refreshNodlyPredictInlineRow(block: Blockly.Block) {
   const model = getSavedModelEntryById(block.getFieldValue("SAVED_MODEL_ID"));
   const ref = block.getFieldValue("INPUT_REF");
   const manual = ref === TABULAR_MANUAL_REF || ref === "none";
@@ -496,14 +496,14 @@ function registerBlocks() {
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.predict);
-      refreshNodaPredictInlineRow(block);
+      refreshNodlyPredictInlineRow(block);
       this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
         if (e.type !== Blockly.Events.BLOCK_CHANGE || (e as Blockly.Events.BlockChange).blockId !== this.id) {
           return;
         }
         const ce = e as Blockly.Events.BlockChange;
         if (ce.element === "field" && (ce.name === "INPUT_REF" || ce.name === "SAVED_MODEL_ID")) {
-          refreshNodaPredictInlineRow(this);
+          refreshNodlyPredictInlineRow(this);
         }
       });
     }
@@ -1163,11 +1163,11 @@ export function BlocklyWorkspace() {
     const initialDark = document.documentElement.getAttribute("data-theme") === "dark";
     workspaceRef.current = Blockly.inject(containerRef.current, {
       trashcan: true,
-      theme: initialDark ? NODA_BLOCKLY_DARK : Blockly.Themes.Classic,
+      theme: initialDark ? NODLY_BLOCKLY_DARK : Blockly.Themes.Classic,
       grid: {
         spacing: 20,
         length: 3,
-        colour: initialDark ? "#334155" : "#e0e0e0",
+        colour: initialDark ? "#334155" : "#ebebeb",
         snap: false
       },
       move: {
@@ -1265,7 +1265,7 @@ export function BlocklyWorkspace() {
       return;
     }
     const isDark = htmlTheme === "dark";
-    ws.setTheme(isDark ? NODA_BLOCKLY_DARK : Blockly.Themes.Classic);
+    ws.setTheme(isDark ? NODLY_BLOCKLY_DARK : Blockly.Themes.Classic);
     Blockly.svgResize(ws);
   }, [htmlTheme]);
 

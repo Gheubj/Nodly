@@ -204,7 +204,7 @@ export function TeacherPage() {
         try {
           await apiClient.post("/api/teacher/mark-new-enrollments-seen", {});
           await syncTeacherBadges();
-          window.dispatchEvent(new Event("noda-refresh-header-summary"));
+          window.dispatchEvent(new Event("nodly-refresh-header-summary"));
         } catch {
           messageApi.error("Не удалось обновить отметки");
         }
@@ -215,7 +215,7 @@ export function TeacherPage() {
         try {
           await apiClient.post("/api/teacher/mark-assignments-queue-seen", {});
           await syncTeacherBadges();
-          window.dispatchEvent(new Event("noda-refresh-header-summary"));
+          window.dispatchEvent(new Event("nodly-refresh-header-summary"));
         } catch {
           messageApi.error("Не удалось обновить отметки");
         }
@@ -462,7 +462,7 @@ export function TeacherPage() {
       setGradingSubmission(null);
       await loadSubmissions(lmsClassroomId, filterAssignmentId);
       await syncTeacherBadges();
-      window.dispatchEvent(new Event("noda-refresh-header-summary"));
+      window.dispatchEvent(new Event("nodly-refresh-header-summary"));
     } catch (e) {
       if (e instanceof Error) {
         messageApi.error(e.message);
@@ -854,7 +854,7 @@ export function TeacherPage() {
     <Card>
       <Title level={5}>Куда развивается кабинет учителя</Title>
       <Paragraph>
-        По продуктовой концепции Noda здесь со временем появятся модули для школ и кружков: не только список
+        По продуктовой концепции Nodly здесь со временем появятся модули для школ и кружков: не только список
         классов, но и полноценная работа с группой.
       </Paragraph>
       <ul style={{ paddingLeft: 20, marginBottom: 0 }}>
@@ -926,7 +926,7 @@ export function TeacherPage() {
           Название: школа, филиал, кружок — как вам удобно вести учёт.
         </Paragraph>
         <Input
-          placeholder="Например: Гимназия №5, кружок «Нода»"
+          placeholder="Например: Гимназия №5, кружок «Nodly»"
           value={schoolName}
           onChange={(e) => setSchoolName(e.target.value)}
         />

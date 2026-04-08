@@ -28,7 +28,7 @@ export const config = {
 
   emailProvider,
   resendApiKey: process.env.RESEND_API_KEY ?? "",
-  emailFrom: process.env.EMAIL_FROM ?? "Noda <onboarding@resend.dev>",
+  emailFrom: process.env.EMAIL_FROM ?? "Nodly <onboarding@resend.dev>",
   smtpHost: process.env.SMTP_HOST ?? "",
   smtpPort: Number(process.env.SMTP_PORT ?? 587),
   smtpUser: process.env.SMTP_USER ?? "",

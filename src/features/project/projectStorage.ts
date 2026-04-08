@@ -6,7 +6,7 @@ import type {
   TabularDatasetEntry,
   TabularPredictionInput
 } from "@/shared/types/ai";
-import type { NodaProject, NodaProjectMeta, NodaProjectSnapshot } from "@/shared/types/project";
+import type { NodlyProject, NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 
 interface EncodedFile {
   name: string;
@@ -34,8 +34,8 @@ interface EncodedImagePredictionInput {
   file: EncodedFile;
 }
 
-interface StoredNodaProject {
-  meta: NodaProjectMeta;
+interface StoredNodlyProject {
+  meta: NodlyProjectMeta;
   snapshot: {
     imageDatasets: EncodedImageDataset[];
     tabularDatasets: TabularDatasetEntry[];
@@ -140,9 +140,9 @@ async function decodeImageInputs(items: EncodedImagePredictionInput[]): Promise<
   );
 }
 
-export async function saveProject(project: NodaProject) {
+export async function saveProject(project: NodlyProject) {
   const db = await dbPromise;
-  const stored: StoredNodaProject = {
+  const stored: StoredNodlyProject = {
     meta: project.meta,
     snapshot: {
       imageDatasets: await encodeImageDatasets(project.snapshot.imageDatasets),
@@ -156,22 +156,22 @@ export async function saveProject(project: NodaProject) {
   await db.put(STORE_NAME, stored);
 }
 
-export async function listProjectsByUser(userId: string): Promise<NodaProjectMeta[]> {
+export async function listProjectsByUser(userId: string): Promise<NodlyProjectMeta[]> {
   const db = await dbPromise;
-  const all = (await db.getAll(STORE_NAME)) as StoredNodaProject[];
+  const all = (await db.getAll(STORE_NAME)) as StoredNodlyProject[];
   return all
     .map((item) => item.meta)
     .filter((meta) => meta.userId === userId)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export async function loadProject(projectId: string): Promise<NodaProject | null> {
+export async function loadProject(projectId: string): Promise<NodlyProject | null> {
   const db = await dbPromise;
-  const stored = (await db.get(STORE_NAME, projectId)) as StoredNodaProject | undefined;
+  const stored = (await db.get(STORE_NAME, projectId)) as StoredNodlyProject | undefined;
   if (!stored) {
     return null;
   }
-  const snapshot: NodaProjectSnapshot = {
+  const snapshot: NodlyProjectSnapshot = {
     imageDatasets: await decodeImageDatasets(stored.snapshot.imageDatasets),
     tabularDatasets: stored.snapshot.tabularDatasets,
     imagePredictionInputs: await decodeImageInputs(stored.snapshot.imagePredictionInputs),

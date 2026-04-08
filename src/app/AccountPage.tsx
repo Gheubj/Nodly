@@ -86,7 +86,7 @@ export function AccountPage() {
         </Link>
         <Button
           type="link"
-          onClick={() => window.dispatchEvent(new Event("noda-open-settings"))}
+          onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}
           style={{ padding: 0, height: "auto" }}
         >
           Настройки (тема и оформление)

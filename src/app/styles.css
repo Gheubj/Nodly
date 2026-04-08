@@ -83,7 +83,8 @@ body,
 }
 
 .app-header--authed .app-header-trailing {
-  padding-right: 200px;
+  padding-right: 190px;
+  gap: 4px 8px;
 }
 
 .app-header-nav {
@@ -246,12 +247,12 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
 .app-header-account-cluster {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 6px;
   transform: translateY(-50%);
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 10px;
+  gap: 6px;
   line-height: 1;
 }
 
@@ -259,24 +260,36 @@ html[data-theme="light"] .app-header .app-title-link:hover .app-brand-text {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   gap: 0;
-  max-width: 88px;
-  min-width: 0;
+  width: 86px;
+  max-width: 86px;
+  min-width: 86px;
   text-decoration: none;
   color: inherit;
+}
+
+.app-header-account-slot > .app-header-account-btn.ant-btn {
+  flex-shrink: 0;
 }
 
 a.app-header-account-slot {
   color: inherit;
 }
 
-.app-header-settings-btn {
-  flex-shrink: 0;
-}
-
-.app-header-settings-btn--active {
+.app-header-settings-btn--active.ant-btn {
   background: var(--app-header-active) !important;
   border-radius: 8px;
+}
+
+/* Как у ЛК: без белой подложки у text-кнопок на синей шапке */
+.app-header-account-cluster .ant-btn-text.app-header-account-btn {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-header-account-cluster .ant-btn-text.app-header-account-btn:not(:hover):not(:focus-visible) {
+  background: transparent !important;
 }
 
 .app-header-nickname {

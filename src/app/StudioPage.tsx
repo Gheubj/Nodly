@@ -20,7 +20,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { useAppStore } from "@/store/useAppStore";
-import type { NodaProjectMeta, NodaProjectSnapshot } from "@/shared/types/project";
+import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -29,10 +29,11 @@ const { Content } = Layout;
 const { Paragraph, Text } = Typography;
 const { TextArea } = Input;
 
-const GUEST_USER_ID_KEY = "noda_guest_user_id";
+const GUEST_USER_ID_KEY = "nodly_guest_user_id";
+const LEGACY_GUEST_USER_ID_KEY = "noda_guest_user_id";
 const DEFAULT_PROJECT_TITLE = "Новый проект";
 
-const EMPTY_SNAPSHOT: NodaProjectSnapshot = {
+const EMPTY_SNAPSHOT: NodlyProjectSnapshot = {
   imageDatasets: [],
   tabularDatasets: [],
   imagePredictionInputs: [],
@@ -65,8 +66,8 @@ interface TeacherWorkReview {
 }
 
 interface TeacherWorkPayload {
-  meta: NodaProjectMeta;
-  snapshot: NodaProjectSnapshot;
+  meta: NodlyProjectMeta;
+  snapshot: NodlyProjectSnapshot;
   review: TeacherWorkReview;
 }
 
@@ -76,8 +77,13 @@ export function StudioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
-    const stored = localStorage.getItem(GUEST_USER_ID_KEY);
+    const stored =
+      localStorage.getItem(GUEST_USER_ID_KEY) ?? localStorage.getItem(LEGACY_GUEST_USER_ID_KEY);
     if (stored) {
+      if (!localStorage.getItem(GUEST_USER_ID_KEY)) {
+        localStorage.setItem(GUEST_USER_ID_KEY, stored);
+        localStorage.removeItem(LEGACY_GUEST_USER_ID_KEY);
+      }
       return stored;
     }
     const next = `guest_${Math.random().toString(36).slice(2, 8)}`;
@@ -87,7 +93,7 @@ export function StudioPage() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
-  const [projectItems, setProjectItems] = useState<NodaProjectMeta[]>([]);
+  const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [submissionCtx, setSubmissionCtx] = useState<SubmissionContext | null>(null);
   const [teacherReview, setTeacherReview] = useState<TeacherWorkReview | null>(null);
@@ -181,7 +187,7 @@ export function StudioPage() {
         if (data.review.status === "submitted") {
           void apiClient
             .post("/api/teacher/submissions/mark-seen", { submissionIds: [data.review.submissionId] })
-            .then(() => window.dispatchEvent(new Event("noda-refresh-header-summary")))
+            .then(() => window.dispatchEvent(new Event("nodly-refresh-header-summary")))
             .catch(() => {});
         }
         setSearchParams(
@@ -254,7 +260,7 @@ export function StudioPage() {
         `/api/teacher/submissions/${encodeURIComponent(teacherReview.submissionId)}/work`
       );
       setTeacherReview(data.review);
-      window.dispatchEvent(new Event("noda-refresh-header-summary"));
+      window.dispatchEvent(new Event("nodly-refresh-header-summary"));
       messageApi.success("Решение сохранено");
     } catch (e) {
       if (e instanceof Error) {
@@ -340,7 +346,7 @@ export function StudioPage() {
       });
       await apiClient.post(`/api/student/assignments/${submissionCtx.assignmentId}/submit`, {});
       messageApi.success("Работа сохранена и сдана учителю");
-      window.dispatchEvent(new Event("noda-refresh-header-summary"));
+      window.dispatchEvent(new Event("nodly-refresh-header-summary"));
       const ctx = await apiClient.get<SubmissionContext>(
         `/api/student/projects/${encodeURIComponent(activeProject.id)}/submission-context`
       );

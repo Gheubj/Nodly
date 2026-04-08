@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Noda PoC</title>
+    <title>Nodly PoC</title>
     <script>
       (function () {
         try {
-          var m = localStorage.getItem("noda_theme_mode");
+          var m = localStorage.getItem("nodly_theme_mode") || localStorage.getItem("noda_theme_mode");
           var mode = m === "light" || m === "dark" || m === "system" ? m : "system";
           var dark = mode === "dark";
           if (mode === "system") {

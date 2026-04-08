@@ -1,4 +1,4 @@
-import type { NodaProject, NodaProjectMeta } from "@/shared/types/project";
+import type { NodlyProject, NodlyProjectMeta } from "@/shared/types/project";
 import { apiClient } from "@/shared/api/client";
 import { listProjectsByUser, loadProject, saveProject } from "@/features/project/projectStorage";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -7,7 +7,7 @@ function canUseCloud() {
   return Boolean(useSessionStore.getState().user?.id);
 }
 
-export async function listProjects(userId: string): Promise<NodaProjectMeta[]> {
+export async function listProjects(userId: string): Promise<NodlyProjectMeta[]> {
   if (!canUseCloud()) {
     return listProjectsByUser(userId);
   }
@@ -24,7 +24,7 @@ export async function listProjects(userId: string): Promise<NodaProjectMeta[]> {
   }));
 }
 
-export async function saveProjectSmart(project: NodaProject) {
+export async function saveProjectSmart(project: NodlyProject) {
   if (!canUseCloud()) {
     return saveProject(project);
   }
@@ -34,10 +34,10 @@ export async function saveProjectSmart(project: NodaProject) {
   });
 }
 
-export async function loadProjectSmart(projectId: string): Promise<NodaProject | null> {
+export async function loadProjectSmart(projectId: string): Promise<NodlyProject | null> {
   if (!canUseCloud()) {
     return loadProject(projectId);
   }
-  return apiClient.get<NodaProject>(`/api/projects/${projectId}`);
+  return apiClient.get<NodlyProject>(`/api/projects/${projectId}`);
 }
 

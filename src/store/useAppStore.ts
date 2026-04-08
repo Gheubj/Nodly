@@ -11,14 +11,16 @@ import type {
   TabularPredictionInput,
   TrainingState
 } from "@/shared/types/ai";
-import type { NodaProjectMeta, NodaProjectSnapshot } from "@/shared/types/project";
+import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 
 export type WorkspaceLevel = 1 | 2 | 3;
 
-const WORKSPACE_LEVEL_KEY = "noda_workspace_level";
+const WORKSPACE_LEVEL_KEY = "nodly_workspace_level";
+const LEGACY_WORKSPACE_LEVEL_KEY = "noda_workspace_level";
 
 function readWorkspaceLevel(): WorkspaceLevel {
-  const raw = localStorage.getItem(WORKSPACE_LEVEL_KEY);
+  const raw =
+    localStorage.getItem(WORKSPACE_LEVEL_KEY) ?? localStorage.getItem(LEGACY_WORKSPACE_LEVEL_KEY);
   if (raw === "1" || raw === "2" || raw === "3") {
     return Number(raw) as WorkspaceLevel;
   }
@@ -26,7 +28,7 @@ function readWorkspaceLevel(): WorkspaceLevel {
 }
 
 interface AppState {
-  activeProject: NodaProjectMeta | null;
+  activeProject: NodlyProjectMeta | null;
   imageDatasets: ImageDataset[];
   tabularDatasets: TabularDatasetEntry[];
   imagePredictionInputs: ImagePredictionInput[];
@@ -38,7 +40,7 @@ interface AppState {
   blocklyState: string;
   workspaceLevel: WorkspaceLevel;
   training: TrainingState;
-  setActiveProject: (project: NodaProjectMeta | null) => void;
+  setActiveProject: (project: NodlyProjectMeta | null) => void;
   addImageDataset: (title: string, taskType: "classification" | "clustering") => string | null;
   addClassToImageDataset: (datasetId: string, title: string) => void;
   addSamplesToClass: (datasetId: string, labelId: string, files: File[]) => void;
@@ -57,8 +59,8 @@ interface AppState {
   setEvaluation: (value: ModelEvaluation | null) => void;
   setLastModelType: (modelType: ModelType | null) => void;
   setBlocklyState: (value: string) => void;
-  getProjectSnapshot: () => NodaProjectSnapshot;
-  loadProjectSnapshot: (snapshot: NodaProjectSnapshot) => void;
+  getProjectSnapshot: () => NodlyProjectSnapshot;
+  loadProjectSnapshot: (snapshot: NodlyProjectSnapshot) => void;
   setTraining: (state: Partial<TrainingState>) => void;
   setWorkspaceLevel: (level: WorkspaceLevel) => void;
 }
@@ -231,7 +233,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       training: { ...state.training, ...nextState }
     })),
   setWorkspaceLevel: (level) => {
-    localStorage.setItem(WORKSPACE_LEVEL_KEY, String(level));
+    try {
+      localStorage.setItem(WORKSPACE_LEVEL_KEY, String(level));
+      localStorage.removeItem(LEGACY_WORKSPACE_LEVEL_KEY);
+    } catch {
+      /* ignore */
+    }
     set({ workspaceLevel: level });
   }
 }));

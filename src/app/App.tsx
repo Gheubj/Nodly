@@ -32,7 +32,7 @@ const { Title, Paragraph } = Typography;
 function OpenSettingsDrawerAndHome() {
   const navigate = useNavigate();
   useEffect(() => {
-    window.dispatchEvent(new Event("noda-open-settings"));
+    window.dispatchEvent(new Event("nodly-open-settings"));
     navigate("/", { replace: true });
   }, [navigate]);
   return null;
@@ -137,8 +137,8 @@ export function App() {
 
   useEffect(() => {
     const onRefresh = () => void fetchSummary();
-    window.addEventListener("noda-refresh-header-summary", onRefresh);
-    return () => window.removeEventListener("noda-refresh-header-summary", onRefresh);
+    window.addEventListener("nodly-refresh-header-summary", onRefresh);
+    return () => window.removeEventListener("nodly-refresh-header-summary", onRefresh);
   }, [fetchSummary]);
 
   useLayoutEffect(() => {
@@ -161,14 +161,14 @@ export function App() {
 
   useEffect(() => {
     const openAuth = () => setAuthOpen(true);
-    window.addEventListener("noda-open-auth", openAuth);
-    return () => window.removeEventListener("noda-open-auth", openAuth);
+    window.addEventListener("nodly-open-auth", openAuth);
+    return () => window.removeEventListener("nodly-open-auth", openAuth);
   }, []);
 
   useEffect(() => {
     const openSettings = () => setSettingsOpen(true);
-    window.addEventListener("noda-open-settings", openSettings);
-    return () => window.removeEventListener("noda-open-settings", openSettings);
+    window.addEventListener("nodly-open-settings", openSettings);
+    return () => window.removeEventListener("nodly-open-settings", openSettings);
   }, []);
 
   const handleSendRegistrationCode = async () => {
@@ -240,11 +240,11 @@ export function App() {
       {contextHolder}
       <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
         <Title level={3} className="app-title">
-          <Link to="/" className="app-title-link app-brand" aria-label="Noda — на главную">
+          <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
             <span className="app-brand-logo-wrap" aria-hidden>
-              <img src="/noda-mark-header.png" alt="" className="app-brand-logo" width={80} height={88} />
+              <img src="/nodly-mark-header.png" alt="" className="app-brand-logo" width={80} height={88} />
             </span>
-            <span className="app-brand-text">Noda</span>
+            <span className="app-brand-text">Nodly</span>
           </Link>
         </Title>
         <div className="app-header-trailing">
@@ -329,15 +329,15 @@ export function App() {
         {user ? (
           <div className="app-header-account-cluster">
             <div className="app-header-account-slot">
-              <button
-                type="button"
+              <Button
+                type="text"
+                size="large"
+                icon={<SettingOutlined className="app-header-account-icon" />}
                 className={`header-user-btn app-header-account-btn app-header-settings-btn${settingsOpen ? " app-header-settings-btn--active" : ""}`}
                 aria-label="Настройки"
                 aria-expanded={settingsOpen}
                 onClick={() => setSettingsOpen(true)}
-              >
-                <SettingOutlined className="app-header-account-icon" />
-              </button>
+              />
               <span className="app-header-nickname">Настройки</span>
             </div>
             <Link to="/account" className="app-header-account-slot" aria-label="Личный кабинет">

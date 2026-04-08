@@ -17,10 +17,10 @@ const { Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
 
 function openAuthModal() {
-  window.dispatchEvent(new Event("noda-open-auth"));
+  window.dispatchEvent(new Event("nodly-open-auth"));
 }
 
-/** Верхний «воздух»: «Платформа Noda» ниже, заголовок у нижнего края лого */
+/** Верхний «воздух»: «Платформа Nodly» ниже, заголовок у нижнего края лого */
 const LANDING_HEADLINE_TOP_EXTRA_PX = 28;
 
 export function LandingPage() {
@@ -102,7 +102,7 @@ export function LandingPage() {
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero__headline">
             <img
-              src={htmlTheme === "light" ? "/noda-mark-landing.png" : "/noda-mark-header.png"}
+              src={htmlTheme === "light" ? "/nodly-mark-landing.png" : "/nodly-mark-header.png"}
               alt=""
               className="landing-hero__mark"
               width={120}
@@ -115,7 +115,7 @@ export function LandingPage() {
               style={markHeightPx != null ? { minHeight: markHeightPx } : undefined}
             >
               <div ref={headlineMeasureRef} className="landing-hero__headline-text-inner">
-                <p className="landing-hero__eyebrow landing-hero__eyebrow--headline">Платформа Noda</p>
+                <p className="landing-hero__eyebrow landing-hero__eyebrow--headline">Платформа Nodly</p>
                 <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
                   ИИ и машинное обучение прямо в браузере
                 </Title>
@@ -178,7 +178,7 @@ export function LandingPage() {
               </Link>
               <Button
                 icon={<SettingOutlined />}
-                onClick={() => window.dispatchEvent(new Event("noda-open-settings"))}
+                onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}
               >
                 Настройки
               </Button>

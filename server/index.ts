@@ -11,6 +11,7 @@ import { config } from "./config.js";
 import {
   authRequired,
   clearRefreshCookie,
+  readRefreshTokenFromRequest,
   hashPassword,
   hashToken,
   persistRefreshToken,
@@ -58,7 +59,7 @@ const forgotPasswordLimiter = rateLimit({
 });
 
 app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({ ok: true, service: "noda-poc-server" });
+  res.json({ ok: true, service: "nodly-poc-server" });
 });
 
 app.post("/api/auth/register/request-code", registerCodeLimiter, async (req, res) => {
@@ -273,7 +274,7 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
 });
 
 app.post("/api/auth/refresh", async (req, res) => {
-  const oldToken = req.cookies?.noda_refresh as string | undefined;
+  const oldToken = readRefreshTokenFromRequest(req);
   const decoded = await rotateRefreshToken(oldToken);
   if (!decoded) {
     clearRefreshCookie(res);
@@ -288,7 +289,7 @@ app.post("/api/auth/refresh", async (req, res) => {
 });
 
 app.post("/api/auth/logout", async (req, res) => {
-  const refresh = req.cookies?.noda_refresh as string | undefined;
+  const refresh = readRefreshTokenFromRequest(req);
   if (refresh) {
     const decoded = await rotateRefreshToken(refresh);
     if (decoded) {
@@ -341,7 +342,7 @@ app.get("/api/auth/yandex/callback", async (req, res) => {
     const pickUniqueNick = async (baseRaw: string, fallback: string) => {
       let base = makeSafeNick(baseRaw) || makeSafeNick(fallback) || `user_${Date.now().toString(36)}`;
       if (base.length < 3) {
-        base = `${base}_noda`;
+        base = `${base}_nodly`;
       }
       let candidate = base;
       let idx = 1;

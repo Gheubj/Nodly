@@ -78,8 +78,14 @@ export async function persistRefreshToken(userId: string, refreshToken: string) 
   });
 }
 
+const refreshCookieOpts = {
+  path: "/api/auth",
+  sameSite: config.cookieSameSite,
+  secure: config.cookieSecure
+} as const;
+
 export function setRefreshCookie(res: Response, refreshToken: string) {
-  res.cookie("noda_refresh", refreshToken, {
+  res.cookie("nodly_refresh", refreshToken, {
     httpOnly: true,
     sameSite: config.cookieSameSite,
     secure: config.cookieSecure,
@@ -89,11 +95,13 @@ export function setRefreshCookie(res: Response, refreshToken: string) {
 }
 
 export function clearRefreshCookie(res: Response) {
-  res.clearCookie("noda_refresh", {
-    path: "/api/auth",
-    sameSite: config.cookieSameSite,
-    secure: config.cookieSecure
-  });
+  res.clearCookie("nodly_refresh", refreshCookieOpts);
+  res.clearCookie("noda_refresh", refreshCookieOpts);
+}
+
+export function readRefreshTokenFromRequest(req: Request): string | undefined {
+  const c = req.cookies as Record<string, string | undefined> | undefined;
+  return c?.nodly_refresh ?? c?.noda_refresh;
 }
 
 export async function rotateRefreshToken(oldToken: string | undefined) {

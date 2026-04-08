@@ -6,7 +6,7 @@ import type {
   TabularPredictionInput
 } from "@/shared/types/ai";
 
-export interface NodaProjectMeta {
+export interface NodlyProjectMeta {
   id: string;
   userId: string;
   title: string;
@@ -17,7 +17,7 @@ export interface NodaProjectMeta {
   reviewSubmissionId?: string;
 }
 
-export interface NodaProjectSnapshot {
+export interface NodlyProjectSnapshot {
   imageDatasets: ImageDataset[];
   tabularDatasets: TabularDatasetEntry[];
   imagePredictionInputs: ImagePredictionInput[];
@@ -27,7 +27,7 @@ export interface NodaProjectSnapshot {
   blocklyState: string;
 }
 
-export interface NodaProject {
-  meta: NodaProjectMeta;
-  snapshot: NodaProjectSnapshot;
+export interface NodlyProject {
+  meta: NodlyProjectMeta;
+  snapshot: NodlyProjectSnapshot;
 }
