@@ -24,7 +24,6 @@ import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
-import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
 
 const { Header } = Layout;
@@ -55,7 +54,6 @@ function RequireUser({ children }: { children: ReactElement }) {
 }
 
 export function App() {
-  const htmlTheme = useHtmlDataTheme();
   const location = useLocation();
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
@@ -245,11 +243,11 @@ export function App() {
           <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
             <span className="app-brand-logo-wrap" aria-hidden>
               <img
-                src={htmlTheme === "dark" ? "/nodly-wordmark-light.png" : "/nodly-wordmark.png"}
+                src="/nodly-wordmark-white.png"
                 alt=""
-                className="app-brand-logo"
-                width={200}
-                height={50}
+                className="app-brand-wordmark"
+                width={132}
+                height={32}
               />
             </span>
           </Link>

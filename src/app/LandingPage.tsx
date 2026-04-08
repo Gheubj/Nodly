@@ -20,8 +20,8 @@ function openAuthModal() {
 }
 
 export function LandingPage() {
-  const htmlTheme = useHtmlDataTheme();
   const { user } = useSessionStore();
+  const htmlTheme = useHtmlDataTheme();
 
   const guestBlock = (
     <Card className="landing-role-card" title="С чего начать">
@@ -84,16 +84,18 @@ export function LandingPage() {
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero__headline">
             <img
-              src={htmlTheme === "dark" ? "/nodly-wordmark-light.png" : "/nodly-wordmark.png"}
+              src={htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png"}
               alt="Nodly"
               className="landing-hero__wordmark"
-              width={400}
-              height={100}
+              width={280}
+              height={56}
               decoding="async"
             />
-            <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
-              ИИ и машинное обучение прямо в браузере
-            </Title>
+            <div className="landing-hero__headline-text">
+              <Title level={1} id="landing-hero-title" className="landing-hero__title landing-hero__title--headline">
+                ИИ и машинное обучение прямо в браузере
+              </Title>
+            </div>
           </div>
           <p className="landing-hero__lead">
             Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки

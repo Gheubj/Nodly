@@ -3,7 +3,7 @@ import { LaptopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useThemeStore, type ThemeMode } from "@/store/useThemeStore";
 
 type Props = {
-  /** Стили для встраивания в шапку (светлая / тёмная) */
+  /** Стили для встраивания в синюю шапку */
   variant?: "header" | "default";
 };
 

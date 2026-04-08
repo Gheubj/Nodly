@@ -10,12 +10,11 @@ html[data-theme="light"] {
   --app-surface: #ffffff;
   --app-muted: #526077;
   --app-accent: #2563eb;
-  --app-header-bg: #ffffff;
-  --app-header-text: #0f172a;
-  --app-header-muted: #475569;
-  --app-header-active: rgba(15, 23, 42, 0.1);
-  --app-header-hover: rgba(15, 23, 42, 0.06);
-  --app-header-border: rgba(15, 23, 42, 0.08);
+  --app-header-bg: #1d4ed8;
+  --app-header-text: #ffffff;
+  --app-header-muted: rgba(255, 255, 255, 0.9);
+  --app-header-active: rgba(255, 255, 255, 0.22);
+  --app-header-hover: rgba(255, 255, 255, 0.12);
   --landing-hero-border: rgba(15, 23, 42, 0.07);
   --landing-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 28px rgba(15, 23, 42, 0.07);
 }
@@ -25,12 +24,11 @@ html[data-theme="dark"] {
   --app-text: #e5e7eb;
   --app-surface: #111827;
   --app-muted: #94a3b8;
-  --app-header-bg: #0f172a;
+  --app-header-bg: #1e293b;
   --app-header-text: #f8fafc;
-  --app-header-muted: rgba(248, 250, 252, 0.78);
-  --app-header-active: rgba(248, 250, 252, 0.12);
-  --app-header-hover: rgba(248, 250, 252, 0.08);
-  --app-header-border: rgba(248, 250, 252, 0.1);
+  --app-header-muted: rgba(248, 250, 252, 0.9);
+  --app-header-active: rgba(248, 250, 252, 0.18);
+  --app-header-hover: rgba(248, 250, 252, 0.12);
   --landing-hero-border: rgba(96, 165, 250, 0.2);
   --landing-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px rgba(0, 0, 0, 0.25);
 }
@@ -64,7 +62,6 @@ body,
   height: auto;
   min-height: 64px;
   background: var(--app-header-bg);
-  border-bottom: 1px solid var(--app-header-border);
   position: relative;
 }
 
@@ -86,7 +83,7 @@ body,
 }
 
 .app-header--authed .app-header-trailing {
-  padding-right: 252px;
+  padding-right: 236px;
   gap: 4px 8px;
 }
 
@@ -156,9 +153,14 @@ button.app-header-nav-link--button {
   color: var(--app-header-text);
 }
 
-/* Ant Typography в шапке: цвет от токенов шапки */
+/* Ant Typography в шапке подхватывает токен светлой темы — фиксируем цвет бренда */
 html[data-theme="light"] .app-header .app-title.ant-typography {
   color: var(--app-header-text) !important;
+}
+
+html[data-theme="light"] .app-header .app-title-link:hover {
+  color: var(--app-header-text) !important;
+  opacity: 0.92;
 }
 
 .app-title-link {
@@ -168,14 +170,14 @@ html[data-theme="light"] .app-header .app-title.ant-typography {
 
 .app-title-link:hover {
   color: var(--app-header-text);
-  opacity: 0.88;
+  opacity: 0.92;
 }
 
 .app-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0;
-  max-width: min(100%, 240px);
+  gap: 10px;
+  max-width: min(100%, 320px);
 }
 
 .app-brand-logo-wrap {
@@ -186,19 +188,20 @@ html[data-theme="light"] .app-header .app-title.ant-typography {
   flex-shrink: 0;
 }
 
-.app-brand-logo {
-  height: 36px;
+/* Шапка: файл nodly-wordmark-white.png — белый вордмарк на прозрачном */
+.app-brand-wordmark {
+  height: 30px;
   width: auto;
-  max-width: 148px;
+  max-width: 132px;
   object-fit: contain;
   object-position: left center;
   display: block;
 }
 
 @media (max-width: 480px) {
-  .app-brand-logo {
-    max-width: 118px;
-    height: 30px;
+  .app-brand-wordmark {
+    max-width: 112px;
+    height: 26px;
   }
 }
 
@@ -211,39 +214,22 @@ html[data-theme="light"] .app-header .app-title.ant-typography {
 }
 
 .app-header-theme-segmented.ant-segmented {
-  background: rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 8px;
 }
 
 .app-header-theme-segmented.ant-segmented .ant-segmented-item {
-  color: rgba(15, 23, 42, 0.72);
+  color: rgba(255, 255, 255, 0.88);
   font-weight: 500;
 }
 
 .app-header-theme-segmented.ant-segmented .ant-segmented-item-selected {
-  background: rgba(15, 23, 42, 0.1) !important;
-  color: var(--app-header-text) !important;
-}
-
-.app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
-  background: rgba(15, 23, 42, 0.08);
-}
-
-html[data-theme="dark"] .app-header-theme-segmented.ant-segmented {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-item {
-  color: rgba(248, 250, 252, 0.85);
-}
-
-html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-item-selected {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.28) !important;
   color: #fff !important;
 }
 
-html[data-theme="dark"] .app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
-  background: rgba(255, 255, 255, 0.12);
+.app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .app-header-teacher-btn.ant-btn {
@@ -339,7 +325,7 @@ a.app-header-account-slot {
   margin-top: 2px;
   font-size: 11px;
   line-height: 1.2;
-  color: var(--app-header-muted);
+  color: rgba(255, 255, 255, 0.92);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -354,13 +340,13 @@ a.app-header-account-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--app-header-text);
+  color: #fff;
   border-radius: 8px;
 }
 
 .app-header-account-btn.ant-btn:hover {
-  color: var(--app-header-text) !important;
-  background: transparent !important;
+  color: #e6f4ff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
 .app-header-account-icon {
@@ -368,11 +354,11 @@ a.app-header-account-slot {
 }
 
 .header-user-btn.ant-btn {
-  color: var(--app-header-text);
+  color: #fff;
 }
 
 .header-user-btn.ant-btn:hover {
-  color: var(--app-header-text) !important;
+  color: #e6f4ff !important;
 }
 
 .account-page {
@@ -434,7 +420,13 @@ html[data-theme="dark"] .app-content--workspace {
   padding: 36px 28px 40px 16px;
   margin-bottom: 40px;
   border: 1px solid var(--landing-hero-border);
-  background: linear-gradient(145deg, #f4f4f5 0%, #f8fafc 42%, #ffffff 100%);
+  background: linear-gradient(
+    145deg,
+    rgba(37, 99, 235, 0.07) 0%,
+    #f8fafc 38%,
+    #ffffff 72%,
+    #fafbfc 100%
+  );
   box-shadow: var(--landing-card-shadow);
   overflow: hidden;
 }
@@ -443,18 +435,24 @@ html[data-theme="dark"] .app-content--workspace {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18px;
+  gap: 16px;
   margin: 0 0 20px;
 }
 
+/* Главная: светлая тема — nodly-wordmark-outline.png (тёмный контур на прозрачном) */
 .landing-hero__wordmark {
-  display: block;
+  flex-shrink: 0;
+  height: clamp(40px, 9vw, 56px);
   width: auto;
-  max-width: min(100%, 420px);
-  height: auto;
-  max-height: 76px;
+  max-width: min(320px, 100%);
   object-fit: contain;
   object-position: left center;
+  display: block;
+}
+
+.landing-hero__headline-text {
+  min-width: 0;
+  width: 100%;
 }
 
 .landing-hero__title--headline.ant-typography {
