@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DatabaseOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -12,13 +13,13 @@ import {
   Modal,
   Select,
   Space,
-  Tabs,
   Typography,
   message
 } from "antd";
 import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
+import { StudioStagePanel } from "@/app/StudioStagePanel";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
@@ -91,6 +92,7 @@ export function StudioPage() {
     return next;
   });
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [dataLibraryOpen, setDataLibraryOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
@@ -373,9 +375,10 @@ export function StudioPage() {
   return (
     <Content className="app-content app-content--workspace">
       {contextHolder}
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        {readOnly && teacherReview ? (
-          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <div className="studio-page">
+        <div className="studio-page__chrome">
+          {readOnly && teacherReview ? (
+            <Space direction="vertical" size="middle" style={{ width: "100%", marginBottom: 8 }}>
             <Alert
               type="info"
               showIcon
@@ -435,9 +438,9 @@ export function StudioPage() {
             ) : (
               <Paragraph type="secondary">Ученик ещё не отправил работу на проверку (черновик).</Paragraph>
             )}
-          </Space>
-        ) : null}
-        {!readOnly && submissionCtx ? (
+            </Space>
+          ) : null}
+          {!readOnly && submissionCtx ? (
           <Alert
             type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
             showIcon
@@ -469,25 +472,35 @@ export function StudioPage() {
               </Space>
             }
           />
-        ) : null}
-        <Space wrap align="center" style={{ width: "100%" }}>
-          <Text strong style={{ maxWidth: 280 }} ellipsis={{ tooltip: currentProjectTitle }}>
+          ) : null}
+        </div>
+        <div className="studio-page__toolbar">
+          <span className="studio-page__toolbar-title" title={currentProjectTitle}>
             {currentProjectTitle}
-          </Text>
+          </span>
           <Button
             type="primary"
+            size="small"
             disabled={readOnly}
             onClick={() => {
               setSaveTitle(currentProjectTitle);
               setSaveOpen(true);
             }}
           >
-            Сохранить проект
+            Сохранить
           </Button>
-          <Button onClick={() => setLibraryOpen(true)}>Мои проекты</Button>
-          <Button onClick={handleNewProject}>Новый проект</Button>
+          <Button size="small" onClick={() => setLibraryOpen(true)}>
+            Проекты
+          </Button>
+          <Button size="small" onClick={handleNewProject}>
+            Новый
+          </Button>
+          <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
+            Данные
+          </Button>
           {user && activeProject && !readOnly ? (
             <Button
+              size="small"
               onClick={() =>
                 void (async () => {
                   try {
@@ -504,21 +517,28 @@ export function StudioPage() {
                 })()
               }
             >
-              Поделиться копией
+              Поделиться
             </Button>
           ) : null}
-        </Space>
-        <Paragraph className="placeholder-text" style={{ marginBottom: 0 }}>
-          MVP Модуль A. Запуск только через блок Старт в Blockly.
-        </Paragraph>
-        <Tabs
-          defaultActiveKey="workspace"
-          items={[
-            { key: "workspace", label: "Workspace", children: <BlocklyWorkspace /> },
-            { key: "library", label: "Библиотека", children: <DataLibrary /> }
-          ]}
-        />
-      </Space>
+        </div>
+        <div className="studio-page__main">
+          <div className="studio-page__blockly">
+            <BlocklyWorkspace />
+          </div>
+          <StudioStagePanel />
+        </div>
+      </div>
+      <Drawer
+        title="Данные проекта"
+        placement="right"
+        width={580}
+        open={dataLibraryOpen}
+        onClose={() => setDataLibraryOpen(false)}
+        destroyOnClose={false}
+        rootClassName="studio-data-drawer"
+      >
+        <DataLibrary variant="drawer" />
+      </Drawer>
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Черновик"}`}
         open={libraryOpen}

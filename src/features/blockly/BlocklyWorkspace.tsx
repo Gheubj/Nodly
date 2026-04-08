@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Segmented, Space, Tag, Tooltip, Typography } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
+import { Alert, Button, Segmented, Space, Tag, Tooltip } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
@@ -13,8 +14,6 @@ import {
 import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types/ai";
 import { trackEvent } from "@/features/analytics/analytics";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
-
-const { Paragraph, Text } = Typography;
 
 const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
@@ -662,14 +661,7 @@ export function BlocklyWorkspace() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
-  const {
-    prediction,
-    evaluation,
-    training,
-    blocklyState,
-    workspaceLevel,
-    setWorkspaceLevel
-  } = useAppStore();
+  const { prediction, evaluation, blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
 
   const paletteLevel = effectiveToolboxLevel(workspaceLevel);
   const paletteItems = getPaletteItems(paletteLevel);
@@ -1289,15 +1281,27 @@ export function BlocklyWorkspace() {
   const showPredictHint = effectiveToolboxLevel(workspaceLevel) === 2;
 
   return (
-    <Card
-      size="small"
-      title="Blockly Workspace"
-      className="workspace-card"
-      extra={
+    <div className="blockly-root">
+      <div className="blockly-root__toolbar">
+        <Tooltip
+          title={
+            <div>
+              <div>
+                Цепочка выполняется от блока <strong>Старт</strong>. Нажми на «Старт», чтобы запустить.
+              </div>
+              {showPredictHint ? (
+                <div style={{ marginTop: 8 }}>
+                  Уровень 2: в «Предсказать» укажи числа через запятую (как столбцы CSV) или выбери вход в
+                  разделе «Данные». Для картинок KNN поле таблицы не нужно.
+                </div>
+              ) : null}
+            </div>
+          }
+        >
+          <Button type="text" size="small" icon={<QuestionCircleOutlined />} aria-label="Как запускать сценарий" />
+        </Tooltip>
         <Space size={8} wrap>
-          {workspaceLevel === 3 ? (
-            <Tag color="processing">Скоро больше настроек</Tag>
-          ) : null}
+          {workspaceLevel === 3 ? <Tag color="processing">Скоро больше блоков</Tag> : null}
           <Segmented<WorkspaceLevel>
             size="small"
             value={workspaceLevel}
@@ -1309,27 +1313,8 @@ export function BlocklyWorkspace() {
             ]}
           />
         </Space>
-      }
-    >
-      <Paragraph>
-        Выполняется цепочка от блока <Text strong>Старт</Text>. Нажми на «Старт», чтобы запустить.
-      </Paragraph>
-      {showPredictHint ? (
-        <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          <Tooltip
-            title={
-              "В блоке «Предсказать» второй ряд: «таблица: числа через запятую» — признаки в том же порядке, что столбцы CSV (без колонки ответа). Либо выбери готовый вход из библиотеки. Для Image KNN поле таблицы не используется."
-            }
-          >
-            <span>
-              Уровень 2: для таблиц впиши числа в блоке «Предсказать» (поле «таблица») или выбери вход из
-              библиотеки.
-            </span>
-          </Tooltip>
-        </Paragraph>
-      ) : null}
-      <Space direction="vertical" size={10} style={{ width: "100%" }}>
-        <div className="blockly-layout">
+      </div>
+      <div className="blockly-layout">
           <div className="blockly-palette">
             {(
               ["events", "model_types", "data", "model", "predict", "evaluate", "control", "output"] as PaletteGroupIdExt[]
@@ -1367,8 +1352,8 @@ export function BlocklyWorkspace() {
               ))}
           </div>
           <div ref={containerRef} className="blockly-container" />
-        </div>
-        <Alert type="info" showIcon message={training.message} />
+      </div>
+      <Space direction="vertical" size={8} style={{ width: "100%", marginTop: 8, flexShrink: 0 }}>
         {prediction ? (
           <Alert
             type="success"
@@ -1388,6 +1373,6 @@ export function BlocklyWorkspace() {
           />
         ) : null}
       </Space>
-    </Card>
+    </div>
   );
 }

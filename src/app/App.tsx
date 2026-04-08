@@ -365,18 +365,19 @@ export function App() {
           </div>
         ) : null}
       </Header>
-      <Drawer
-        title="Настройки"
-        placement="right"
-        width={360}
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        destroyOnClose={false}
-        rootClassName="app-settings-drawer"
-      >
-        <SettingsPanel variant="drawer" onAfterNavigate={() => setSettingsOpen(false)} />
-      </Drawer>
-      <Routes>
+      <div className="app-layout-body">
+        <Drawer
+          title="Настройки"
+          placement="right"
+          width={360}
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          destroyOnClose={false}
+          rootClassName="app-settings-drawer"
+        >
+          <SettingsPanel variant="drawer" onAfterNavigate={() => setSettingsOpen(false)} />
+        </Drawer>
+        <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/settings" element={<OpenSettingsDrawerAndHome />} />
         <Route
@@ -421,8 +422,8 @@ export function App() {
         />
         <Route path="/share/:token" element={<ShareImportPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-      </Routes>
-      <Modal
+        </Routes>
+        <Modal
         open={authOpen}
         title="Вход"
         onCancel={() => {
@@ -590,6 +591,7 @@ export function App() {
           />
         </Space>
       </Modal>
+      </div>
     </Layout>
   );
 }

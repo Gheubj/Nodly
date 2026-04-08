@@ -51,7 +51,7 @@ function filterImageSize(files: File[], onSkip: (name: string) => void): File[] 
 
 const { Paragraph, Text } = Typography;
 
-export function DataLibrary() {
+export function DataLibrary({ variant = "default" }: { variant?: "default" | "drawer" }) {
   const [newImageDatasetName, setNewImageDatasetName] = useState("");
   const [newImageDatasetTaskType, setNewImageDatasetTaskType] = useState<"classification" | "clustering">(
     "classification"
@@ -114,8 +114,9 @@ export function DataLibrary() {
       <Alert
         type="info"
         showIcon
-        message="Как собрать данные"
-        description="Классификация: набор → классы → фото или ZIP в каждый класс. Кластеризация без учителя: один набор → только фото или ZIP (имена кластеров не нужны). Форматы: JPG, PNG, WEBP, GIF (до 10 МБ на файл)."
+        className={variant === "drawer" ? "data-library__alert--compact" : undefined}
+        message={variant === "drawer" ? "Данные" : "Как собрать данные"}
+        description="Классификация: набор → классы → фото или ZIP. Кластеризация: один набор → фото/ZIP. Форматы: JPG, PNG, WEBP, GIF (до 10 МБ)."
       />
       <Collapse
         defaultActiveKey={["images", "tabular"]}
@@ -561,46 +562,64 @@ export function DataLibrary() {
     </Space>
   );
 
+  const tabs = (
+    <Tabs
+      defaultActiveKey="train"
+      size={variant === "drawer" ? "small" : "middle"}
+      items={[
+        {
+          key: "train",
+          label: variant === "drawer" ? "Обучение" : "Данные для обучения",
+          children: trainTabContent
+        },
+        {
+          key: "predict",
+          label: variant === "drawer" ? "Входы" : "Данные для предсказания",
+          children: predictTabContent
+        },
+        {
+          key: "models",
+          label: variant === "drawer" ? "Модели" : "Сохранённые модели",
+          children: modelsTabContent
+        }
+      ]}
+    />
+  );
+
+  const previewModal = (
+    <Modal
+      open={previewVisible}
+      onCancel={closePreview}
+      footer={null}
+      width={800}
+      title="Предпросмотр изображений"
+      destroyOnClose
+    >
+      <List
+        grid={{ gutter: 16, column: 4 }}
+        dataSource={previewImages}
+        renderItem={(src) => (
+          <List.Item>
+            <Image src={src} alt="preview" style={{ width: "100%", height: 100, objectFit: "cover" }} />
+          </List.Item>
+        )}
+      />
+    </Modal>
+  );
+
+  if (variant === "drawer") {
+    return (
+      <div className="data-library data-library--drawer">
+        {tabs}
+        {previewModal}
+      </div>
+    );
+  }
+
   return (
     <Card title="Библиотека данных" size="small">
-      <Tabs
-        defaultActiveKey="train"
-        items={[
-          {
-            key: "train",
-            label: "Данные для обучения",
-            children: trainTabContent
-          },
-          {
-            key: "predict",
-            label: "Данные для предсказания",
-            children: predictTabContent
-          },
-          {
-            key: "models",
-            label: "Сохранённые модели",
-            children: modelsTabContent
-          }
-        ]}
-      />
-      <Modal
-        open={previewVisible}
-        onCancel={closePreview}
-        footer={null}
-        width={800}
-        title="Предпросмотр изображений"
-        destroyOnClose
-      >
-        <List
-          grid={{ gutter: 16, column: 4 }}
-          dataSource={previewImages}
-          renderItem={(src) => (
-            <List.Item>
-              <Image src={src} alt="preview" style={{ width: "100%", height: 100, objectFit: "cover" }} />
-            </List.Item>
-          )}
-        />
-      </Modal>
+      {tabs}
+      {previewModal}
     </Card>
   );
 }
