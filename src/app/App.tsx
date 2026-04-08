@@ -239,20 +239,23 @@ export function App() {
     <Layout className="app-layout">
       {contextHolder}
       <Header className={`app-header app-header--edge${user ? " app-header--authed" : ""}`}>
-        <Title level={3} className="app-title">
-          <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
-            <span className="app-brand-logo-wrap" aria-hidden>
-              <img
-                src="/nodly-wordmark-white.png"
-                alt=""
-                className="app-brand-wordmark"
-                width={132}
-                height={32}
-              />
-            </span>
-          </Link>
-        </Title>
-        <div className="app-header-trailing">
+        <div className="app-header-spacer" aria-hidden />
+        <div className="app-header-center">
+          <Title level={3} className="app-title">
+            <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
+              <span className="app-brand-logo-wrap" aria-hidden>
+                <img
+                  src="/nodly-wordmark-white.png"
+                  alt=""
+                  className="app-brand-wordmark"
+                  width={132}
+                  height={32}
+                />
+              </span>
+            </Link>
+          </Title>
+        </div>
+        <div className="app-header-end">
           <nav className="app-header-nav" aria-label="Основные разделы">
             {!user ? (
               <button
@@ -327,6 +330,35 @@ export function App() {
               </Badge>
             ) : null}
           </nav>
+          {user ? (
+            <div className="app-header-account-cluster">
+              <div
+                className={`app-header-account-slot${settingsOpen ? " app-header-account-slot--active" : ""}`}
+              >
+                <Button
+                  type="text"
+                  size="large"
+                  icon={<SettingOutlined className="app-header-account-icon" />}
+                  className="header-user-btn app-header-account-btn"
+                  aria-label="Настройки"
+                  aria-expanded={settingsOpen}
+                  onClick={() => setSettingsOpen(true)}
+                />
+                <span className="app-header-nickname">Настройки</span>
+              </div>
+              <Link to="/account" className="app-header-account-slot" aria-label="Личный кабинет">
+                <Button
+                  type="text"
+                  size="large"
+                  icon={<UserOutlined className="app-header-account-icon" />}
+                  className="header-user-btn app-header-account-btn"
+                />
+                <span className="app-header-nickname" title={user.nickname}>
+                  {user.nickname}
+                </span>
+              </Link>
+            </div>
+          ) : null}
           <div className="app-header-right">
             {!user ? (
               <Button type="primary" onClick={() => setAuthOpen(true)}>
@@ -335,35 +367,6 @@ export function App() {
             ) : null}
           </div>
         </div>
-        {user ? (
-          <div className="app-header-account-cluster">
-            <div
-              className={`app-header-account-slot${settingsOpen ? " app-header-account-slot--active" : ""}`}
-            >
-              <Button
-                type="text"
-                size="large"
-                icon={<SettingOutlined className="app-header-account-icon" />}
-                className="header-user-btn app-header-account-btn"
-                aria-label="Настройки"
-                aria-expanded={settingsOpen}
-                onClick={() => setSettingsOpen(true)}
-              />
-              <span className="app-header-nickname">Настройки</span>
-            </div>
-            <Link to="/account" className="app-header-account-slot" aria-label="Личный кабинет">
-              <Button
-                type="text"
-                size="large"
-                icon={<UserOutlined className="app-header-account-icon" />}
-                className="header-user-btn app-header-account-btn"
-              />
-              <span className="app-header-nickname" title={user.nickname}>
-                {user.nickname}
-              </span>
-            </Link>
-          </div>
-        ) : null}
       </Header>
       <div className="app-layout-body">
         <Drawer

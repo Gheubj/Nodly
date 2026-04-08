@@ -1153,13 +1153,15 @@ export function BlocklyWorkspace() {
       return;
     }
     const initialDark = document.documentElement.getAttribute("data-theme") === "dark";
+    /** Один нейтральный цвет сетки: при смене темы Blockly обновляет только theme, не stroke сетки. */
+    const gridDotColour = "#949494";
     workspaceRef.current = Blockly.inject(containerRef.current, {
       trashcan: true,
       theme: initialDark ? NODLY_BLOCKLY_DARK : Blockly.Themes.Classic,
       grid: {
         spacing: 20,
         length: 3,
-        colour: initialDark ? "#334155" : "#ebebeb",
+        colour: gridDotColour,
         snap: false
       },
       move: {

@@ -80,12 +80,13 @@ body,
   overflow: auto;
 }
 
+/* Сетка 1fr | лого (auto) | 1fr — геометрический центр логотипа совпадает с центром шапки */
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 6px 10px;
+  column-gap: 12px;
+  row-gap: 8px;
   padding: 6px 12px;
   padding-right: 12px;
   height: auto;
@@ -98,29 +99,34 @@ body,
   padding-left: 8px;
 }
 
-.app-header .app-title {
-  flex-shrink: 0;
+.app-header-spacer {
+  min-width: 0;
+  grid-column: 1;
 }
 
-.app-header-trailing {
-  margin-left: auto;
+.app-header-center {
+  grid-column: 2;
+  justify-self: center;
+  min-width: 0;
+}
+
+.app-header .app-title {
+  margin: 0;
+}
+
+.app-header-end {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px 12px;
-  padding-right: 8px;
+  gap: 4px 8px;
+  min-width: 0;
 }
 
 .app-header-right:empty {
   display: none;
-}
-
-/* Пункты навигации ближе к блоку «Настройки» / ЛК (резерв под абсолютный кластер) */
-.app-header--authed .app-header-trailing {
-  /* ~2×max слота + gap кластера + отступ справа; чуть запас до последней ссылки */
-  padding-right: 184px;
-  gap: 4px 6px;
 }
 
 .app-header-nav {
@@ -191,7 +197,7 @@ button.app-header-nav-link--button {
 }
 
 .app-header--authed {
-  padding-right: 16px;
+  padding-right: 12px;
 }
 
 .app-title.ant-typography {
@@ -240,7 +246,7 @@ html[data-theme="light"] .app-header .app-title-link:hover {
   width: auto;
   max-width: 120px;
   object-fit: contain;
-  object-position: left center;
+  object-position: center center;
   display: block;
 }
 
@@ -290,14 +296,12 @@ html[data-theme="light"] .app-header .app-title-link:hover {
   background: #fff !important;
 }
 
+/* В одном ряду с навигацией — без «дыры» от padding под абсолют */
 .app-header-account-cluster {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
   display: flex;
   flex-direction: row;
   align-items: flex-start;
+  flex-shrink: 0;
   gap: 2px;
   line-height: 1;
 }
@@ -926,6 +930,15 @@ html[data-theme="dark"] .blockly-palette-btn {
   overscroll-behavior: contain;
 }
 
+/*
+ * Точки сетки Blockly: stroke задаётся только при inject и не меняется при setTheme(),
+ * из‑за чего после переключения темы оставались «чужие» точки (например светлые на тёмном фоне).
+ * Фиксируем нейтральный серый для всех тем (совпадает с grid.colour в BlocklyWorkspace).
+ */
+.blockly-container pattern[id^="blocklyGridPattern"] line {
+  stroke: #949494 !important;
+}
+
 /* Touch: вся область workspace отдаёт жесты Blockly (панорама, блоки, pinch-zoom) */
 .blockly-container .blocklySvg,
 .blockly-container .blocklyToolboxDiv,
@@ -949,15 +962,25 @@ html[data-theme="dark"] .blockly-palette-btn {
   }
 
   .app-header {
-    align-items: flex-start;
+    display: flex;
     flex-direction: column;
+    align-items: stretch;
     padding-right: 16px;
   }
 
-  .app-header-trailing {
-    margin-left: 0;
+  .app-header-spacer {
+    display: none;
+  }
+
+  .app-header-center {
+    align-self: center;
     width: 100%;
-    padding-right: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .app-header-end {
+    width: 100%;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
@@ -973,19 +996,16 @@ html[data-theme="dark"] .blockly-palette-btn {
     width: 100%;
   }
 
-  .app-header--authed .app-header-trailing {
-    padding-right: 0;
-  }
-
   .app-header--authed {
     padding-top: 48px;
     padding-right: 16px;
+    position: relative;
   }
 
-  .app-header-account-cluster {
+  .app-header--authed .app-header-account-cluster {
+    position: absolute;
     top: 12px;
     right: 12px;
-    transform: none;
   }
 
   .app-title.ant-typography {
