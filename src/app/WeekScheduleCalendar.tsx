@@ -1,4 +1,4 @@
-import { Button, Card, Popconfirm, Select, Space, Typography } from "antd";
+import { Button, Card, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "dayjs/locale/ru";
@@ -8,6 +8,35 @@ dayjs.locale("ru");
 
 const { Text } = Typography;
 
+/** Минимальные поля задания ученика для кнопок в календаре (совместимо с StudentAssignmentRow) */
+export type SlotStudentAssignmentRow = {
+  assignmentId: string;
+  classroomId: string;
+  classroomTitle: string;
+  schoolName: string;
+  title: string;
+  kind: string;
+  dueAt: string | null;
+  maxScore: number;
+  submission: {
+    id: string;
+    status: string;
+    score: number | null;
+    projectId: string | null;
+    gradedSeenAt: string | null;
+    teacherNote: string | null;
+    revisionNote: string | null;
+  } | null;
+};
+
+export type SlotLinkedAssignment = {
+  id: string;
+  title: string;
+  kind: string;
+  dueAt: string | null;
+  studentRow?: SlotStudentAssignmentRow;
+};
+
 export type WeekScheduleSlot = {
   id: string;
   startsAt: string;
@@ -16,7 +45,33 @@ export type WeekScheduleSlot = {
   notes: string | null;
   weeklySeriesId?: string | null;
   myPlansToAttend?: boolean | null;
+  linkedAssignments?: SlotLinkedAssignment[];
 };
+
+const KIND_SHORT: Record<string, string> = {
+  classwork: "На уроке",
+  homework: "Домашнее",
+  project: "Проект"
+};
+
+const STATUS_SHORT: Record<string, string> = {
+  not_started: "Не начато",
+  draft: "Черновик",
+  submitted: "Сдано",
+  needs_revision: "Доработка",
+  graded: "Оценено"
+};
+
+function studentSlotNeedsAttention(row: SlotStudentAssignmentRow): boolean {
+  const st = row.submission?.status ?? "not_started";
+  if (st === "needs_revision") {
+    return true;
+  }
+  if (st === "graded" && row.submission && !row.submission.gradedSeenAt) {
+    return true;
+  }
+  return false;
+}
 
 type Props = {
   weekAnchor: Dayjs;
@@ -28,6 +83,9 @@ type Props = {
   onDeleteSlot?: (slotId: string) => void;
   onDeleteSeries?: (seriesId: string) => void;
   onAttendanceChange?: (slotId: string, value: boolean | null) => void;
+  onStudentStartAssignment?: (row: SlotStudentAssignmentRow) => void;
+  onStudentSubmitAssignment?: (row: SlotStudentAssignmentRow) => void;
+  onStudentMarkGradedSeen?: (row: SlotStudentAssignmentRow) => void;
 };
 
 function dayKey(d: Dayjs) {
@@ -51,7 +109,10 @@ export function WeekScheduleCalendar({
   variant,
   onDeleteSlot,
   onDeleteSeries,
-  onAttendanceChange
+  onAttendanceChange,
+  onStudentStartAssignment,
+  onStudentSubmitAssignment,
+  onStudentMarkGradedSeen
 }: Props) {
   const monday = weekAnchor.startOf("isoWeek");
   const days = Array.from({ length: 7 }, (_, i) => monday.add(i, "day"));
@@ -113,6 +174,91 @@ export function WeekScheduleCalendar({
                           <Text style={{ fontSize: 12 }} ellipsis>
                             {slot.notes}
                           </Text>
+                        ) : null}
+                        {variant === "teacher" && slot.linkedAssignments && slot.linkedAssignments.length > 0 ? (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            Задания:{" "}
+                            {slot.linkedAssignments
+                              .map((a) => `${KIND_SHORT[a.kind] ?? a.kind}: ${a.title}`)
+                              .join(" · ")}
+                          </Text>
+                        ) : null}
+                        {variant === "student" &&
+                        slot.linkedAssignments &&
+                        slot.linkedAssignments.length > 0 &&
+                        onStudentStartAssignment ? (
+                          <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                            {slot.linkedAssignments.map((la) => {
+                              const row = la.studentRow;
+                              if (!row) {
+                                return null;
+                              }
+                              const st = row.submission?.status ?? "not_started";
+                              const hasProject = Boolean(row.submission?.projectId);
+                              const scoreSuffix =
+                                st === "graded" && row.submission?.score != null
+                                  ? ` (${row.submission.score}/${row.maxScore})`
+                                  : "";
+                              return (
+                                <div key={la.id} className="week-schedule-slot__assignment">
+                                  <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
+                                    <Tag color={la.kind === "classwork" ? "blue" : "purple"}>
+                                      {KIND_SHORT[la.kind] ?? la.kind}
+                                    </Tag>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <Text strong style={{ fontSize: 12 }}>
+                                        {la.title}
+                                        {scoreSuffix}
+                                      </Text>
+                                      {la.kind === "homework" && la.dueAt ? (
+                                        <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+                                          сдать до {dayjs(la.dueAt).format("DD.MM.YYYY")}
+                                        </Text>
+                                      ) : null}
+                                      <Space wrap size="small" style={{ marginTop: 4 }}>
+                                        <Tag color="default" style={{ margin: 0 }}>
+                                          {STATUS_SHORT[st] ?? st}
+                                        </Tag>
+                                        {studentSlotNeedsAttention(row) ? (
+                                          <Tag color="red" style={{ margin: 0 }}>
+                                            Важно
+                                          </Tag>
+                                        ) : null}
+                                        {st === "not_started" || !row.submission ? (
+                                          <Button
+                                            type="primary"
+                                            size="small"
+                                            onClick={() => onStudentStartAssignment(row)}
+                                          >
+                                            {la.kind === "classwork" ? "К работе на уроке" : "Начать"}
+                                          </Button>
+                                        ) : null}
+                                        {(st === "draft" || st === "needs_revision") && hasProject ? (
+                                          <Button size="small" onClick={() => onStudentStartAssignment(row)}>
+                                            Открыть в разработке
+                                          </Button>
+                                        ) : null}
+                                        {(st === "draft" || st === "needs_revision") &&
+                                        hasProject &&
+                                        onStudentSubmitAssignment ? (
+                                          <Button size="small" onClick={() => onStudentSubmitAssignment(row)}>
+                                            Сдать
+                                          </Button>
+                                        ) : null}
+                                        {st === "graded" &&
+                                        studentSlotNeedsAttention(row) &&
+                                        onStudentMarkGradedSeen ? (
+                                          <Button size="small" onClick={() => onStudentMarkGradedSeen(row)}>
+                                            Понятно
+                                          </Button>
+                                        ) : null}
+                                      </Space>
+                                    </div>
+                                  </Space>
+                                </div>
+                              );
+                            })}
+                          </Space>
                         ) : null}
                         {variant === "teacher" && onDeleteSlot ? (
                           <Space size="small" wrap>

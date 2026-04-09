@@ -244,6 +244,7 @@ model ClassScheduleSlot {
   classroom      Classroom       @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   lessonTemplate LessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
   attendances      ScheduleSlotAttendance[]
+  slotAssignments  Assignment[]    @relation("AssignmentScheduleSlot")
 
   @@index([classroomId, startsAt])
   @@index([weeklySeriesId])
@@ -276,6 +277,7 @@ model Assignment {
   published        Boolean        @default(true)
   templateSnapshot Json?
   lessonTemplateId String?
+  scheduleSlotId   String?
   dueAt            DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -283,7 +285,10 @@ model Assignment {
   classroom       Classroom        @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   owner           User             @relation("AssignmentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   lessonTemplate  LessonTemplate?  @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+  scheduleSlot    ClassScheduleSlot? @relation("AssignmentScheduleSlot", fields: [scheduleSlotId], references: [id], onDelete: Cascade)
   submissions     Submission[]
+
+  @@index([scheduleSlotId])
 }
 
 model Submission {

@@ -102,6 +102,26 @@ function assertDueAtInFuture(dueAt: Date): string | null {
   return null;
 }
 
+/** Дедлайн ДЗ: конец календарного дня (UTC) через daysAfter дней от даты занятия */
+function homeworkDueAfterLessonDays(slotStart: Date, daysAfter: number): Date {
+  return new Date(
+    Date.UTC(
+      slotStart.getUTCFullYear(),
+      slotStart.getUTCMonth(),
+      slotStart.getUTCDate() + daysAfter,
+      23,
+      59,
+      59,
+      999
+    )
+  );
+}
+
+function sortLinkedAssignmentsByKind<T extends { kind: string }>(items: T[]): T[] {
+  const rank = (k: string) => (k === "classwork" ? 0 : k === "homework" ? 1 : 2);
+  return [...items].sort((a, b) => rank(a.kind) - rank(b.kind));
+}
+
 export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
   A: 8,
   B: 24,
@@ -360,7 +380,11 @@ export function registerLmsRoutes(app: Express) {
         where: { classroomId },
         orderBy: { startsAt: "asc" },
         include: {
-          lessonTemplate: { select: { id: true, title: true } }
+          lessonTemplate: { select: { id: true, title: true } },
+          slotAssignments: {
+            where: { published: true },
+            select: { id: true, title: true, kind: true, dueAt: true }
+          }
         }
       });
       res.json(
@@ -374,7 +398,13 @@ export function registerLmsRoutes(app: Express) {
             notes: s.notes,
             lessonTemplateId: s.lessonTemplateId,
             lessonTitle: s.lessonTemplate?.title ?? null,
-            weeklySeriesId: s.weeklySeriesId
+            weeklySeriesId: s.weeklySeriesId,
+            linkedAssignments: sortLinkedAssignmentsByKind(s.slotAssignments).map((a) => ({
+              id: a.id,
+              title: a.title,
+              kind: a.kind,
+              dueAt: a.dueAt?.toISOString() ?? null
+            }))
           };
         })
       );
@@ -399,7 +429,15 @@ export function registerLmsRoutes(app: Express) {
           endsAt: z.string().datetime().optional().nullable(),
           lessonTemplateId: z.string().optional().nullable(),
           notes: z.string().optional().nullable(),
-          repeatWeeks: z.coerce.number().int().min(1).max(52).optional()
+          repeatWeeks: z.coerce.number().int().min(1).max(52).optional(),
+          attachClasswork: z.boolean().optional(),
+          addHomework: z.boolean().optional(),
+          homeworkDueAt: z.string().datetime().optional().nullable(),
+          homeworkDueDaysAfterLesson: z.coerce.number().int().min(0).max(28).optional(),
+          classworkTitle: z.string().max(240).optional().nullable(),
+          homeworkTitle: z.string().max(240).optional().nullable(),
+          classworkDescription: z.string().max(4000).optional().nullable(),
+          homeworkDescription: z.string().max(4000).optional().nullable()
         })
         .safeParse(req.body);
       if (!parsed.success) {
@@ -430,11 +468,27 @@ export function registerLmsRoutes(app: Express) {
         }
       }
       const repeatWeeks = Math.min(52, Math.max(1, parsed.data.repeatWeeks ?? 1));
+      const attachClasswork = parsed.data.attachClasswork === true;
+      const addHomework = parsed.data.addHomework === true;
+      if (addHomework && repeatWeeks === 1 && !parsed.data.homeworkDueAt) {
+        res.status(400).json({ error: "Укажи срок сдачи домашнего задания" });
+        return;
+      }
+      const homeworkDaysAfter = parsed.data.homeworkDueDaysAfterLesson ?? 7;
       const weeklySeriesId = repeatWeeks > 1 ? randomUUID() : null;
       const lessonTemplateId = parsed.data.lessonTemplateId ?? null;
       const notes = parsed.data.notes ?? null;
       const weekMs = 7 * 24 * 60 * 60 * 1000;
-      const batch = [];
+      const batch: {
+        id: string;
+        classroomId: string;
+        startsAt: Date;
+        endsAt: Date;
+        durationMinutes: number;
+        lessonTemplateId: string | null;
+        notes: string | null;
+        weeklySeriesId: string | null;
+      }[] = [];
       for (let w = 0; w < repeatWeeks; w++) {
         const wStart = new Date(startsAt.getTime() + w * weekMs);
         const wPast = assertScheduleStartNotInPast(wStart);
@@ -453,11 +507,101 @@ export function registerLmsRoutes(app: Express) {
           weeklySeriesId
         });
       }
-      await prisma.classScheduleSlot.createMany({ data: batch });
+      if (addHomework) {
+        for (const row of batch) {
+          const due =
+            repeatWeeks === 1
+              ? new Date(parsed.data.homeworkDueAt!)
+              : homeworkDueAfterLessonDays(row.startsAt, homeworkDaysAfter);
+          const dueErr = assertDueAtInFuture(due);
+          if (dueErr) {
+            res.status(400).json({
+              error:
+                repeatWeeks > 1
+                  ? `${dueErr} Уменьши число дней до сдачи после занятия или сократи серию.`
+                  : dueErr
+            });
+            return;
+          }
+        }
+      }
+      let lessonTitleForAuto: string | null = null;
+      let templateSnapshot: Prisma.InputJsonValue = EMPTY_SNAPSHOT;
+      if (lessonTemplateId) {
+        const ltMeta = await prisma.lessonTemplate.findFirst({
+          where: { id: lessonTemplateId, published: true, moduleKey },
+          select: { title: true, starterPayload: true }
+        });
+        if (ltMeta) {
+          lessonTitleForAuto = ltMeta.title;
+          templateSnapshot = ltMeta.starterPayload as Prisma.InputJsonValue;
+        }
+      }
+      const classworkTitleTrim = parsed.data.classworkTitle?.trim() ?? "";
+      const homeworkTitleTrim = parsed.data.homeworkTitle?.trim() ?? "";
+      const ownerId = req.session!.sub;
+      const notifyTitles: string[] = [];
+      await prisma.$transaction(async (tx) => {
+        await tx.classScheduleSlot.createMany({ data: batch });
+        for (const row of batch) {
+          if (attachClasswork) {
+            const title =
+              classworkTitleTrim ||
+              (lessonTitleForAuto ? `На уроке: ${lessonTitleForAuto}` : "Работа на уроке");
+            await tx.assignment.create({
+              data: {
+                classroomId,
+                ownerId,
+                scheduleSlotId: row.id,
+                title,
+                description: parsed.data.classworkDescription?.trim() || null,
+                kind: "classwork",
+                maxScore: 10,
+                published: true,
+                templateSnapshot,
+                lessonTemplateId,
+                dueAt: null
+              }
+            });
+            notifyTitles.push(title);
+          }
+          if (addHomework) {
+            const due =
+              repeatWeeks === 1
+                ? new Date(parsed.data.homeworkDueAt!)
+                : homeworkDueAfterLessonDays(row.startsAt, homeworkDaysAfter);
+            const title =
+              homeworkTitleTrim ||
+              (lessonTitleForAuto ? `Домашнее: ${lessonTitleForAuto}` : "Домашнее задание");
+            await tx.assignment.create({
+              data: {
+                classroomId,
+                ownerId,
+                scheduleSlotId: row.id,
+                title,
+                description: parsed.data.homeworkDescription?.trim() || null,
+                kind: "homework",
+                maxScore: 10,
+                published: true,
+                templateSnapshot,
+                lessonTemplateId,
+                dueAt: due
+              }
+            });
+            notifyTitles.push(title);
+          }
+        }
+      });
+      if (repeatWeeks === 1) {
+        for (const t of notifyTitles) {
+          void notifyEnrolledStudentsNewAssignment(classroomId, t);
+        }
+      }
       res.json({
         ids: batch.map((b) => b.id),
         weeklySeriesId,
-        count: batch.length
+        count: batch.length,
+        assignmentsCreated: notifyTitles.length
       });
     }
   );
@@ -605,7 +749,11 @@ export function registerLmsRoutes(app: Express) {
         where: { classroomId },
         orderBy: { startsAt: "asc" },
         include: {
-          lessonTemplate: { select: { id: true, title: true } }
+          lessonTemplate: { select: { id: true, title: true } },
+          slotAssignments: {
+            where: { published: true },
+            select: { id: true, title: true, kind: true, dueAt: true }
+          }
         }
       });
       const studentId = req.session!.sub;
@@ -624,7 +772,13 @@ export function registerLmsRoutes(app: Express) {
             notes: s.notes,
             lessonTemplateId: s.lessonTemplateId,
             lessonTitle: s.lessonTemplate?.title ?? null,
-            myPlansToAttend: attBySlot.get(s.id) ?? null
+            myPlansToAttend: attBySlot.get(s.id) ?? null,
+            linkedAssignments: sortLinkedAssignmentsByKind(s.slotAssignments).map((a) => ({
+              id: a.id,
+              title: a.title,
+              kind: a.kind,
+              dueAt: a.dueAt?.toISOString() ?? null
+            }))
           };
         })
       );
@@ -1178,6 +1332,7 @@ export function registerLmsRoutes(app: Express) {
       kind: string;
       dueAt: string | null;
       maxScore: number;
+      scheduleSlotId: string | null;
       submission: {
         id: string;
         status: string;
@@ -1200,6 +1355,7 @@ export function registerLmsRoutes(app: Express) {
           kind: a.kind,
           dueAt: a.dueAt?.toISOString() ?? null,
           maxScore: a.maxScore,
+          scheduleSlotId: a.scheduleSlotId,
           submission: sub
             ? {
                 id: sub.id,

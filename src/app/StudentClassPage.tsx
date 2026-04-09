@@ -4,7 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
+import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
 import dayjs from "dayjs";
 
 const { Title, Paragraph, Text } = Typography;
@@ -18,6 +18,7 @@ interface StudentAssignmentRow {
   kind: string;
   dueAt: string | null;
   maxScore: number;
+  scheduleSlotId: string | null;
   submission: {
     id: string;
     status: string;
@@ -51,6 +52,7 @@ interface ScheduleSlotRow {
   notes: string | null;
   lessonTitle: string | null;
   myPlansToAttend?: boolean | null;
+  linkedAssignments?: { id: string; title: string; kind: string; dueAt: string | null }[];
 }
 
 const STATUS_RU: Record<string, string> = {
@@ -165,6 +167,37 @@ export function StudentClassPage() {
     [assignments, classFocusId]
   );
 
+  const focusEnrollment = useMemo(
+    () => enrollments.find((e) => e.classroomId === classFocusId),
+    [enrollments, classFocusId]
+  );
+
+  const assignmentById = useMemo(
+    () => new Map(assignmentsForClass.map((a) => [a.assignmentId, a])),
+    [assignmentsForClass]
+  );
+
+  const toSlotStudentRow = useCallback(
+    (la: { id: string; title: string; kind: string; dueAt: string | null }): SlotStudentAssignmentRow => {
+      const full = assignmentById.get(la.id);
+      if (full) {
+        return full as unknown as SlotStudentAssignmentRow;
+      }
+      return {
+        assignmentId: la.id,
+        classroomId: classFocusId,
+        classroomTitle: focusEnrollment?.classroomTitle ?? "",
+        schoolName: focusEnrollment?.schoolName ?? "",
+        title: la.title,
+        kind: la.kind,
+        dueAt: la.dueAt,
+        maxScore: 10,
+        submission: null
+      };
+    },
+    [assignmentById, classFocusId, focusEnrollment?.classroomTitle, focusEnrollment?.schoolName]
+  );
+
   const upcomingRows = useMemo(() => {
     const rows = assignmentsForClass.filter((row) => (row.submission?.status ?? "not_started") !== "graded");
     return [...rows].sort((a, b) => dueSortKey(a.dueAt) - dueSortKey(b.dueAt));
@@ -177,6 +210,16 @@ export function StudentClassPage() {
     });
     return [...rows].sort((a, b) => dueSortKey(b.dueAt) - dueSortKey(a.dueAt));
   }, [assignmentsForClass]);
+
+  const otherUpcomingRows = useMemo(
+    () => upcomingRows.filter((row) => !row.scheduleSlotId),
+    [upcomingRows]
+  );
+
+  const otherArchiveRows = useMemo(
+    () => archiveRows.filter((row) => !row.scheduleSlotId),
+    [archiveRows]
+  );
 
   const startOrOpen = async (row: StudentAssignmentRow) => {
     try {
@@ -416,56 +459,72 @@ export function StudentClassPage() {
     </Spin>
   );
 
-  const scheduleTab = (
-    <Spin spinning={courseScheduleLoading}>
-      <WeekScheduleCalendar
-        weekAnchor={scheduleWeekAnchor}
-        onPrevWeek={() => setScheduleWeekAnchor((w) => w.subtract(1, "week"))}
-        onNextWeek={() => setScheduleWeekAnchor((w) => w.add(1, "week"))}
-        onThisWeek={() => setScheduleWeekAnchor(dayjs())}
-        slots={scheduleRows.map((r) => ({
-          id: r.id,
-          startsAt: r.startsAt,
-          durationMinutes: r.durationMinutes ?? 90,
-          lessonTitle: r.lessonTitle,
-          notes: r.notes,
-          myPlansToAttend: r.myPlansToAttend
-        }))}
-        variant="student"
-        onAttendanceChange={(slotId, value) => void updateSlotAttendance(slotId, value)}
-      />
-    </Spin>
-  );
-
   const diaryTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <div>
         <Title level={5} style={{ marginTop: 0 }}>
-          Предстоящие и в работе
+          Расписание и работы на занятиях
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          Здесь видно время урока, классная работа и домашка с дедлайном (если учитель добавил их к занятию).
+          Ниже — задания, выданные отдельно от расписания.
+        </Paragraph>
+        <Spin spinning={courseScheduleLoading}>
+          <WeekScheduleCalendar
+            weekAnchor={scheduleWeekAnchor}
+            onPrevWeek={() => setScheduleWeekAnchor((w) => w.subtract(1, "week"))}
+            onNextWeek={() => setScheduleWeekAnchor((w) => w.add(1, "week"))}
+            onThisWeek={() => setScheduleWeekAnchor(dayjs())}
+            slots={scheduleRows.map((r) => ({
+              id: r.id,
+              startsAt: r.startsAt,
+              durationMinutes: r.durationMinutes ?? 90,
+              lessonTitle: r.lessonTitle,
+              notes: r.notes,
+              myPlansToAttend: r.myPlansToAttend,
+              linkedAssignments: (r.linkedAssignments ?? []).map((la) => ({
+                id: la.id,
+                title: la.title,
+                kind: la.kind,
+                dueAt: la.dueAt,
+                studentRow: toSlotStudentRow(la)
+              }))
+            }))}
+            variant="student"
+            onAttendanceChange={(slotId, value) => void updateSlotAttendance(slotId, value)}
+            onStudentStartAssignment={(row) => void startOrOpen(row as unknown as StudentAssignmentRow)}
+            onStudentSubmitAssignment={(row) => void submitWork(row as unknown as StudentAssignmentRow)}
+            onStudentMarkGradedSeen={(row) => void markGradedSeen(row as unknown as StudentAssignmentRow)}
+          />
+        </Spin>
+      </div>
+      <div>
+        <Title level={5} style={{ marginTop: 0 }}>
+          Другие задания (вне расписания)
         </Title>
         <Table<StudentAssignmentRow>
           size="small"
           rowKey="assignmentId"
           loading={loading}
           columns={assignmentColumns}
-          dataSource={upcomingRows}
+          dataSource={otherUpcomingRows}
           pagination={{ pageSize: 8 }}
-          locale={{ emptyText: "Нет активных заданий" }}
+          locale={{ emptyText: "Нет других активных заданий" }}
           expandable={expandableConfig}
         />
       </div>
       <div>
         <Title level={5} style={{ marginTop: 0 }}>
-          Сдано и оценки
+          Сдано и оценки (вне расписания)
         </Title>
         <Table<StudentAssignmentRow>
           size="small"
           rowKey="assignmentId"
           loading={loading}
           columns={assignmentColumns}
-          dataSource={archiveRows}
+          dataSource={otherArchiveRows}
           pagination={{ pageSize: 8 }}
-          locale={{ emptyText: "Пока нет сданных работ" }}
+          locale={{ emptyText: "Пока нет сданных работ в этом списке" }}
           expandable={expandableConfig}
         />
       </div>
@@ -497,7 +556,6 @@ export function StudentClassPage() {
         defaultActiveKey="diary"
         items={[
           { key: "course", label: "Курс", children: courseTab },
-          { key: "schedule", label: "Расписание", children: scheduleTab },
           { key: "diary", label: "Дневник", children: diaryTab },
           { key: "all", label: "Все задания", children: allAssignmentsTab },
           { key: "info", label: "Мой класс", children: infoTab }
