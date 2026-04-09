@@ -1037,6 +1037,73 @@ html[data-theme="dark"] .blockly-palette-btn {
   }
 }
 
+.landing-home-schedule {
+  margin-bottom: 24px;
+}
+
+.landing-home-schedule__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.landing-home-schedule__day {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  padding: 10px 10px 12px;
+  background: var(--app-surface);
+  min-height: 120px;
+}
+
+html[data-theme="dark"] .landing-home-schedule__day {
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.landing-home-schedule__day--today {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 1px var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 8%, var(--app-surface));
+}
+
+.landing-home-schedule__day-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.landing-home-schedule__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.landing-home-schedule__slot {
+  padding: 6px 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.landing-home-schedule__slot:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+html[data-theme="dark"] .landing-home-schedule__slot {
+  border-top-color: rgba(148, 163, 184, 0.15);
+}
+
+@media (max-width: 900px) {
+  .landing-home-schedule__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-home-schedule__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .week-schedule-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

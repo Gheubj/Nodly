@@ -14,6 +14,7 @@ export type WeekScheduleSlot = {
   durationMinutes: number;
   lessonTitle: string | null;
   notes: string | null;
+  weeklySeriesId?: string | null;
   myPlansToAttend?: boolean | null;
 };
 
@@ -25,6 +26,7 @@ type Props = {
   slots: WeekScheduleSlot[];
   variant: "teacher" | "student";
   onDeleteSlot?: (slotId: string) => void;
+  onDeleteSeries?: (seriesId: string) => void;
   onAttendanceChange?: (slotId: string, value: boolean | null) => void;
 };
 
@@ -36,6 +38,10 @@ function slotTimeLabel(iso: string) {
   return dayjs(iso).format("HH:mm");
 }
 
+function slotStarted(iso: string) {
+  return dayjs(iso).isBefore(dayjs());
+}
+
 export function WeekScheduleCalendar({
   weekAnchor,
   onPrevWeek,
@@ -44,6 +50,7 @@ export function WeekScheduleCalendar({
   slots,
   variant,
   onDeleteSlot,
+  onDeleteSeries,
   onAttendanceChange
 }: Props) {
   const monday = weekAnchor.startOf("isoWeek");
@@ -108,16 +115,30 @@ export function WeekScheduleCalendar({
                           </Text>
                         ) : null}
                         {variant === "teacher" && onDeleteSlot ? (
-                          <Popconfirm
-                            title="Удалить занятие?"
-                            okText="Удалить"
-                            cancelText="Отмена"
-                            onConfirm={() => onDeleteSlot(slot.id)}
-                          >
-                            <Button type="link" danger size="small" style={{ padding: 0, height: "auto" }}>
-                              Удалить
-                            </Button>
-                          </Popconfirm>
+                          <Space size="small" wrap>
+                            <Popconfirm
+                              title="Удалить это занятие?"
+                              okText="Удалить"
+                              cancelText="Отмена"
+                              onConfirm={() => onDeleteSlot(slot.id)}
+                            >
+                              <Button type="link" danger size="small" style={{ padding: 0, height: "auto" }}>
+                                Удалить
+                              </Button>
+                            </Popconfirm>
+                            {slot.weeklySeriesId && onDeleteSeries ? (
+                              <Popconfirm
+                                title="Удалить все занятия этой еженедельной серии?"
+                                okText="Удалить все"
+                                cancelText="Отмена"
+                                onConfirm={() => onDeleteSeries(slot.weeklySeriesId!)}
+                              >
+                                <Button type="link" size="small" style={{ padding: 0, height: "auto" }}>
+                                  Вся серия
+                                </Button>
+                              </Popconfirm>
+                            ) : null}
+                          </Space>
                         ) : null}
                         {variant === "student" && onAttendanceChange ? (
                           <div>
@@ -127,6 +148,7 @@ export function WeekScheduleCalendar({
                             <Select
                               size="small"
                               style={{ width: "100%" }}
+                              disabled={slotStarted(slot.startsAt)}
                               value={
                                 slot.myPlansToAttend === true
                                   ? "yes"
@@ -143,6 +165,11 @@ export function WeekScheduleCalendar({
                                 { value: "no", label: "Не смогу" }
                               ]}
                             />
+                            {slotStarted(slot.startsAt) ? (
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                Занятие уже началось или прошло
+                              </Text>
+                            ) : null}
                           </div>
                         ) : null}
                       </Space>

@@ -237,6 +237,7 @@ model ClassScheduleSlot {
   endsAt           DateTime?
   durationMinutes  Int      @default(90)
   notes            String?
+  weeklySeriesId   String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -245,6 +246,7 @@ model ClassScheduleSlot {
   attendances      ScheduleSlotAttendance[]
 
   @@index([classroomId, startsAt])
+  @@index([weeklySeriesId])
 }
 
 // Необязательная отметка ученика: планирует прийти на занятие (для учителя не редактируется здесь)

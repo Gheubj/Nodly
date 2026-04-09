@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { z } from "zod";
 import { Prisma, type CourseModule } from "@prisma/client";
 import { prisma } from "./db.js";
@@ -79,6 +79,27 @@ function resolveDurationMinutes(
     }
   }
   return 90;
+}
+
+/** Допуск по часам клиента/сервера при проверке «не в прошлом» */
+const SCHEDULE_PAST_GRACE_MS = 90_000;
+
+function scheduleStartInPastError(): string {
+  return "Нельзя ставить занятие в прошлом";
+}
+
+function assertScheduleStartNotInPast(startsAt: Date): string | null {
+  if (startsAt.getTime() < Date.now() - SCHEDULE_PAST_GRACE_MS) {
+    return scheduleStartInPastError();
+  }
+  return null;
+}
+
+function assertDueAtInFuture(dueAt: Date): string | null {
+  if (dueAt.getTime() <= Date.now()) {
+    return "Срок сдачи не может быть в прошлом";
+  }
+  return null;
 }
 
 export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
@@ -162,6 +183,63 @@ export function registerLmsRoutes(app: Express) {
       return;
     }
     res.json({});
+  });
+
+  app.get("/api/me/schedule-preview", authRequired, async (req: AuthenticatedRequest, res) => {
+    const userId = req.session!.sub;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, studentMode: true }
+    });
+    if (!user) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    let classroomIds: string[] = [];
+    if (user.role === "teacher") {
+      const cls = await prisma.classroom.findMany({
+        where: { teacherId: userId },
+        select: { id: true }
+      });
+      classroomIds = cls.map((c) => c.id);
+    } else if (user.role === "student" && user.studentMode === "school") {
+      const en = await prisma.enrollment.findMany({
+        where: { studentId: userId },
+        select: { classroomId: true }
+      });
+      classroomIds = en.map((e) => e.classroomId);
+    } else {
+      res.json({ slots: [] });
+      return;
+    }
+    if (classroomIds.length === 0) {
+      res.json({ slots: [] });
+      return;
+    }
+    const horizonStart = new Date(Date.now() - 36 * 60 * 60 * 1000);
+    const horizonEnd = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    const slots = await prisma.classScheduleSlot.findMany({
+      where: {
+        classroomId: { in: classroomIds },
+        startsAt: { gte: horizonStart, lte: horizonEnd }
+      },
+      orderBy: { startsAt: "asc" },
+      include: {
+        lessonTemplate: { select: { title: true } },
+        classroom: { select: { title: true } }
+      }
+    });
+    res.json({
+      slots: slots.map((s) => ({
+        id: s.id,
+        startsAt: s.startsAt.toISOString(),
+        durationMinutes: s.durationMinutes,
+        lessonTitle: s.lessonTemplate?.title ?? null,
+        notes: s.notes,
+        classroomTitle: s.classroom.title,
+        classroomId: s.classroomId
+      }))
+    });
   });
 
   app.get("/api/lesson-templates", async (_req, res) => {
@@ -295,7 +373,8 @@ export function registerLmsRoutes(app: Express) {
             durationMinutes: s.durationMinutes,
             notes: s.notes,
             lessonTemplateId: s.lessonTemplateId,
-            lessonTitle: s.lessonTemplate?.title ?? null
+            lessonTitle: s.lessonTemplate?.title ?? null,
+            weeklySeriesId: s.weeklySeriesId
           };
         })
       );
@@ -319,7 +398,8 @@ export function registerLmsRoutes(app: Express) {
           durationMinutes: z.coerce.number().int().optional().nullable(),
           endsAt: z.string().datetime().optional().nullable(),
           lessonTemplateId: z.string().optional().nullable(),
-          notes: z.string().optional().nullable()
+          notes: z.string().optional().nullable(),
+          repeatWeeks: z.coerce.number().int().min(1).max(52).optional()
         })
         .safeParse(req.body);
       if (!parsed.success) {
@@ -333,6 +413,11 @@ export function registerLmsRoutes(app: Express) {
         res.status(400).json({ error: "Некорректное время начала" });
         return;
       }
+      const pastErr = assertScheduleStartNotInPast(startsAt);
+      if (pastErr) {
+        res.status(400).json({ error: pastErr });
+        return;
+      }
       const durationMinutes = resolveDurationMinutes(startsAt, parsed.data);
       const moduleKey = courseModuleToModuleKey(c.courseModule);
       if (parsed.data.lessonTemplateId) {
@@ -344,18 +429,36 @@ export function registerLmsRoutes(app: Express) {
           return;
         }
       }
-      const endsAt = computeEndsAtFromDuration(startsAt, durationMinutes);
-      const row = await prisma.classScheduleSlot.create({
-        data: {
-          classroomId,
-          startsAt,
-          endsAt,
-          durationMinutes,
-          lessonTemplateId: parsed.data.lessonTemplateId ?? null,
-          notes: parsed.data.notes ?? null
+      const repeatWeeks = Math.min(52, Math.max(1, parsed.data.repeatWeeks ?? 1));
+      const weeklySeriesId = repeatWeeks > 1 ? randomUUID() : null;
+      const lessonTemplateId = parsed.data.lessonTemplateId ?? null;
+      const notes = parsed.data.notes ?? null;
+      const weekMs = 7 * 24 * 60 * 60 * 1000;
+      const batch = [];
+      for (let w = 0; w < repeatWeeks; w++) {
+        const wStart = new Date(startsAt.getTime() + w * weekMs);
+        const wPast = assertScheduleStartNotInPast(wStart);
+        if (wPast) {
+          res.status(400).json({ error: wPast });
+          return;
         }
+        batch.push({
+          id: randomUUID(),
+          classroomId,
+          startsAt: wStart,
+          endsAt: computeEndsAtFromDuration(wStart, durationMinutes),
+          durationMinutes,
+          lessonTemplateId,
+          notes,
+          weeklySeriesId
+        });
+      }
+      await prisma.classScheduleSlot.createMany({ data: batch });
+      res.json({
+        ids: batch.map((b) => b.id),
+        weeklySeriesId,
+        count: batch.length
       });
-      res.json({ id: row.id });
     }
   );
 
@@ -418,6 +521,13 @@ export function registerLmsRoutes(app: Express) {
         parsed.data.startsAt !== undefined ||
         (parsed.data.durationMinutes != null && !Number.isNaN(parsed.data.durationMinutes)) ||
         Boolean(parsed.data.endsAt);
+      if (parsed.data.startsAt !== undefined) {
+        const pastErr = assertScheduleStartNotInPast(nextStart);
+        if (pastErr) {
+          res.status(400).json({ error: pastErr });
+          return;
+        }
+      }
       const endsAt = computeEndsAtFromDuration(nextStart, durationMinutes);
       const updated = await prisma.classScheduleSlot.update({
         where: { id: slotId },
@@ -450,6 +560,33 @@ export function registerLmsRoutes(app: Express) {
       }
       await prisma.classScheduleSlot.delete({ where: { id: slotId } });
       res.json({ ok: true });
+    }
+  );
+
+  app.delete(
+    "/api/teacher/schedule-series/:seriesId",
+    authRequired,
+    roleGuard(["teacher"]),
+    async (req: AuthenticatedRequest, res) => {
+      const seriesId = String(req.params.seriesId);
+      if (!seriesId) {
+        res.status(400).json({ error: "seriesId required" });
+        return;
+      }
+      const slots = await prisma.classScheduleSlot.findMany({
+        where: { weeklySeriesId: seriesId },
+        include: { classroom: { select: { teacherId: true } } }
+      });
+      if (slots.length === 0) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (slots.some((s) => s.classroom.teacherId !== req.session!.sub)) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      await prisma.classScheduleSlot.deleteMany({ where: { weeklySeriesId: seriesId } });
+      res.json({ ok: true, deleted: slots.length });
     }
   );
 
@@ -511,7 +648,7 @@ export function registerLmsRoutes(app: Express) {
       }
       const slot = await prisma.classScheduleSlot.findUnique({
         where: { id: slotId },
-        select: { id: true, classroomId: true }
+        select: { id: true, classroomId: true, startsAt: true }
       });
       if (!slot) {
         res.status(404).json({ error: "Not found" });
@@ -520,6 +657,10 @@ export function registerLmsRoutes(app: Express) {
       const ok = await assertStudentInClassroom(req.session!.sub, slot.classroomId);
       if (!ok) {
         res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (slot.startsAt.getTime() < Date.now() - SCHEDULE_PAST_GRACE_MS) {
+        res.status(400).json({ error: "Нельзя менять отметку для прошедшего занятия" });
         return;
       }
       const studentId = req.session!.sub;
@@ -650,6 +791,15 @@ export function registerLmsRoutes(app: Express) {
       if (templateSnapshot === undefined) {
         templateSnapshot = EMPTY_SNAPSHOT;
       }
+      let dueAt: Date | null = null;
+      if (parsed.data.dueAt) {
+        dueAt = new Date(parsed.data.dueAt);
+        const dueErr = assertDueAtInFuture(dueAt);
+        if (dueErr) {
+          res.status(400).json({ error: dueErr });
+          return;
+        }
+      }
       const a = await prisma.assignment.create({
         data: {
           classroomId,
@@ -659,7 +809,7 @@ export function registerLmsRoutes(app: Express) {
           kind: parsed.data.kind,
           maxScore: parsed.data.maxScore ?? 10,
           published: parsed.data.published ?? true,
-          dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null,
+          dueAt,
           templateSnapshot,
           lessonTemplateId
         }
@@ -698,6 +848,14 @@ export function registerLmsRoutes(app: Express) {
       if (!parsed.success) {
         res.status(400).json({ error: parsed.error.message });
         return;
+      }
+      if (parsed.data.dueAt !== undefined && parsed.data.dueAt) {
+        const d = new Date(parsed.data.dueAt);
+        const dueErr = assertDueAtInFuture(d);
+        if (dueErr) {
+          res.status(400).json({ error: dueErr });
+          return;
+        }
       }
       const updated = await prisma.assignment.update({
         where: { id: assignmentId },

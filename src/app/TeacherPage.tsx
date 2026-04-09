@@ -82,6 +82,7 @@ interface ScheduleSlotRow {
   notes: string | null;
   lessonTemplateId: string | null;
   lessonTitle: string | null;
+  weeklySeriesId: string | null;
 }
 
 interface TeacherDashboard {
@@ -172,6 +173,8 @@ export function TeacherPage() {
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
   const [newSlotTime, setNewSlotTime] = useState<dayjs.Dayjs | null>(null);
   const [newSlotDurationMinutes, setNewSlotDurationMinutes] = useState<number>(90);
+  const [newSlotRepeatWeekly, setNewSlotRepeatWeekly] = useState(false);
+  const [newSlotRepeatWeeks, setNewSlotRepeatWeeks] = useState(12);
   const [newSlotNotes, setNewSlotNotes] = useState("");
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [addingSlot, setAddingSlot] = useState(false);
@@ -502,6 +505,11 @@ export function TeacherPage() {
       messageApi.error("Длительность: от 5 до 720 минут");
       return;
     }
+    const repeatWeeks = newSlotRepeatWeekly ? newSlotRepeatWeeks : 1;
+    if (newSlotRepeatWeekly && repeatWeeks < 2) {
+      messageApi.error("При повторе укажи не меньше 2 занятий");
+      return;
+    }
     const start = newSlotDate.hour(newSlotTime.hour()).minute(newSlotTime.minute()).second(0).millisecond(0);
     setAddingSlot(true);
     try {
@@ -509,12 +517,15 @@ export function TeacherPage() {
         startsAt: start.toISOString(),
         durationMinutes: newSlotDurationMinutes,
         lessonTemplateId: newSlotLessonId ?? null,
-        notes: newSlotNotes.trim() || null
+        notes: newSlotNotes.trim() || null,
+        repeatWeeks
       });
-      messageApi.success("Занятие добавлено");
+      messageApi.success(repeatWeeks > 1 ? `Добавлено занятий: ${repeatWeeks}` : "Занятие добавлено");
       setScheduleModalOpen(false);
       setNewSlotLessonId(undefined);
       setNewSlotNotes("");
+      setNewSlotRepeatWeekly(false);
+      setNewSlotRepeatWeeks(12);
       setScheduleWeekAnchor(start);
       await reloadSchedule();
     } catch (e) {
@@ -528,6 +539,16 @@ export function TeacherPage() {
     try {
       await apiClient.delete(`/api/teacher/schedule-slots/${slotId}`);
       messageApi.success("Удалено");
+      await reloadSchedule();
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    }
+  };
+
+  const deleteScheduleSeries = async (seriesId: string) => {
+    try {
+      await apiClient.delete(`/api/teacher/schedule-series/${encodeURIComponent(seriesId)}`);
+      messageApi.success("Серия занятий удалена");
       await reloadSchedule();
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
@@ -1136,6 +1157,8 @@ export function TeacherPage() {
                 setNewSlotDate(dayjs());
                 setNewSlotTime(dayjs().hour(9).minute(0).second(0));
                 setNewSlotDurationMinutes(90);
+                setNewSlotRepeatWeekly(false);
+                setNewSlotRepeatWeeks(12);
                 setNewSlotLessonId(undefined);
                 setNewSlotNotes("");
                 setScheduleModalOpen(true);
@@ -1151,6 +1174,7 @@ export function TeacherPage() {
               slots={scheduleSlots}
               variant="teacher"
               onDeleteSlot={(id) => void deleteScheduleSlot(id)}
+              onDeleteSeries={(sid) => void deleteScheduleSeries(sid)}
             />
           </Space>
         </Spin>
@@ -1331,6 +1355,7 @@ export function TeacherPage() {
               value={newSlotDate}
               onChange={(d) => setNewSlotDate(d)}
               format="DD.MM.YYYY"
+              disabledDate={(current) => current != null && current < dayjs().startOf("day")}
             />
           </div>
           <div>
@@ -1354,6 +1379,24 @@ export function TeacherPage() {
               onChange={(v) => setNewSlotDurationMinutes(typeof v === "number" ? v : 90)}
             />
           </div>
+          <div>
+            <Text type="secondary">Повторять каждую неделю</Text>
+            <div style={{ marginTop: 6 }}>
+              <Switch checked={newSlotRepeatWeekly} onChange={setNewSlotRepeatWeekly} />
+            </div>
+          </div>
+          {newSlotRepeatWeekly ? (
+            <div>
+              <Text type="secondary">Сколько раз (включая первое занятие)</Text>
+              <InputNumber
+                style={{ width: "100%", marginTop: 4 }}
+                min={2}
+                max={52}
+                value={newSlotRepeatWeeks}
+                onChange={(v) => setNewSlotRepeatWeeks(typeof v === "number" ? v : 2)}
+              />
+            </div>
+          ) : null}
           <div>
             <Text type="secondary">Урок из курса (необязательно)</Text>
             <Select
@@ -1399,7 +1442,11 @@ export function TeacherPage() {
             <InputNumber min={1} max={100} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="dueAt" label="Срок (необязательно)">
-            <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" />
+            <DatePicker
+              style={{ width: "100%" }}
+              format="DD.MM.YYYY"
+              disabledDate={(current) => current != null && current < dayjs().startOf("day")}
+            />
           </Form.Item>
           <Form.Item name="lessonTemplateId" label="Шаблон урока (необязательно)">
             <Select
@@ -1435,7 +1482,12 @@ export function TeacherPage() {
             <InputNumber min={1} max={100} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="dueAt" label="Срок">
-            <DatePicker style={{ width: "100%" }} format="DD.MM.YYYY" allowClear />
+            <DatePicker
+              style={{ width: "100%" }}
+              format="DD.MM.YYYY"
+              allowClear
+              disabledDate={(current) => current != null && current < dayjs().startOf("day")}
+            />
           </Form.Item>
           <Form.Item name="published" label="Видно ученикам" valuePropName="checked">
             <Switch />

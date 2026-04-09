@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useSessionStore } from "@/store/useSessionStore";
+import { HomeSchedulePreview } from "@/app/HomeSchedulePreview";
 
 const { Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -124,6 +125,10 @@ export function LandingPage() {
             )}
           </div>
         </section>
+
+        {user && (user.role === "teacher" || (user.role === "student" && user.studentMode === "school")) ? (
+          <HomeSchedulePreview />
+        ) : null}
 
         {user ? (
           <Card className="landing-quick-actions-card" title="С чего начать сегодня">
