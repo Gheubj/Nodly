@@ -187,6 +187,14 @@ export function TeacherPage() {
   const [newSlotNotes, setNewSlotNotes] = useState("");
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [addingSlot, setAddingSlot] = useState(false);
+  const [editSlotModalOpen, setEditSlotModalOpen] = useState(false);
+  const [editSlotSaving, setEditSlotSaving] = useState(false);
+  const [editSlotId, setEditSlotId] = useState<string | null>(null);
+  const [editSlotDate, setEditSlotDate] = useState<dayjs.Dayjs | null>(null);
+  const [editSlotTimeStart, setEditSlotTimeStart] = useState<dayjs.Dayjs | null>(null);
+  const [editSlotTimeEnd, setEditSlotTimeEnd] = useState<dayjs.Dayjs | null>(null);
+  const [editSlotLessonId, setEditSlotLessonId] = useState<string | undefined>(undefined);
+  const [editSlotNotes, setEditSlotNotes] = useState("");
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [submissions, setSubmissions] = useState<TeacherSubmissionRow[]>([]);
@@ -571,6 +579,63 @@ export function TeacherPage() {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
     } finally {
       setAddingSlot(false);
+    }
+  };
+
+  const openEditScheduleSlot = (slotId: string) => {
+    const row = scheduleSlots.find((s) => s.id === slotId);
+    if (!row) {
+      return;
+    }
+    const start = dayjs(row.startsAt);
+    const end = row.endsAt ? dayjs(row.endsAt) : start.add(row.durationMinutes, "minute");
+    setEditSlotId(slotId);
+    setEditSlotDate(start);
+    setEditSlotTimeStart(start);
+    setEditSlotTimeEnd(end);
+    setEditSlotLessonId(row.lessonTemplateId ?? undefined);
+    setEditSlotNotes(row.notes ?? "");
+    setEditSlotModalOpen(true);
+  };
+
+  const submitEditScheduleSlot = async () => {
+    if (!editSlotId || !editSlotDate || !editSlotTimeStart || !editSlotTimeEnd) {
+      messageApi.error("Укажите дату, время начала и окончания");
+      return;
+    }
+    const start = editSlotDate
+      .hour(editSlotTimeStart.hour())
+      .minute(editSlotTimeStart.minute())
+      .second(0)
+      .millisecond(0);
+    let end = editSlotDate
+      .hour(editSlotTimeEnd.hour())
+      .minute(editSlotTimeEnd.minute())
+      .second(0)
+      .millisecond(0);
+    if (!end.isAfter(start)) {
+      end = end.add(1, "day");
+    }
+    if (!end.isAfter(start) || end.diff(start, "minute") < 5) {
+      messageApi.error("Занятие должно длиться не меньше 5 минут, окончание позже начала");
+      return;
+    }
+    setEditSlotSaving(true);
+    try {
+      await apiClient.patch(`/api/teacher/schedule-slots/${editSlotId}`, {
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+        lessonTemplateId: editSlotLessonId ?? null,
+        notes: editSlotNotes.trim() ? editSlotNotes.trim() : null
+      });
+      messageApi.success("Занятие обновлено");
+      setEditSlotModalOpen(false);
+      setEditSlotId(null);
+      await reloadSchedule();
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setEditSlotSaving(false);
     }
   };
 
@@ -1230,6 +1295,7 @@ export function TeacherPage() {
               slots={scheduleSlots.map((s) => ({
                 id: s.id,
                 startsAt: s.startsAt,
+                endsAt: s.endsAt,
                 durationMinutes: s.durationMinutes,
                 lessonTitle: s.lessonTitle,
                 notes: s.notes,
@@ -1237,6 +1303,7 @@ export function TeacherPage() {
                 linkedAssignments: s.linkedAssignments ?? []
               }))}
               variant="teacher"
+              onEditSlot={(id) => openEditScheduleSlot(id)}
               onDeleteSlot={(id) => void deleteScheduleSlot(id)}
               onDeleteSeries={(sid) => void deleteScheduleSeries(sid)}
             />
@@ -1566,6 +1633,73 @@ export function TeacherPage() {
           <TextArea
             value={newSlotNotes}
             onChange={(e) => setNewSlotNotes(e.target.value)}
+            placeholder="Заметка к занятию (аудитория, ссылка…)"
+            rows={2}
+          />
+        </Space>
+      </Modal>
+
+      <Modal
+        title="Редактировать занятие"
+        open={editSlotModalOpen}
+        okText="Сохранить"
+        confirmLoading={editSlotSaving}
+        onCancel={() => {
+          setEditSlotModalOpen(false);
+          setEditSlotId(null);
+        }}
+        onOk={() => void submitEditScheduleSlot()}
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
+            Изменения касаются только этого занятия в календаре (в том числе в еженедельной серии). Привязка урока задаёт
+            тему в расписании; задания на слот не переименовываются автоматически.
+          </Paragraph>
+          <div>
+            <Text type="secondary">Дата</Text>
+            <DatePicker
+              style={{ width: "100%", marginTop: 4 }}
+              value={editSlotDate}
+              onChange={(d) => setEditSlotDate(d)}
+              format="DD.MM.YYYY"
+            />
+          </div>
+          <div>
+            <Text type="secondary">Время начала</Text>
+            <TimePicker
+              style={{ width: "100%", marginTop: 4 }}
+              value={editSlotTimeStart}
+              onChange={(d) => setEditSlotTimeStart(d)}
+              format="HH:mm"
+              minuteStep={5}
+              needConfirm={false}
+            />
+          </div>
+          <div>
+            <Text type="secondary">Время окончания</Text>
+            <TimePicker
+              style={{ width: "100%", marginTop: 4 }}
+              value={editSlotTimeEnd}
+              onChange={(d) => setEditSlotTimeEnd(d)}
+              format="HH:mm"
+              minuteStep={5}
+              needConfirm={false}
+            />
+          </div>
+          <div>
+            <Text type="secondary">Урок программы (тема в расписании)</Text>
+            <Select
+              allowClear
+              style={{ width: "100%", marginTop: 4 }}
+              placeholder="Без привязки к уроку"
+              value={editSlotLessonId}
+              onChange={(v) => setEditSlotLessonId(v)}
+              options={courseBundle?.lessons.map((l) => ({ value: l.id, label: l.title })) ?? []}
+            />
+          </div>
+          <TextArea
+            value={editSlotNotes}
+            onChange={(e) => setEditSlotNotes(e.target.value)}
             placeholder="Заметка к занятию (аудитория, ссылка…)"
             rows={2}
           />

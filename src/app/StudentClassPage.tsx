@@ -518,6 +518,7 @@ export function StudentClassPage() {
             slots={scheduleRows.map((r) => ({
               id: r.id,
               startsAt: r.startsAt,
+              endsAt: r.endsAt,
               durationMinutes: r.durationMinutes ?? 90,
               lessonTitle: r.lessonTitle,
               notes: r.notes,

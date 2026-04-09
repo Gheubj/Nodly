@@ -41,6 +41,8 @@ export type WeekScheduleSlot = {
   id: string;
   startsAt: string;
   durationMinutes: number;
+  /** Если с бэкенда пришло — показываем конец по нему, иначе считаем от длительности */
+  endsAt?: string | null;
   lessonTitle: string | null;
   notes: string | null;
   weeklySeriesId?: string | null;
@@ -82,6 +84,8 @@ type Props = {
   variant: "teacher" | "student";
   onDeleteSlot?: (slotId: string) => void;
   onDeleteSeries?: (seriesId: string) => void;
+  /** Только кабинет учителя: правка времени, заметок и урока программы */
+  onEditSlot?: (slotId: string) => void;
   onAttendanceChange?: (slotId: string, value: boolean | null) => void;
   onStudentStartAssignment?: (row: SlotStudentAssignmentRow) => void;
   onStudentSubmitAssignment?: (row: SlotStudentAssignmentRow) => void;
@@ -92,8 +96,12 @@ function dayKey(d: Dayjs) {
   return d.format("YYYY-MM-DD");
 }
 
-function slotTimeLabel(iso: string) {
-  return dayjs(iso).format("HH:mm");
+function slotTimeRangeLabel(slot: Pick<WeekScheduleSlot, "startsAt" | "durationMinutes" | "endsAt">) {
+  const start = dayjs(slot.startsAt);
+  const end = slot.endsAt
+    ? dayjs(slot.endsAt)
+    : start.add(slot.durationMinutes, "minute");
+  return `${start.format("HH:mm")}–${end.format("HH:mm")}`;
 }
 
 function slotStarted(iso: string) {
@@ -109,6 +117,7 @@ export function WeekScheduleCalendar({
   variant,
   onDeleteSlot,
   onDeleteSeries,
+  onEditSlot,
   onAttendanceChange,
   onStudentStartAssignment,
   onStudentSubmitAssignment,
@@ -164,9 +173,7 @@ export function WeekScheduleCalendar({
                   daySlots.map((slot) => (
                     <Card key={slot.id} size="small" className="week-schedule-slot" bordered>
                       <Space direction="vertical" size={4} style={{ width: "100%" }}>
-                        <Text strong>
-                          {slotTimeLabel(slot.startsAt)} · {slot.durationMinutes} мин
-                        </Text>
+                        <Text strong>{slotTimeRangeLabel(slot)}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           {slot.lessonTitle ?? "Без темы урока"}
                         </Text>
@@ -260,29 +267,43 @@ export function WeekScheduleCalendar({
                             })}
                           </Space>
                         ) : null}
-                        {variant === "teacher" && onDeleteSlot ? (
+                        {variant === "teacher" && (onEditSlot || onDeleteSlot) ? (
                           <Space size="small" wrap>
-                            <Popconfirm
-                              title="Удалить это занятие?"
-                              okText="Удалить"
-                              cancelText="Отмена"
-                              onConfirm={() => onDeleteSlot(slot.id)}
-                            >
-                              <Button type="link" danger size="small" style={{ padding: 0, height: "auto" }}>
-                                Удалить
-                              </Button>
-                            </Popconfirm>
-                            {slot.weeklySeriesId && onDeleteSeries ? (
-                              <Popconfirm
-                                title="Удалить все занятия этой еженедельной серии?"
-                                okText="Удалить все"
-                                cancelText="Отмена"
-                                onConfirm={() => onDeleteSeries(slot.weeklySeriesId!)}
+                            {onEditSlot ? (
+                              <Button
+                                type="link"
+                                size="small"
+                                style={{ padding: 0, height: "auto" }}
+                                onClick={() => onEditSlot(slot.id)}
                               >
-                                <Button type="link" size="small" style={{ padding: 0, height: "auto" }}>
-                                  Вся серия
-                                </Button>
-                              </Popconfirm>
+                                Редактировать
+                              </Button>
+                            ) : null}
+                            {onDeleteSlot ? (
+                              <>
+                                <Popconfirm
+                                  title="Удалить это занятие?"
+                                  okText="Удалить"
+                                  cancelText="Отмена"
+                                  onConfirm={() => onDeleteSlot(slot.id)}
+                                >
+                                  <Button type="link" danger size="small" style={{ padding: 0, height: "auto" }}>
+                                    Удалить
+                                  </Button>
+                                </Popconfirm>
+                                {slot.weeklySeriesId && onDeleteSeries ? (
+                                  <Popconfirm
+                                    title="Удалить все занятия этой еженедельной серии?"
+                                    okText="Удалить все"
+                                    cancelText="Отмена"
+                                    onConfirm={() => onDeleteSeries(slot.weeklySeriesId!)}
+                                  >
+                                    <Button type="link" size="small" style={{ padding: 0, height: "auto" }}>
+                                      Вся серия
+                                    </Button>
+                                  </Popconfirm>
+                                ) : null}
+                              </>
                             ) : null}
                           </Space>
                         ) : null}

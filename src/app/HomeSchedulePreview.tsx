@@ -10,6 +10,7 @@ const DAY_COUNT = 4;
 type PreviewSlot = {
   id: string;
   startsAt: string;
+  endsAt?: string;
   durationMinutes: number;
   lessonTitle: string | null;
   notes: string | null;
@@ -96,7 +97,10 @@ export function HomeSchedulePreview() {
                     daySlots.map((s) => (
                       <div key={s.id} className="landing-home-schedule__slot">
                         <Text strong style={{ fontSize: 13 }}>
-                          {dayjs(s.startsAt).format("HH:mm")} · {s.durationMinutes} мин
+                          {dayjs(s.startsAt).format("HH:mm")}–
+                          {(s.endsAt ? dayjs(s.endsAt) : dayjs(s.startsAt).add(s.durationMinutes, "minute")).format(
+                            "HH:mm"
+                          )}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
                           {s.classroomTitle}

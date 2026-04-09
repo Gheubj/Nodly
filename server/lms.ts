@@ -250,15 +250,19 @@ export function registerLmsRoutes(app: Express) {
       }
     });
     res.json({
-      slots: slots.map((s) => ({
-        id: s.id,
-        startsAt: s.startsAt.toISOString(),
-        durationMinutes: s.durationMinutes,
-        lessonTitle: s.lessonTemplate?.title ?? null,
-        notes: s.notes,
-        classroomTitle: s.classroom.title,
-        classroomId: s.classroomId
-      }))
+      slots: slots.map((s) => {
+        const endsAt = s.endsAt ?? computeEndsAtFromDuration(s.startsAt, s.durationMinutes);
+        return {
+          id: s.id,
+          startsAt: s.startsAt.toISOString(),
+          endsAt: endsAt.toISOString(),
+          durationMinutes: s.durationMinutes,
+          lessonTitle: s.lessonTemplate?.title ?? null,
+          notes: s.notes,
+          classroomTitle: s.classroom.title,
+          classroomId: s.classroomId
+        };
+      })
     });
   });
 
@@ -659,7 +663,12 @@ export function registerLmsRoutes(app: Express) {
       } else if (parsed.data.endsAt) {
         const end = new Date(parsed.data.endsAt);
         if (!Number.isNaN(end.getTime())) {
-          durationMinutes = clampDurationMinutes((end.getTime() - nextStart.getTime()) / 60_000);
+          const rawMins = (end.getTime() - nextStart.getTime()) / 60_000;
+          if (rawMins <= 0) {
+            res.status(400).json({ error: "Время окончания должно быть позже начала" });
+            return;
+          }
+          durationMinutes = clampDurationMinutes(rawMins);
         }
       }
       const timeFieldsChanged =
@@ -667,10 +676,14 @@ export function registerLmsRoutes(app: Express) {
         (parsed.data.durationMinutes != null && !Number.isNaN(parsed.data.durationMinutes)) ||
         Boolean(parsed.data.endsAt);
       if (parsed.data.startsAt !== undefined) {
-        const pastErr = assertScheduleStartNotInPast(nextStart);
-        if (pastErr) {
-          res.status(400).json({ error: pastErr });
-          return;
+        const prevNorm = toMinutePrecisionStart(slot.startsAt.toISOString());
+        const startMoved = nextStart.getTime() !== prevNorm.getTime();
+        if (startMoved) {
+          const pastErr = assertScheduleStartNotInPast(nextStart);
+          if (pastErr) {
+            res.status(400).json({ error: pastErr });
+            return;
+          }
         }
       }
       const endsAt = computeEndsAtFromDuration(nextStart, durationMinutes);
