@@ -72,7 +72,7 @@ export function StudentLearningPage() {
   if (!user) {
     return (
       <Card>
-        <Paragraph>Войдите, чтобы открыть раздел обучения.</Paragraph>
+        <Paragraph>Войдите, чтобы открыть раздел обучения</Paragraph>
         <Link to="/">На главную</Link>
       </Card>
     );
@@ -86,7 +86,7 @@ export function StudentLearningPage() {
           Обучение
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Уроки из каталога. Открывается новый проект в разработке — сохрани его в библиотеке, когда будешь готов.
+          Уроки из каталога. Открывается новый проект в разработке — сохрани его в библиотеке, когда будешь готов
         </Paragraph>
       </div>
       <List

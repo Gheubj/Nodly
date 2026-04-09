@@ -92,6 +92,8 @@ export function StudentClassPage() {
   const [scheduleRows, setScheduleRows] = useState<ScheduleSlotRow[]>([]);
   const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
+  const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
+  const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork" | "project">("all");
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -244,18 +246,7 @@ export function StudentClassPage() {
     {
       title: "Задание",
       key: "title",
-      render: (_, row) => {
-        const scoreSuffix =
-          row.submission?.status === "graded" && row.submission.score != null
-            ? ` (${row.submission.score}/${row.maxScore})`
-            : "";
-        return (
-          <span>
-            {row.title}
-            {scoreSuffix}
-          </span>
-        );
-      }
+      dataIndex: "title"
     },
     {
       title: "Тип",
@@ -282,6 +273,29 @@ export function StudentClassPage() {
             {needsAttention(row) ? <Tag color="red">Новое</Tag> : null}
           </Space>
         );
+      }
+    },
+    {
+      title: "Оценка",
+      key: "grade",
+      width: 108,
+      render: (_, row) => {
+        const st = row.submission?.status ?? "not_started";
+        if (st === "graded" && row.submission?.score != null) {
+          return (
+            <Text strong>
+              {row.submission.score}/{row.maxScore}
+            </Text>
+          );
+        }
+        if (st === "submitted") {
+          return (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              На проверке
+            </Text>
+          );
+        }
+        return <Text type="secondary">—</Text>;
       }
     },
     {
@@ -429,75 +443,21 @@ export function StudentClassPage() {
     </Spin>
   );
 
-  const gradesSorted = useMemo(
-    () => [...assignmentsForClass].sort((a, b) => a.title.localeCompare(b.title, "ru")),
-    [assignmentsForClass]
-  );
-
-  const gradesColumns: ColumnsType<StudentAssignmentRow> = [
-    {
-      title: "Задание",
-      key: "title",
-      render: (_, row) => {
-        const scoreSuffix =
-          row.submission?.status === "graded" && row.submission.score != null
-            ? ` (${row.submission.score}/${row.maxScore})`
-            : "";
-        return (
-          <span>
-            {row.title}
-            {scoreSuffix}
-          </span>
-        );
+  const filteredAllAssignments = useMemo(() => {
+    return assignments.filter((row) => {
+      const st = row.submission?.status ?? "not_started";
+      if (allFilterGrade === "graded" && st !== "graded") {
+        return false;
       }
-    },
-    {
-      title: "Тип",
-      dataIndex: "kind",
-      key: "kind",
-      width: 120,
-      render: (k: string) => KIND_RU[k] ?? k
-    },
-    {
-      title: "Статус",
-      key: "st",
-      render: (_, row) => {
-        const st = row.submission?.status ?? "not_started";
-        const color =
-          st === "needs_revision" ? "orange" : st === "graded" ? "green" : st === "submitted" ? "blue" : "default";
-        return <Tag color={color}>{STATUS_RU[st] ?? st}</Tag>;
+      if (allFilterGrade === "not_graded" && st === "graded") {
+        return false;
       }
-    },
-    {
-      title: "Балл",
-      key: "ball",
-      width: 88,
-      render: (_, row) =>
-        row.submission?.status === "graded" && row.submission.score != null
-          ? `${row.submission.score}/${row.maxScore}`
-          : "—"
-    },
-    {
-      title: "Срок",
-      dataIndex: "dueAt",
-      key: "dueAt",
-      width: 120,
-      render: (d: string | null) => (d ? new Date(d).toLocaleDateString("ru-RU") : "—")
-    }
-  ];
-
-  const gradesTab = (
-    <Table<StudentAssignmentRow>
-      size="small"
-      rowKey="assignmentId"
-      loading={loading}
-      columns={gradesColumns}
-      dataSource={gradesSorted}
-      pagination={{ pageSize: 12 }}
-      locale={{ emptyText: "Пока нет заданий в этом классе" }}
-      expandable={expandableConfig}
-    />
-  );
+      if (allFilterKind !== "all" && row.kind !== allFilterKind) {
+        return false;
+      }
+      return true;
+    });
+  }, [assignments, allFilterGrade, allFilterKind]);
 
   const diaryTab = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -506,8 +466,8 @@ export function StudentClassPage() {
           Расписание и работы на занятиях
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          Время урока, классная работа и домашнее задание с дедлайном — в карточках по дням. Оценки и статусы по всем
-          заданиям — во вкладке «Успеваемость».
+          Время урока, работы на занятии и домашние задания — в карточках по дням. Выставленная оценка показывается в
+          дневнике под заданием; полный список с фильтрами — во вкладке «Все задания».
         </Paragraph>
         <Spin spinning={courseScheduleLoading}>
           <WeekScheduleCalendar
@@ -543,20 +503,46 @@ export function StudentClassPage() {
   );
 
   const allAssignmentsTab = (
-    <Table<StudentAssignmentRow>
-      size="small"
-      rowKey="assignmentId"
-      loading={loading}
-      columns={[
-        ...assignmentColumns.slice(0, 1),
-        { title: "Класс", dataIndex: "classroomTitle", key: "classroomTitle" },
-        ...assignmentColumns.slice(1)
-      ]}
-      dataSource={assignments}
-      pagination={{ pageSize: 10 }}
-      locale={{ emptyText: "Пока нет заданий" }}
-      expandable={expandableConfig}
-    />
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space wrap align="center">
+        <Text type="secondary">Фильтры:</Text>
+        <Select
+          value={allFilterGrade}
+          onChange={(v) => setAllFilterGrade(v)}
+          style={{ minWidth: 200 }}
+          options={[
+            { value: "all", label: "Все задания" },
+            { value: "graded", label: "Только с оценкой" },
+            { value: "not_graded", label: "Без оценки (ещё не оценено)" }
+          ]}
+        />
+        <Select
+          value={allFilterKind}
+          onChange={(v) => setAllFilterKind(v)}
+          style={{ minWidth: 200 }}
+          options={[
+            { value: "all", label: "Все типы" },
+            { value: "homework", label: "Домашние" },
+            { value: "classwork", label: "На уроке" },
+            { value: "project", label: "Проекты" }
+          ]}
+        />
+      </Space>
+      <Table<StudentAssignmentRow>
+        size="small"
+        rowKey="assignmentId"
+        loading={loading}
+        columns={[
+          ...assignmentColumns.slice(0, 1),
+          { title: "Класс", dataIndex: "classroomTitle", key: "classroomTitle", ellipsis: true },
+          ...assignmentColumns.slice(1)
+        ]}
+        dataSource={filteredAllAssignments}
+        pagination={{ pageSize: 10 }}
+        locale={{ emptyText: "Нет заданий по выбранным фильтрам" }}
+        expandable={expandableConfig}
+      />
+    </Space>
   );
 
   return (
@@ -568,7 +554,6 @@ export function StudentClassPage() {
         items={[
           { key: "course", label: "Курс", children: courseTab },
           { key: "diary", label: "Дневник", children: diaryTab },
-          { key: "grades", label: "Успеваемость", children: gradesTab },
           { key: "all", label: "Все задания", children: allAssignmentsTab },
           { key: "info", label: "Мой класс", children: infoTab }
         ]}

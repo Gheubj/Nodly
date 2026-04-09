@@ -19,11 +19,11 @@ export function SettingsPanel({ variant = "drawer", onAfterNavigate }: Props) {
   return (
     <Space direction="vertical" size={gap} style={{ width: "100%" }}>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Внешний вид приложения. Данные аккаунта — в личном кабинете.
+        Внешний вид приложения. Данные аккаунта — в личном кабинете
       </Paragraph>
       <Card title="Оформление" size="small">
         <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
-          Тема интерфейса сохраняется в этом браузере.
+          Тема интерфейса сохраняется в этом браузере
         </Text>
         <ThemeModeControl />
       </Card>
@@ -35,7 +35,7 @@ export function SettingsPanel({ variant = "drawer", onAfterNavigate }: Props) {
         </Link>
       ) : (
         <Paragraph type="secondary" style={{ margin: 0 }}>
-          Чтобы управлять профилем и классом, войди в аккаунт через кнопку «Войти» в шапке.
+          Чтобы управлять профилем и классом, войди в аккаунт через кнопку «Войти» в шапке
         </Paragraph>
       )}
     </Space>

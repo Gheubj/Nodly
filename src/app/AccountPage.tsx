@@ -42,7 +42,7 @@ export function AccountPage() {
     return (
       <div className="app-content account-page">
         <Card>
-          <Paragraph>Войдите в аккаунт, чтобы открыть личный кабинет.</Paragraph>
+          <Paragraph>Войдите в аккаунт, чтобы открыть личный кабинет</Paragraph>
           <Link to="/">
             <Button type="primary">На главную</Button>
           </Link>
@@ -179,8 +179,7 @@ export function AccountPage() {
         <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
           <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              Необратимо: проекты, классы, зачисления и связанные данные в сервисе будут удалены. Перед продакшеном
-              оформи политику обработки ПДн с юристом.
+              Необратимо: проекты, классы, зачисления и связанные данные в сервисе будут удалены
             </Paragraph>
             {user.hasPassword === false ? (
               <>
@@ -204,7 +203,7 @@ export function AccountPage() {
               />
             )}
             <Checkbox checked={deleteAck} onChange={(e) => setDeleteAck(e.target.checked)}>
-              Понимаю, что восстановление будет невозможно.
+              Понимаю, что восстановление будет невозможно
             </Checkbox>
             <Button type="primary" danger onClick={() => void handleDeleteAccount()}>
               Удалить аккаунт навсегда

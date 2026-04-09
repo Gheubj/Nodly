@@ -40,7 +40,7 @@ export function NarrowScreenGate({ children }: { children: ReactNode }) {
         </Title>
         <Paragraph className="narrow-viewport-block__text">
           Используйте <strong>планшет</strong> или <strong>компьютер</strong> — на маленьком экране редактор и уроки
-          нормально не помещаются.
+          нормально не помещаются
         </Paragraph>
         <Paragraph type="secondary" className="narrow-viewport-block__hint">
           Если это планшет, поверните его в альбомную ориентацию или разверните окно браузера шире{" "}

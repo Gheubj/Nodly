@@ -13,7 +13,7 @@ export function LearningPage() {
     return (
       <Content className="app-content">
         <Card>
-          <Paragraph>Раздел «Обучение» доступен после входа.</Paragraph>
+          <Paragraph>Раздел «Обучение» доступен после входа</Paragraph>
           <Link to="/">
             <Button type="primary">На главную</Button>
           </Link>
@@ -26,7 +26,7 @@ export function LearningPage() {
     return (
       <Content className="app-content">
         <Card>
-          <Paragraph>Эта страница для учеников в режиме самостоятельного обучения.</Paragraph>
+          <Paragraph>Эта страница для учеников в режиме самостоятельного обучения</Paragraph>
           <Link to="/">
             <Button type="primary">На главную</Button>
           </Link>

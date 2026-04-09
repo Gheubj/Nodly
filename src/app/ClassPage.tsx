@@ -13,7 +13,7 @@ export function ClassPage() {
     return (
       <Content className="app-content">
         <Card>
-          <Paragraph>Раздел «Класс» доступен после входа.</Paragraph>
+          <Paragraph>Раздел «Класс» доступен после входа</Paragraph>
           <Link to="/">
             <Button type="primary">На главную</Button>
           </Link>
@@ -26,7 +26,7 @@ export function ClassPage() {
     return (
       <Content className="app-content">
         <Card>
-          <Paragraph>Эта страница для учеников, которые учатся по школе (с кодом класса).</Paragraph>
+          <Paragraph>Эта страница для учеников, которые учатся по школе (с кодом класса)</Paragraph>
           <Link to="/">
             <Button type="primary">На главную</Button>
           </Link>

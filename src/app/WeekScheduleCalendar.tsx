@@ -202,10 +202,9 @@ export function WeekScheduleCalendar({
                               }
                               const st = row.submission?.status ?? "not_started";
                               const hasProject = Boolean(row.submission?.projectId);
-                              const scoreSuffix =
-                                st === "graded" && row.submission?.score != null
-                                  ? ` (${row.submission.score}/${row.maxScore})`
-                                  : "";
+                              const sub = row.submission;
+                              const graded = st === "graded" && sub != null && sub.score != null;
+                              const scoreShown = graded ? sub.score : null;
                               return (
                                 <div key={la.id} className="week-schedule-slot__assignment">
                                   <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
@@ -215,11 +214,27 @@ export function WeekScheduleCalendar({
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <Text strong style={{ fontSize: 12 }}>
                                         {la.title}
-                                        {scoreSuffix}
                                       </Text>
                                       {la.kind === "homework" && la.dueAt ? (
                                         <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
                                           сдать до {dayjs(la.dueAt).format("DD.MM.YYYY")}
+                                        </Text>
+                                      ) : null}
+                                      {graded && scoreShown != null ? (
+                                        <div className="week-schedule-slot__diary-grade">
+                                          <Text type="secondary" style={{ fontSize: 11 }}>
+                                            Оценка
+                                          </Text>
+                                          <Text strong className="week-schedule-slot__diary-grade-mark">
+                                            {scoreShown}
+                                          </Text>
+                                          <Text type="secondary" style={{ fontSize: 11 }}>
+                                            из {row.maxScore}
+                                          </Text>
+                                        </div>
+                                      ) : st === "submitted" ? (
+                                        <Text type="secondary" style={{ fontSize: 11, display: "block", marginTop: 4 }}>
+                                          У учителя на проверке
                                         </Text>
                                       ) : null}
                                       <Space wrap size="small" style={{ marginTop: 4 }}>

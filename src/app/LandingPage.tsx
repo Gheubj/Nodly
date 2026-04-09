@@ -27,11 +27,10 @@ export function LandingPage() {
   const guestBlock = (
     <Card className="landing-role-card" title="С чего начать">
       <Paragraph style={{ marginBottom: 12 }}>
-        Войди через кнопку «Войти» в шапке — после входа откроется раздел «Разработка» с Blockly и сохранением
-        проектов в облаке.
+        Войди через кнопку «Войти» в шапке
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Регистрация по email с кодом из письма или через Яндекс / ВКонтакте во вкладках входа.
+        Регистрация по email с кодом из письма или через Яндекс 
       </Paragraph>
     </Card>
   );
@@ -39,12 +38,12 @@ export function LandingPage() {
   const teacherBlock = (
     <Card className="landing-role-card" title="Учителю">
       <Paragraph>
-        В разделе <Link to="/studio">Разработка</Link> — та же среда проектов, что и у учеников. В{" "}
+        В разделе <Link to="/studio">Разработка</Link> — та же среда проектов, что и у учеников В{" "}
         <Link to="/teacher">кабинете учителя</Link> можно создавать школы и классы, выдавать код для входа
-        учеников.
+        учеников
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Задания, журнал и готовые уроки — в развитии платформы.
+        Задания, журнал и готовые уроки — в развитии платформы
       </Paragraph>
     </Card>
   );
@@ -52,11 +51,11 @@ export function LandingPage() {
   const studentSchoolBlock = (
     <Card className="landing-role-card" title="Ученику (школа)">
       <Paragraph>
-        В <Link to="/class">Классе</Link> — школа, учитель и код класса. В <Link to="/studio">Разработке</Link> —
-        твои проекты и Blockly.
+        В <Link to="/class">Классе</Link> — школа, учитель и код класса В <Link to="/studio">Разработке</Link> —
+        твои проекты
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Если ещё не подключился к классу, введи код в личном кабинете.
+        Если ещё не подключился к классу, введи код в личном кабинете
       </Paragraph>
     </Card>
   );
@@ -64,8 +63,8 @@ export function LandingPage() {
   const studentDirectBlock = (
     <Card className="landing-role-card" title="Ученику (самостоятельно)">
       <Paragraph>
-        В <Link to="/learning">Обучении</Link> — уроки и трек по программе. В{" "}
-        <Link to="/studio">Разработке</Link> — свободные эксперименты с проектами.
+        В <Link to="/learning">Обучении</Link> — уроки и трек по программе В{" "}
+        <Link to="/studio">Разработке</Link> — свободные эксперименты с проектами
       </Paragraph>
     </Card>
   );
@@ -100,7 +99,7 @@ export function LandingPage() {
           </div>
           <p className="landing-hero__lead">
             Собирай данные, обучай модели и собирай проекты через визуальное программирование — без установки
-            среды на компьютер. Один аккаунт для учеников и учителей.
+            среды на компьютер. Один аккаунт для учеников и учителей
           </p>
           <div className="landing-hero__actions">
             {user ? (
@@ -120,7 +119,7 @@ export function LandingPage() {
               </Link>
             ) : (
               <Text type="secondary" style={{ maxWidth: 280 }}>
-                Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше.
+                Уже есть аккаунт? Используй «Войти» в шапке или кнопку выше
               </Text>
             )}
           </div>
@@ -173,7 +172,7 @@ export function LandingPage() {
             </div>
             <div className="landing-feature-card__title">Визуальное программирование</div>
             <p className="landing-feature-card__text">
-              Blockly-среда: логика, циклы и вызовы моделей без классического кода на старте.
+              Blockly-среда: логика, циклы и вызовы моделей без классического кода на старте
             </p>
           </Card>
           <Card className="landing-feature-card" bordered={false} role="listitem">
@@ -182,7 +181,7 @@ export function LandingPage() {
             </div>
             <div className="landing-feature-card__title">Данные и модели</div>
             <p className="landing-feature-card__text">
-              Наборы изображений и таблиц, обучение и предсказания — в рамках одного проекта.
+              Наборы изображений и таблиц, обучение и предсказания — в рамках одного проекта
             </p>
           </Card>
           <Card className="landing-feature-card" bordered={false} role="listitem">
@@ -191,7 +190,7 @@ export function LandingPage() {
             </div>
             <div className="landing-feature-card__title">Облако и класс</div>
             <p className="landing-feature-card__text">
-              Сохранение черновиков в облаке; для школ — классы, коды и задания от учителя.
+              Сохранение черновиков в облаке; для школ — классы, коды и задания от учителя
             </p>
           </Card>
         </div>
