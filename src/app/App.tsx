@@ -293,7 +293,7 @@ export function App() {
                     }))
                   }
                 >
-                  Класс
+                  Обучение
                 </NavLink>
               </Badge>
             ) : null}

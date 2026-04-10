@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useSessionStore } from "@/store/useSessionStore";
 import { HomeSchedulePreview } from "@/app/HomeSchedulePreview";
+import { HomeUpcomingHomework } from "@/app/HomeUpcomingHomework";
 
 const { Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -51,8 +52,8 @@ export function LandingPage() {
   const studentSchoolBlock = (
     <Card className="landing-role-card" title="Ученику (школа)">
       <Paragraph>
-        В <Link to="/class">Классе</Link> — школа, учитель и код класса В <Link to="/studio">Разработке</Link> —
-        твои проекты
+        В <Link to="/class">Обучении</Link> — школа, учитель и задания В <Link to="/studio">Разработке</Link> — твои
+        проекты
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
         Если ещё не подключился к классу, введи код в личном кабинете
@@ -128,6 +129,7 @@ export function LandingPage() {
         {user && (user.role === "teacher" || (user.role === "student" && user.studentMode === "school")) ? (
           <HomeSchedulePreview />
         ) : null}
+        {user && user.role === "student" && user.studentMode === "school" ? <HomeUpcomingHomework /> : null}
 
         {user ? (
           <Card className="landing-quick-actions-card" title="С чего начать сегодня">
@@ -144,7 +146,7 @@ export function LandingPage() {
               ) : null}
               {user.role === "student" && user.studentMode === "school" ? (
                 <Link to="/class">
-                  <Button>Класс</Button>
+                  <Button>Обучение</Button>
                 </Link>
               ) : null}
               {user.role === "student" && user.studentMode === "direct" ? (

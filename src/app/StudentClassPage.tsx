@@ -370,7 +370,7 @@ export function StudentClassPage() {
           Ты ещё не в классе
         </Title>
         <Paragraph type="secondary">
-          Попроси код у учителя и введи его в <Link to="/account">личном кабинете</Link> (раздел «Класс»).
+          Попроси код у учителя и введи его в <Link to="/account">личном кабинете</Link> (блок «Код класса»).
         </Paragraph>
       </Card>
     );

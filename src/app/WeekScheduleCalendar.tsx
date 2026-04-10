@@ -51,7 +51,7 @@ export type WeekScheduleSlot = {
 };
 
 const KIND_SHORT: Record<string, string> = {
-  classwork: "На уроке",
+  classwork: "Классная работа",
   homework: "ДЗ",
   project: "Проект"
 };
@@ -118,7 +118,7 @@ function diaryStudentAssignmentCaption(title: string, kind: string): string | nu
     if (t === "Работа на уроке") {
       return null;
     }
-    const prefix = "На уроке: ";
+    const prefix = "Классная работа: ";
     if (t.startsWith(prefix)) {
       const rest = t.slice(prefix.length).trim();
       return rest || null;

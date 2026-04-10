@@ -1045,6 +1045,15 @@ html[data-theme="dark"] .blockly-palette-btn {
   }
 }
 
+.landing-home-homework {
+  margin-bottom: 24px;
+}
+
+.landing-home-homework__link {
+  display: inline-block;
+  margin-top: 10px;
+}
+
 .landing-home-schedule {
   margin-bottom: 24px;
 }

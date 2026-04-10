@@ -144,7 +144,7 @@ export function AccountPage() {
           </Space>
         </Card>
         {user.role === "student" && user.studentMode === "school" ? (
-          <Card title="Класс">
+          <Card title="Код класса">
             <Space wrap>
               <Input
                 placeholder="Код класса"
