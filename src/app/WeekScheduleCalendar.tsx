@@ -50,13 +50,13 @@ export type WeekScheduleSlot = {
   linkedAssignments?: SlotLinkedAssignment[];
 };
 
-const KIND_SHORT: Record<string, string> = {
-  classwork: "Классная работа",
+export const diaryKindLabels: Record<string, string> = {
+  classwork: "Классная",
   homework: "ДЗ",
   project: "Проект"
 };
 
-const STATUS_SHORT: Record<string, string> = {
+export const diaryStatusLabels: Record<string, string> = {
   not_started: "Не начато",
   draft: "Черновик",
   submitted: "Сдано",
@@ -64,7 +64,7 @@ const STATUS_SHORT: Record<string, string> = {
   graded: "Оценено"
 };
 
-function studentSlotNeedsAttention(row: SlotStudentAssignmentRow): boolean {
+export function studentSlotNeedsAttention(row: SlotStudentAssignmentRow): boolean {
   const st = row.submission?.status ?? "not_started";
   if (st === "needs_revision") {
     return true;
@@ -109,7 +109,7 @@ function slotStarted(iso: string) {
 }
 
 /** Не дублировать тег типа: шаблонные названия с сервера скрываем или оставляем только уточнение после «: » */
-function diaryStudentAssignmentCaption(title: string, kind: string): string | null {
+export function diaryStudentAssignmentCaption(title: string, kind: string): string | null {
   const t = title.trim();
   if (!t) {
     return null;
@@ -118,7 +118,7 @@ function diaryStudentAssignmentCaption(title: string, kind: string): string | nu
     if (t === "Работа на уроке") {
       return null;
     }
-    const prefix = "Классная работа: ";
+    const prefix = "На уроке: ";
     if (t.startsWith(prefix)) {
       const rest = t.slice(prefix.length).trim();
       return rest || null;
@@ -218,7 +218,7 @@ export function WeekScheduleCalendar({
                           <Text type="secondary" style={{ fontSize: 11 }}>
                             Задания:{" "}
                             {slot.linkedAssignments
-                              .map((a) => `${KIND_SHORT[a.kind] ?? a.kind}: ${a.title}`)
+                              .map((a) => `${diaryKindLabels[a.kind] ?? a.kind}: ${a.title}`)
                               .join(" · ")}
                           </Text>
                         ) : null}
@@ -242,7 +242,7 @@ export function WeekScheduleCalendar({
                                 <div key={la.id} className="week-schedule-slot__assignment">
                                   <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
                                     <Tag color={la.kind === "classwork" ? "blue" : "purple"}>
-                                      {KIND_SHORT[la.kind] ?? la.kind}
+                                      {diaryKindLabels[la.kind] ?? la.kind}
                                     </Tag>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       {caption ? (
@@ -274,7 +274,7 @@ export function WeekScheduleCalendar({
                                       ) : null}
                                       <Space wrap size="small" style={{ marginTop: 4 }}>
                                         <Tag color="default" style={{ margin: 0 }}>
-                                          {STATUS_SHORT[st] ?? st}
+                                          {diaryStatusLabels[st] ?? st}
                                         </Tag>
                                         {studentSlotNeedsAttention(row) ? (
                                           <Tag color="red" style={{ margin: 0 }}>

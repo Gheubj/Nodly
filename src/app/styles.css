@@ -1054,6 +1054,17 @@ html[data-theme="dark"] .blockly-palette-btn {
   margin-top: 10px;
 }
 
+.landing-home-hw-list {
+  max-height: min(480px, 55vh);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.landing-home-hw-list .ant-space-item:first-child .week-schedule-slot__assignment {
+  border-top: none;
+  padding-top: 0;
+}
+
 .landing-home-schedule {
   margin-bottom: 24px;
 }

@@ -2,6 +2,7 @@ import { Card, Spin, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { apiClient } from "@/shared/api/client";
+import { useSessionStore } from "@/store/useSessionStore";
 
 const { Text } = Typography;
 
@@ -19,6 +20,8 @@ type PreviewSlot = {
 };
 
 export function HomeSchedulePreview() {
+  const { user } = useSessionStore();
+  const showClassroomTitle = user?.role === "teacher";
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState<PreviewSlot[]>([]);
 
@@ -102,9 +105,11 @@ export function HomeSchedulePreview() {
                             "HH:mm"
                           )}
                         </Text>
-                        <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
-                          {s.classroomTitle}
-                        </Text>
+                        {showClassroomTitle ? (
+                          <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+                            {s.classroomTitle}
+                          </Text>
+                        ) : null}
                         <Text style={{ fontSize: 12 }}>{s.lessonTitle ?? "Занятие"}</Text>
                         {s.notes ? (
                           <Text type="secondary" ellipsis style={{ fontSize: 11, display: "block" }}>
