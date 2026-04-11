@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, Layout, Space, Typography, message } from "antd";
+import { Button, Card, Layout, Space, Spin, Typography, message } from "antd";
 import {
   CloudOutlined,
   CodeOutlined,
@@ -31,7 +31,7 @@ function openAuthModal() {
 }
 
 export function LandingPage() {
-  const { user } = useSessionStore();
+  const { user, sessionRestored, loading: sessionLoading } = useSessionStore();
   const navigate = useNavigate();
   const htmlTheme = useHtmlDataTheme();
   const [messageApi, messageHolder] = message.useMessage();
@@ -136,8 +136,11 @@ export function LandingPage() {
     }
   }, [heroHwAction, navigate, messageApi]);
 
-  const quickStartCard = user ? (
-    <Card className="landing-quick-actions-card landing-quick-actions-card--in-hero" title="С чего начать сегодня">
+  const quickStartInHero = user ? (
+    <div className="landing-hero__quick-start">
+      <Title level={5} className="landing-hero__quick-start-title">
+        С чего начать сегодня
+      </Title>
       <Space wrap size="middle">
         <Link to="/studio">
           <Button type="primary" icon={<RocketOutlined />}>
@@ -167,18 +170,21 @@ export function LandingPage() {
         </Button>
         {schoolStudent && heroHwAction ? (
           <Button type="default" loading={homeHwLoading || heroHwBusy} onClick={() => void handleHeroHomework()}>
-            {heroHwAction.mode === "start" ? "Начать задание" : "Продолжить задание"}
+            {heroHwAction.mode === "start" ? "Начать" : "Продолжить"}
           </Button>
         ) : null}
       </Space>
-    </Card>
+    </div>
   ) : null;
 
   return (
     <Content className="app-content landing-page">
       {messageHolder}
       <div className="landing-page__inner">
-        <section className="landing-hero" aria-labelledby="landing-hero-title">
+        <section
+          className={`landing-hero${user && sessionRestored && !sessionLoading ? " landing-hero--authed" : ""}`}
+          aria-labelledby="landing-hero-title"
+        >
           <div className="landing-hero__headline">
             <img
               src={htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png"}
@@ -194,8 +200,12 @@ export function LandingPage() {
               </Title>
             </div>
           </div>
-          {user ? (
-            quickStartCard
+          {!sessionRestored || sessionLoading ? (
+            <div className="landing-hero__session-placeholder">
+              <Spin />
+            </div>
+          ) : user ? (
+            quickStartInHero
           ) : (
             <>
               <p className="landing-hero__lead">
@@ -214,7 +224,7 @@ export function LandingPage() {
           )}
         </section>
 
-        {!user ? <LandingGuestPaths /> : null}
+        {sessionRestored && !sessionLoading && !user ? <LandingGuestPaths /> : null}
         {teacher ? <HomeTeacherSummary /> : null}
         {schoolStudent ? (
           <HomeSchoolStudentBanner

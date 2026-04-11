@@ -706,6 +706,29 @@ html[data-theme="dark"] .landing-hero__eyebrow {
   gap: 12px;
 }
 
+.landing-hero__session-placeholder {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin-top: 8px;
+}
+
+.landing-hero__quick-start {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.landing-hero__quick-start-title.ant-typography {
+  margin: 0 0 14px !important;
+  font-weight: 600 !important;
+  color: var(--app-text) !important;
+}
+
+html[data-theme="dark"] .landing-hero__quick-start-title.ant-typography {
+  color: #f1f5f9 !important;
+}
+
 .landing-features {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -780,13 +803,6 @@ html[data-theme="dark"] .landing-feature-card__icon {
   box-shadow: var(--landing-card-shadow);
   margin-bottom: 28px;
   background: var(--app-surface);
-}
-
-.landing-hero .landing-quick-actions-card--in-hero.ant-card {
-  margin-top: 12px;
-  margin-bottom: 0;
-  width: 100%;
-  max-width: 100%;
 }
 
 .landing-quick-actions-card .ant-card-head-title {
