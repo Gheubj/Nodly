@@ -1,6 +1,6 @@
 import { Card, Spin, Typography } from "antd";
 import dayjs from "dayjs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/shared/api/client";
 import { useSessionStore } from "@/store/useSessionStore";
 
@@ -8,7 +8,7 @@ const { Text } = Typography;
 
 const DAY_COUNT = 4;
 
-type PreviewSlot = {
+export type SchedulePreviewSlot = {
   id: string;
   startsAt: string;
   endsAt?: string;
@@ -19,24 +19,32 @@ type PreviewSlot = {
   classroomId: string;
 };
 
-export function HomeSchedulePreview() {
+type Props = {
+  onSlotsLoaded?: (slots: SchedulePreviewSlot[]) => void;
+};
+
+export function HomeSchedulePreview({ onSlotsLoaded }: Props) {
   const { user } = useSessionStore();
   const showClassroomTitle = user?.role === "teacher";
   const [loading, setLoading] = useState(true);
-  const [slots, setSlots] = useState<PreviewSlot[]>([]);
+  const [slots, setSlots] = useState<SchedulePreviewSlot[]>([]);
+  const onSlotsLoadedRef = useRef(onSlotsLoaded);
+  onSlotsLoadedRef.current = onSlotsLoaded;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     void (async () => {
       try {
-        const data = await apiClient.get<{ slots: PreviewSlot[] }>("/api/me/schedule-preview");
+        const data = await apiClient.get<{ slots: SchedulePreviewSlot[] }>("/api/me/schedule-preview");
         if (!cancelled) {
           setSlots(data.slots);
+          onSlotsLoadedRef.current?.(data.slots);
         }
       } catch {
         if (!cancelled) {
           setSlots([]);
+          onSlotsLoadedRef.current?.([]);
         }
       } finally {
         if (!cancelled) {
@@ -56,7 +64,7 @@ export function HomeSchedulePreview() {
 
   const slotsByDay = useMemo(() => {
     const keys = new Set(columns.map((d) => d.format("YYYY-MM-DD")));
-    const map = new Map<string, PreviewSlot[]>();
+    const map = new Map<string, SchedulePreviewSlot[]>();
     for (const k of keys) {
       map.set(k, []);
     }
@@ -75,7 +83,7 @@ export function HomeSchedulePreview() {
 
   const todayKey = dayjs().format("YYYY-MM-DD");
 
-  const timeRange = (s: PreviewSlot) => {
+  const timeRange = (s: SchedulePreviewSlot) => {
     const end = s.endsAt
       ? dayjs(s.endsAt)
       : dayjs(s.startsAt).add(s.durationMinutes, "minute");
@@ -106,7 +114,14 @@ export function HomeSchedulePreview() {
                   ) : (
                     daySlots.map((s) => (
                       <div key={s.id} className="landing-home-schedule__slot">
-                        <Text strong style={{ fontSize: 13 }}>
+                        <Text
+                          strong
+                          style={{
+                            fontSize: 13,
+                            display: showClassroomTitle ? undefined : "block",
+                            lineHeight: 1.35
+                          }}
+                        >
                           {timeRange(s)}
                         </Text>
                         {showClassroomTitle ? (
@@ -114,7 +129,16 @@ export function HomeSchedulePreview() {
                             {s.classroomTitle}
                           </Text>
                         ) : null}
-                        <Text style={{ fontSize: 12 }}>{s.lessonTitle ?? "Занятие"}</Text>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            display: showClassroomTitle ? undefined : "block",
+                            marginTop: showClassroomTitle ? undefined : 4,
+                            lineHeight: 1.35
+                          }}
+                        >
+                          {s.lessonTitle ?? "Занятие"}
+                        </Text>
                         {showClassroomTitle && s.notes ? (
                           <Text type="secondary" ellipsis style={{ fontSize: 11, display: "block" }}>
                             {s.notes}

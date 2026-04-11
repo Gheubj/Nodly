@@ -1,34 +1,18 @@
 import { useEffect, useState } from "react";
 import { Button, Card, List, Space, Typography, message } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import type { NodlyProjectSnapshot } from "@/shared/types/project";
+import { useOpenLessonTemplate, type LessonTemplateListItem } from "@/hooks/useOpenLessonTemplate";
 
 const { Title, Paragraph } = Typography;
 
-interface LessonTemplateListItem {
-  id: string;
-  title: string;
-  description: string | null;
-  moduleKey: string;
-  sortOrder: number;
-}
-
-function randomProjectId() {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  return `p_${hex}`;
-}
-
 export function StudentLearningPage() {
   const { user } = useSessionStore();
-  const [messageApi, contextHolder] = message.useMessage();
-  const navigate = useNavigate();
+  const [messageApi, pageMessageHolder] = message.useMessage();
+  const { openTemplate, openingId, contextHolder } = useOpenLessonTemplate();
   const [templates, setTemplates] = useState<LessonTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -43,31 +27,8 @@ export function StudentLearningPage() {
         setLoading(false);
       }
     })();
-    // каталог уроков — один раз при монтировании
     // eslint-disable-next-line react-hooks/exhaustive-deps -- messageApi стабилен для UX
   }, []);
-
-  const openTemplate = async (t: LessonTemplateListItem) => {
-    if (!user) {
-      return;
-    }
-    setOpeningId(t.id);
-    try {
-      const { starterPayload } = await apiClient.get<{ starterPayload: NodlyProjectSnapshot }>(
-        `/api/lesson-templates/${t.id}/starter`
-      );
-      const projectId = randomProjectId();
-      await apiClient.put(`/api/projects/${projectId}`, {
-        title: t.title,
-        snapshot: starterPayload as unknown as Record<string, unknown>
-      });
-      navigate(`/studio?project=${encodeURIComponent(projectId)}`);
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось открыть урок");
-    } finally {
-      setOpeningId(null);
-    }
-  };
 
   if (!user) {
     return (
@@ -80,6 +41,7 @@ export function StudentLearningPage() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      {pageMessageHolder}
       {contextHolder}
       <div>
         <Title level={5} style={{ marginTop: 0 }}>

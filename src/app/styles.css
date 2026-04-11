@@ -793,6 +793,128 @@ html[data-theme="dark"] .landing-feature-card__icon {
   margin-bottom: 24px;
 }
 
+.landing-guest-paths {
+  margin-bottom: 32px;
+}
+
+.landing-guest-paths__title.ant-typography {
+  margin: 0 0 16px !important;
+  font-weight: 600 !important;
+}
+
+.landing-guest-paths__card.ant-card {
+  height: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--landing-hero-border);
+  box-shadow: var(--landing-card-shadow);
+  background: var(--app-surface);
+}
+
+.landing-home-teacher-summary.ant-card {
+  border-radius: 14px;
+  border: 1px solid var(--landing-hero-border);
+  box-shadow: var(--landing-card-shadow);
+  margin-bottom: 24px;
+  background: var(--app-surface);
+}
+
+.landing-home-direct.ant-card {
+  border-radius: 14px;
+  border: 1px solid var(--landing-hero-border);
+  box-shadow: var(--landing-card-shadow);
+  margin-bottom: 24px;
+  background: var(--app-surface);
+}
+
+.landing-home-school-banner.ant-alert {
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.landing-home-school-banner {
+  margin-bottom: 20px;
+}
+
+.landing-home-next-lesson {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--landing-hero-border);
+  background: var(--app-surface);
+  box-shadow: var(--landing-card-shadow);
+}
+
+html[data-theme="dark"] .landing-home-next-lesson {
+  background: rgba(30, 41, 59, 0.35);
+}
+
+.landing-footer {
+  margin-top: 8px;
+  padding: 40px 16px 28px;
+  border-top: 1px solid var(--landing-hero-border);
+  background: var(--app-surface);
+}
+
+.landing-footer__inner {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.landing-footer__cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px 24px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 768px) {
+  .landing-footer__cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.landing-footer__col-title {
+  display: block;
+  margin-bottom: 10px !important;
+  font-size: 13px !important;
+}
+
+.landing-footer__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.landing-footer__links a,
+.landing-footer__a {
+  color: var(--app-accent);
+  font-size: 14px;
+}
+
+.landing-footer__link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--app-accent);
+  font-size: 14px;
+  text-align: left;
+  font-family: inherit;
+}
+
+.landing-footer__link-btn:hover {
+  text-decoration: underline;
+}
+
+.landing-footer__contact {
+  font-size: 14px;
+}
+
+.landing-footer__bottom {
+  padding-top: 16px;
+  border-top: 1px solid var(--landing-hero-border);
+}
+
 .landing-cta-card.ant-card {
   border-radius: 14px;
   border: 1px solid var(--landing-hero-border);

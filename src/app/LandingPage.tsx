@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Layout, Space, Typography, message } from "antd";
 import {
   CloudOutlined,
@@ -15,11 +15,16 @@ import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useHomeSchoolAssignments } from "@/hooks/useHomeSchoolAssignments";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { HomeSchedulePreview } from "@/app/HomeSchedulePreview";
+import { HomeSchedulePreview, type SchedulePreviewSlot } from "@/app/HomeSchedulePreview";
 import { HomeUpcomingHomework } from "@/app/HomeUpcomingHomework";
+import { HomeTeacherSummary } from "@/app/HomeTeacherSummary";
+import { HomeSchoolStudentBanner } from "@/app/HomeSchoolStudentBanner";
+import { HomeDirectStudentPanel } from "@/app/HomeDirectStudentPanel";
+import { LandingGuestPaths } from "@/app/LandingGuestPaths";
+import { LandingFooter } from "@/app/LandingFooter";
 
 const { Content } = Layout;
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 function openAuthModal() {
   window.dispatchEvent(new Event("nodly-open-auth"));
@@ -31,9 +36,54 @@ export function LandingPage() {
   const htmlTheme = useHtmlDataTheme();
   const [messageApi, messageHolder] = message.useMessage();
   const schoolStudent = Boolean(user?.role === "student" && user.studentMode === "school");
+  const directStudent = Boolean(user?.role === "student" && user.studentMode === "direct");
+  const teacher = Boolean(user?.role === "teacher");
+  const enrollmentsCount = user?.enrollments?.length ?? 0;
+
   const { rows: homeHwRows, loading: homeHwLoading, reload: reloadHomeHw } =
     useHomeSchoolAssignments(schoolStudent);
   const [heroHwBusy, setHeroHwBusy] = useState(false);
+
+  const [scheduleSlots, setScheduleSlots] = useState<SchedulePreviewSlot[]>([]);
+  const [scheduleReady, setScheduleReady] = useState(false);
+  const [schoolSummaryLoading, setSchoolSummaryLoading] = useState(false);
+  const [assignmentAttentionCount, setAssignmentAttentionCount] = useState(0);
+
+  useEffect(() => {
+    if (!schoolStudent) {
+      setScheduleSlots([]);
+      setScheduleReady(false);
+      setAssignmentAttentionCount(0);
+      setSchoolSummaryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSchoolSummaryLoading(true);
+    void (async () => {
+      try {
+        const s = await apiClient.get<{ assignmentAttentionCount?: number }>("/api/me/summary");
+        if (!cancelled) {
+          setAssignmentAttentionCount(s.assignmentAttentionCount ?? 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setAssignmentAttentionCount(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setSchoolSummaryLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolStudent, user?.id]);
+
+  const onScheduleSlotsLoaded = useCallback((slots: SchedulePreviewSlot[]) => {
+    setScheduleSlots(slots);
+    setScheduleReady(true);
+  }, []);
 
   const heroHwAction = useMemo(() => {
     if (!schoolStudent) {
@@ -85,60 +135,6 @@ export function LandingPage() {
       setHeroHwBusy(false);
     }
   }, [heroHwAction, navigate, messageApi]);
-
-  const guestBlock = (
-    <Card className="landing-role-card" title="С чего начать">
-      <Paragraph style={{ marginBottom: 12 }}>
-        Войди через кнопку «Войти» в шапке
-      </Paragraph>
-      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Регистрация по email с кодом из письма или через Яндекс 
-      </Paragraph>
-    </Card>
-  );
-
-  const teacherBlock = (
-    <Card className="landing-role-card" title="Учителю">
-      <Paragraph>
-        В разделе <Link to="/studio">Разработка</Link> — та же среда проектов, что и у учеников В{" "}
-        <Link to="/teacher">кабинете учителя</Link> можно создавать школы и классы, выдавать код для входа
-        учеников
-      </Paragraph>
-      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Задания, журнал и готовые уроки — в развитии платформы
-      </Paragraph>
-    </Card>
-  );
-
-  const studentSchoolBlock = (
-    <Card className="landing-role-card" title="Ученику (школа)">
-      <Paragraph>
-        В <Link to="/class">Обучении</Link> — школа, учитель и задания В <Link to="/studio">Разработке</Link> — твои
-        проекты
-      </Paragraph>
-      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Если ещё не подключился к классу, введи код в личном кабинете
-      </Paragraph>
-    </Card>
-  );
-
-  const studentDirectBlock = (
-    <Card className="landing-role-card" title="Ученику (самостоятельно)">
-      <Paragraph>
-        В <Link to="/learning">Обучении</Link> — уроки и трек по программе В{" "}
-        <Link to="/studio">Разработке</Link> — свободные эксперименты с проектами
-      </Paragraph>
-    </Card>
-  );
-
-  let roleCard = guestBlock;
-  if (user?.role === "teacher") {
-    roleCard = teacherBlock;
-  } else if (user?.role === "student" && user.studentMode === "school") {
-    roleCard = studentSchoolBlock;
-  } else if (user?.role === "student" && user.studentMode === "direct") {
-    roleCard = studentDirectBlock;
-  }
 
   return (
     <Content className="app-content landing-page">
@@ -198,12 +194,18 @@ export function LandingPage() {
           </div>
         </section>
 
-        {user && (user.role === "teacher" || (user.role === "student" && user.studentMode === "school")) ? (
-          <HomeSchedulePreview />
-        ) : null}
+        {!user ? <LandingGuestPaths /> : null}
+        {teacher ? <HomeTeacherSummary /> : null}
         {schoolStudent ? (
-          <HomeUpcomingHomework rows={homeHwRows} loading={homeHwLoading} onRefresh={reloadHomeHw} />
+          <HomeSchoolStudentBanner
+            slots={scheduleSlots}
+            scheduleReady={scheduleReady}
+            enrollmentsCount={enrollmentsCount}
+            attentionCount={assignmentAttentionCount}
+            summaryLoading={schoolSummaryLoading}
+          />
         ) : null}
+        {directStudent ? <HomeDirectStudentPanel /> : null}
 
         {user ? (
           <Card className="landing-quick-actions-card" title="С чего начать сегодня">
@@ -241,6 +243,13 @@ export function LandingPage() {
           </Card>
         ) : null}
 
+        {user && (teacher || schoolStudent) ? (
+          <HomeSchedulePreview onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined} />
+        ) : null}
+        {schoolStudent ? (
+          <HomeUpcomingHomework rows={homeHwRows} loading={homeHwLoading} onRefresh={reloadHomeHw} />
+        ) : null}
+
         <div className="landing-features" id="features" role="list">
           <Card className="landing-feature-card" bordered={false} role="listitem">
             <div className="landing-feature-card__icon">
@@ -270,9 +279,8 @@ export function LandingPage() {
             </p>
           </Card>
         </div>
-
-        {roleCard}
       </div>
+      <LandingFooter />
     </Content>
   );
 }
