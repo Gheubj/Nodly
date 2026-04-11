@@ -458,6 +458,44 @@ html[data-theme="dark"] .app-content--workspace {
 }
 
 /* Страница «Разработка»: почти на всю высоту окна, ряд Blockly + сцена */
+/* Вкладки «Проект» / «Персонаж» в разработке */
+.studio-workspace-tabs.ant-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-workspace-tabs .ant-tabs-nav {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+}
+
+.studio-workspace-tabs .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.studio-workspace-tabs .ant-tabs-content {
+  height: 100%;
+}
+
+.studio-workspace-tabs .ant-tabs-tabpane {
+  height: 100%;
+  overflow: hidden;
+}
+
+.studio-workspace-tabs .ant-tabs-tabpane > .studio-page {
+  height: 100%;
+}
+
+.studio-sprite-tab {
+  height: 100%;
+  overflow: auto;
+  padding: 4px 0 12px;
+}
+
 .studio-page {
   display: flex;
   flex-direction: column;
@@ -667,6 +705,17 @@ html[data-theme="dark"] .studio-stage-panel__bubble {
 
 html[data-theme="dark"] .landing-hero {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.85) 50%, var(--app-surface) 100%);
+}
+
+/* Авторизованные: компактный герой — только слоган под логотипом */
+.landing-hero.landing-hero--authed {
+  padding: 18px 20px 18px 14px;
+  margin-bottom: 24px;
+}
+
+.landing-hero.landing-hero--authed .landing-hero__headline {
+  margin-bottom: 0;
+  gap: 10px;
 }
 
 .landing-hero__eyebrow {

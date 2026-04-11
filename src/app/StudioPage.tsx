@@ -13,6 +13,7 @@ import {
   Modal,
   Select,
   Space,
+  Tabs,
   Typography,
   message
 } from "antd";
@@ -20,6 +21,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { StudioStagePanel } from "@/app/StudioStagePanel";
+import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import { loadProjectSmart, listProjects, saveProjectSmart } from "@/features/project/projectRepository";
@@ -379,12 +381,10 @@ export function StudioPage() {
     teacherReview &&
     (GRADEABLE_STATUSES as readonly string[]).includes(teacherReview.status);
 
-  return (
-    <Content className="app-content app-content--workspace">
-      {contextHolder}
-      <div className="studio-page">
-        <div className="studio-page__chrome">
-          {!readOnly && submissionCtx ? (
+  const projectWorkspace = (
+    <div className="studio-page">
+      <div className="studio-page__chrome">
+        {!readOnly && submissionCtx ? (
           <Alert
             type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
             showIcon
@@ -416,62 +416,79 @@ export function StudioPage() {
               </Space>
             }
           />
-          ) : null}
-        </div>
-        <div className="studio-page__toolbar">
-          <span className="studio-page__toolbar-title" title={currentProjectTitle}>
-            {currentProjectTitle}
-          </span>
-          <Button
-            type="primary"
-            size="small"
-            disabled={readOnly}
-            onClick={() => {
-              setSaveTitle(currentProjectTitle);
-              setSaveOpen(true);
-            }}
-          >
-            Сохранить
-          </Button>
-          <Button size="small" onClick={() => setLibraryOpen(true)}>
-            Проекты
-          </Button>
-          <Button size="small" onClick={handleNewProject}>
-            Новый
-          </Button>
-          <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
-            Данные
-          </Button>
-          {user && activeProject && !readOnly ? (
-            <Button
-              size="small"
-              onClick={() =>
-                void (async () => {
-                  try {
-                    const { token } = await apiClient.post<{ token: string }>(
-                      `/api/projects/${activeProject.id}/share-link`,
-                      {}
-                    );
-                    const url = `${window.location.origin}/share/${token}`;
-                    await navigator.clipboard.writeText(url);
-                    messageApi.success("Ссылка для копии проекта скопирована");
-                  } catch {
-                    messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
-                  }
-                })()
-              }
-            >
-              Поделиться
-            </Button>
-          ) : null}
-        </div>
-        <div className="studio-page__main">
-          <div className="studio-page__blockly">
-            <BlocklyWorkspace />
-          </div>
-          <StudioStagePanel />
-        </div>
+        ) : null}
       </div>
+      <div className="studio-page__toolbar">
+        <span className="studio-page__toolbar-title" title={currentProjectTitle}>
+          {currentProjectTitle}
+        </span>
+        <Button
+          type="primary"
+          size="small"
+          disabled={readOnly}
+          onClick={() => {
+            setSaveTitle(currentProjectTitle);
+            setSaveOpen(true);
+          }}
+        >
+          Сохранить
+        </Button>
+        <Button size="small" onClick={() => setLibraryOpen(true)}>
+          Проекты
+        </Button>
+        <Button size="small" onClick={handleNewProject}>
+          Новый
+        </Button>
+        <Button size="small" icon={<DatabaseOutlined />} onClick={() => setDataLibraryOpen(true)}>
+          Данные
+        </Button>
+        {user && activeProject && !readOnly ? (
+          <Button
+            size="small"
+            onClick={() =>
+              void (async () => {
+                try {
+                  const { token } = await apiClient.post<{ token: string }>(
+                    `/api/projects/${activeProject.id}/share-link`,
+                    {}
+                  );
+                  const url = `${window.location.origin}/share/${token}`;
+                  await navigator.clipboard.writeText(url);
+                  messageApi.success("Ссылка для копии проекта скопирована");
+                } catch {
+                  messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+                }
+              })()
+            }
+          >
+            Поделиться
+          </Button>
+        ) : null}
+      </div>
+      <div className="studio-page__main">
+        <div className="studio-page__blockly">
+          <BlocklyWorkspace />
+        </div>
+        <StudioStagePanel />
+      </div>
+    </div>
+  );
+
+  return (
+    <Content className="app-content app-content--workspace">
+      {contextHolder}
+      {user ? (
+        <Tabs
+          className="studio-workspace-tabs"
+          defaultActiveKey="project"
+          items={[
+            { key: "project", label: "Проект", children: projectWorkspace },
+            { key: "sprite", label: "Персонаж", children: <StudioSpriteSettingsTab /> }
+          ]}
+        />
+      ) : (
+        projectWorkspace
+      )}
       <Drawer
         title="Данные проекта"
         placement="right"

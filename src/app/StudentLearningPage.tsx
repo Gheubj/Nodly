@@ -18,8 +18,8 @@ export function StudentLearningPage() {
     void (async () => {
       setLoading(true);
       try {
-        const list = await apiClient.get<LessonTemplateListItem[]>("/api/lesson-templates");
-        setTemplates(list);
+        const raw = await apiClient.get<unknown>("/api/lesson-templates");
+        setTemplates(Array.isArray(raw) ? (raw as LessonTemplateListItem[]) : []);
       } catch {
         setTemplates([]);
         messageApi.error("Не удалось загрузить каталог уроков");

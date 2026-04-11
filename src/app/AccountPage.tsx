@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Checkbox, Input, Select, Space, Typography, message } from "antd";
+import { Button, Card, Checkbox, Input, Space, Typography, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
@@ -14,27 +14,9 @@ export function AccountPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteAck, setDeleteAck] = useState(false);
-  const [spriteCatalog, setSpriteCatalog] = useState<{ id: string; title: string }[]>([]);
-  const [selectedSpriteId, setSelectedSpriteId] = useState<string>("");
   const [nickname, setNickname] = useState("");
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-    void (async () => {
-      try {
-        const result = await apiClient.get<{ packs: { id: string; title: string }[] }>("/api/sprites");
-        setSpriteCatalog(result.packs);
-      } catch {
-        setSpriteCatalog([]);
-      }
-    })();
-  }, [user]);
-
-  useEffect(() => {
-    const packId = user?.spriteSelection?.spritePack?.id;
-    setSelectedSpriteId(packId ?? "");
     setNickname(user?.nickname ?? "");
   }, [user]);
 
@@ -56,16 +38,6 @@ export function AccountPage() {
       await apiClient.post("/api/classrooms/join", { code: joinCode });
       await refreshMe();
       messageApi.success("Класс подключен");
-    } catch (e) {
-      messageApi.error(toUserErrorMessage(e));
-    }
-  };
-
-  const handleSpriteSave = async () => {
-    try {
-      await apiClient.post("/api/me/sprite", { spritePackId: selectedSpriteId || undefined });
-      await refreshMe();
-      messageApi.success("Сохранено");
     } catch (e) {
       messageApi.error(toUserErrorMessage(e));
     }
@@ -112,6 +84,10 @@ export function AccountPage() {
         >
           Настройки (тема и оформление)
         </Button>
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          Спрайт персонажа настраивается в разделе{" "}
+          <Link to="/studio">Разработка</Link> → вкладка «Персонаж».
+        </Text>
         <Title level={4} style={{ margin: 0 }}>
           Личный кабинет
         </Title>
@@ -158,24 +134,6 @@ export function AccountPage() {
             </Space>
           </Card>
         ) : null}
-        <Card title="Персонаж и спрайт">
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Select
-              style={{ width: "100%", maxWidth: 360 }}
-              placeholder="Набор спрайта"
-              value={selectedSpriteId || undefined}
-              onChange={(v) => setSelectedSpriteId(v)}
-              options={spriteCatalog.map((item) => ({ value: item.id, label: item.title }))}
-              allowClear
-            />
-            <Button type="primary" onClick={() => void handleSpriteSave()}>
-              Сохранить
-            </Button>
-            {user.spriteSelection?.spritePack?.title ? (
-              <Text type="secondary">Сейчас: {user.spriteSelection.spritePack.title}</Text>
-            ) : null}
-          </Space>
-        </Card>
         <Card title="Удаление аккаунта" styles={{ header: { borderBottomColor: "rgba(255, 77, 79, 0.35)" } }}>
           <Space direction="vertical" style={{ width: "100%", maxWidth: 480 }} size="middle">
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>

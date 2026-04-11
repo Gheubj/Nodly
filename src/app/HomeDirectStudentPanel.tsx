@@ -51,19 +51,41 @@ export function pickDirectLessonFocus(
   return { kind: "all_done" };
 }
 
+function normalizeLessonTemplatesList(raw: unknown): LessonTemplateListItem[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter(
+    (x): x is LessonTemplateListItem =>
+      typeof x === "object" &&
+      x !== null &&
+      typeof (x as LessonTemplateListItem).id === "string" &&
+      typeof (x as LessonTemplateListItem).title === "string"
+  );
+}
+
 async function fetchTemplatesAndProjects(): Promise<{
   templates: LessonTemplateListItem[];
   projects: ProjectRow[];
+  templatesLoadFailed: boolean;
 }> {
+  let templates: LessonTemplateListItem[] = [];
+  let templatesLoadFailed = false;
   try {
-    const [t, p] = await Promise.all([
-      apiClient.get<LessonTemplateListItem[]>("/api/lesson-templates"),
-      apiClient.get<ProjectRow[]>("/api/projects")
-    ]);
-    return { templates: t, projects: p };
+    const raw = await apiClient.get<unknown>("/api/lesson-templates");
+    templates = normalizeLessonTemplatesList(raw);
   } catch {
-    return { templates: [], projects: [] };
+    templates = [];
+    templatesLoadFailed = true;
   }
+  let projects: ProjectRow[] = [];
+  try {
+    const p = await apiClient.get<ProjectRow[]>("/api/projects");
+    projects = Array.isArray(p) ? p : [];
+  } catch {
+    projects = [];
+  }
+  return { templates, projects, templatesLoadFailed };
 }
 
 export function HomeDirectStudentPanel() {
@@ -74,12 +96,14 @@ export function HomeDirectStudentPanel() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingDone, setMarkingDone] = useState(false);
+  const [templatesLoadFailed, setTemplatesLoadFailed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { templates: t, projects: p } = await fetchTemplatesAndProjects();
+    const { templates: t, projects: p, templatesLoadFailed: failed } = await fetchTemplatesAndProjects();
     setTemplates(t);
     setProjects(p);
+    setTemplatesLoadFailed(failed);
     setLoading(false);
   }, []);
 
@@ -121,7 +145,12 @@ export function HomeDirectStudentPanel() {
       {contextHolder}
       <Spin spinning={loading}>
         <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-          {focus.kind === "no_catalog" ? (
+          {templatesLoadFailed ? (
+            <Text type="danger" style={{ fontSize: 13 }}>
+              Не удалось загрузить каталог уроков. Проверьте сеть и обновите страницу.
+            </Text>
+          ) : null}
+          {focus.kind === "no_catalog" && !templatesLoadFailed ? (
             <Text type="secondary" style={{ fontSize: 13 }}>
               В каталоге пока нет уроков.
             </Text>
