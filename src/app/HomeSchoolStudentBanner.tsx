@@ -1,4 +1,4 @@
-import { Alert, Typography } from "antd";
+import { Alert, Skeleton, Typography } from "antd";
 import dayjs from "dayjs";
 import "dayjs/locale/ru";
 import { Link } from "react-router-dom";
@@ -27,6 +27,8 @@ type Props = {
   slots: SchedulePreviewSlot[];
   /** Расписание уже загрузилось (хотя бы один ответ API) */
   scheduleReady: boolean;
+  /** Есть классы, но ответ расписания ещё не пришёл */
+  scheduleLoading: boolean;
   enrollmentsCount: number;
   attentionCount: number;
   summaryLoading: boolean;
@@ -35,6 +37,7 @@ type Props = {
 export function HomeSchoolStudentBanner({
   slots,
   scheduleReady,
+  scheduleLoading,
   enrollmentsCount,
   attentionCount,
   summaryLoading
@@ -74,7 +77,14 @@ export function HomeSchoolStudentBanner({
           }
         />
       ) : null}
-      {next ? (
+      {scheduleLoading ? (
+        <div style={{ paddingTop: 4 }}>
+          <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+            Загружаем расписание…
+          </Text>
+          <Skeleton active title={false} paragraph={{ rows: 2 }} />
+        </div>
+      ) : next ? (
         <div className="landing-home-next-lesson">
           <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
             Ближайшее занятие
@@ -86,7 +96,7 @@ export function HomeSchoolStudentBanner({
         </div>
       ) : scheduleReady && slots.length === 0 ? (
         <Text type="secondary" style={{ fontSize: 13 }}>
-          В ближайшие дни занятий в расписании нет. Задания смотрите в{" "}
+          В ближайшие дни занятий в расписании нет. Задания и работы на уроке — в{" "}
           <Link to="/class">Обучении</Link>.
         </Text>
       ) : null}

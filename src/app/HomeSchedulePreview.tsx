@@ -31,7 +31,24 @@ export function HomeSchedulePreview({ onSlotsLoaded }: Props) {
   const onSlotsLoadedRef = useRef(onSlotsLoaded);
   onSlotsLoadedRef.current = onSlotsLoaded;
 
+  const scheduleRefetchKey = useMemo(() => {
+    if (!user) {
+      return "";
+    }
+    if (user.role === "teacher") {
+      return `t:${user.id}`;
+    }
+    if (user.role === "student" && user.studentMode === "school") {
+      const ids = (user.enrollments ?? []).map((e) => e.classroomId).sort().join(",");
+      return `s:${user.id}:${ids}`;
+    }
+    return `u:${user.id}`;
+  }, [user]);
+
   useEffect(() => {
+    if (!scheduleRefetchKey) {
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     void (async () => {
@@ -55,7 +72,7 @@ export function HomeSchedulePreview({ onSlotsLoaded }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scheduleRefetchKey]);
 
   const columns = useMemo(() => {
     const start = dayjs().startOf("day");

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Layout, Spin, Typography } from "antd";
 import { CloudOutlined, CodeOutlined, DatabaseOutlined, RocketOutlined } from "@ant-design/icons";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -9,6 +9,11 @@ import { HomeSchedulePreview, type SchedulePreviewSlot } from "@/app/HomeSchedul
 import { HomeUpcomingHomework } from "@/app/HomeUpcomingHomework";
 import { HomeTeacherSummary } from "@/app/HomeTeacherSummary";
 import { HomeSchoolStudentBanner } from "@/app/HomeSchoolStudentBanner";
+import {
+  HomeSchoolStudentWelcome,
+  type SchoolStudentSummary
+} from "@/app/HomeSchoolStudentWelcome";
+import { HomeSchoolStudentNextAction } from "@/app/HomeSchoolStudentNextAction";
 import { HomeDirectStudentPanel } from "@/app/HomeDirectStudentPanel";
 import { LandingGuestPaths } from "@/app/LandingGuestPaths";
 import { LandingFooter } from "@/app/LandingFooter";
@@ -27,6 +32,8 @@ export function LandingPage() {
   const directStudent = Boolean(user?.role === "student" && user.studentMode === "direct");
   const teacher = Boolean(user?.role === "teacher");
   const enrollmentsCount = user?.enrollments?.length ?? 0;
+  const enrollmentClassroomIds =
+    user?.enrollments?.map((e) => e.classroomId).sort().join(",") ?? "";
 
   const { rows: homeHwRows, loading: homeHwLoading, reload: reloadHomeHw } =
     useHomeSchoolAssignments(schoolStudent);
@@ -34,13 +41,14 @@ export function LandingPage() {
   const [scheduleSlots, setScheduleSlots] = useState<SchedulePreviewSlot[]>([]);
   const [scheduleReady, setScheduleReady] = useState(false);
   const [schoolSummaryLoading, setSchoolSummaryLoading] = useState(false);
-  const [assignmentAttentionCount, setAssignmentAttentionCount] = useState(0);
+  const [schoolSummary, setSchoolSummary] = useState<SchoolStudentSummary>({});
+  const prevEnrollmentClassroomIds = useRef<string | null>(null);
 
   useEffect(() => {
     if (!schoolStudent) {
       setScheduleSlots([]);
       setScheduleReady(false);
-      setAssignmentAttentionCount(0);
+      setSchoolSummary({});
       setSchoolSummaryLoading(false);
       return;
     }
@@ -48,13 +56,13 @@ export function LandingPage() {
     setSchoolSummaryLoading(true);
     void (async () => {
       try {
-        const s = await apiClient.get<{ assignmentAttentionCount?: number }>("/api/me/summary");
+        const s = await apiClient.get<SchoolStudentSummary>("/api/me/summary");
         if (!cancelled) {
-          setAssignmentAttentionCount(s.assignmentAttentionCount ?? 0);
+          setSchoolSummary(s);
         }
       } catch {
         if (!cancelled) {
-          setAssignmentAttentionCount(0);
+          setSchoolSummary({});
         }
       } finally {
         if (!cancelled) {
@@ -71,6 +79,21 @@ export function LandingPage() {
     setScheduleSlots(slots);
     setScheduleReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!schoolStudent) {
+      prevEnrollmentClassroomIds.current = null;
+      return;
+    }
+    if (prevEnrollmentClassroomIds.current === null) {
+      prevEnrollmentClassroomIds.current = enrollmentClassroomIds;
+      return;
+    }
+    if (prevEnrollmentClassroomIds.current !== enrollmentClassroomIds) {
+      prevEnrollmentClassroomIds.current = enrollmentClassroomIds;
+      setScheduleReady(false);
+    }
+  }, [schoolStudent, enrollmentClassroomIds]);
 
   const showGuestMarketing = useMemo(
     () => sessionRestored && !sessionLoading && !user,
@@ -123,14 +146,26 @@ export function LandingPage() {
 
         {showGuestMarketing ? <LandingGuestPaths /> : null}
         {teacher ? <HomeTeacherSummary /> : null}
+        {schoolStudent && user ? (
+          <HomeSchoolStudentWelcome
+            user={user}
+            enrollments={user.enrollments}
+            summary={schoolSummary}
+            summaryLoading={schoolSummaryLoading}
+          />
+        ) : null}
         {schoolStudent ? (
           <HomeSchoolStudentBanner
             slots={scheduleSlots}
             scheduleReady={scheduleReady}
+            scheduleLoading={enrollmentsCount > 0 && !scheduleReady}
             enrollmentsCount={enrollmentsCount}
-            attentionCount={assignmentAttentionCount}
+            attentionCount={schoolSummary.assignmentAttentionCount ?? 0}
             summaryLoading={schoolSummaryLoading}
           />
+        ) : null}
+        {schoolStudent ? (
+          <HomeSchoolStudentNextAction rows={homeHwRows} loading={homeHwLoading} onRefresh={reloadHomeHw} />
         ) : null}
         {directStudent ? <HomeDirectStudentPanel /> : null}
 

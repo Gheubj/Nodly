@@ -190,16 +190,67 @@ export function registerLmsRoutes(app: Express) {
       return;
     }
     if (user.role === "student" && user.studentMode === "school") {
-      const attention = await prisma.submission.count({
-        where: {
-          studentId: userId,
-          OR: [
-            { status: "graded", gradedSeenAt: null },
-            { status: "needs_revision" }
-          ]
-        }
+      const enrollments = await prisma.enrollment.findMany({
+        where: { studentId: userId },
+        select: { classroomId: true }
       });
-      res.json({ assignmentAttentionCount: attention });
+      const classroomIds = enrollments.map((e) => e.classroomId);
+      const [attention, homeworkAssignments] = await Promise.all([
+        prisma.submission.count({
+          where: {
+            studentId: userId,
+            OR: [
+              { status: "graded", gradedSeenAt: null },
+              { status: "needs_revision" }
+            ]
+          }
+        }),
+        classroomIds.length === 0
+          ? Promise.resolve([])
+          : prisma.assignment.findMany({
+              where: {
+                classroomId: { in: classroomIds },
+                published: true,
+                kind: "homework"
+              },
+              select: {
+                dueAt: true,
+                submissions: {
+                  where: { studentId: userId },
+                  take: 1,
+                  select: { status: true }
+                }
+              }
+            })
+      ]);
+      let homeworkTodoCount = 0;
+      let homeworkOverdueCount = 0;
+      let submittedPendingReviewCount = 0;
+      const now = Date.now();
+      for (const a of homeworkAssignments) {
+        const st = a.submissions[0]?.status ?? "not_started";
+        if (st === "submitted") {
+          submittedPendingReviewCount++;
+          continue;
+        }
+        if (st === "graded") {
+          continue;
+        }
+        homeworkTodoCount++;
+        if (a.dueAt) {
+          const end = new Date(a.dueAt);
+          end.setHours(23, 59, 59, 999);
+          if (end.getTime() < now) {
+            homeworkOverdueCount++;
+          }
+        }
+      }
+      res.json({
+        assignmentAttentionCount: attention,
+        homeworkTodoCount,
+        homeworkOverdueCount,
+        submittedPendingReviewCount
+      });
       return;
     }
     res.json({});

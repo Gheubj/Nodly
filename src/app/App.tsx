@@ -75,6 +75,9 @@ export function App() {
     pendingReviewCount?: number;
     assignmentAttentionCount?: number;
     newEnrollmentCount?: number;
+    homeworkTodoCount?: number;
+    homeworkOverdueCount?: number;
+    submittedPendingReviewCount?: number;
   }>({});
   const prevPathRef = useRef<string | null>(null);
 
@@ -92,6 +95,9 @@ export function App() {
         pendingReviewCount?: number;
         assignmentAttentionCount?: number;
         newEnrollmentCount?: number;
+        homeworkTodoCount?: number;
+        homeworkOverdueCount?: number;
+        submittedPendingReviewCount?: number;
       }>("/api/me/summary");
       setMeSummary(data);
     } catch {
