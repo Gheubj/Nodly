@@ -26,7 +26,12 @@ import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
-import { LEGAL_PRIVACY_POLICY_PDF, LEGAL_USER_AGREEMENT_PDF } from "@/shared/legal";
+import {
+  LEGAL_PRIVACY_POLICY_FILE,
+  LEGAL_USER_AGREEMENT_FILE,
+  downloadLegalPdf,
+  legalPdfFetchUrl
+} from "@/shared/legal";
 
 const { Header } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -552,17 +557,25 @@ export function App() {
                         <Text style={{ fontSize: 13, lineHeight: 1.5 }}>
                           Согласен с{" "}
                           <a
-                            href={LEGAL_PRIVACY_POLICY_PDF}
+                            href={legalPdfFetchUrl(LEGAL_PRIVACY_POLICY_FILE)}
                             className="app-legal-doc-link"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              void downloadLegalPdf(LEGAL_PRIVACY_POLICY_FILE);
+                            }}
                           >
                             политикой конфиденциальности
                           </a>{" "}
                           и{" "}
                           <a
-                            href={LEGAL_USER_AGREEMENT_PDF}
+                            href={legalPdfFetchUrl(LEGAL_USER_AGREEMENT_FILE)}
                             className="app-legal-doc-link"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              void downloadLegalPdf(LEGAL_USER_AGREEMENT_FILE);
+                            }}
                           >
                             пользовательским соглашением
                           </a>
@@ -629,17 +642,25 @@ export function App() {
                       <Text style={{ fontSize: 13, lineHeight: 1.5 }}>
                         Согласен с{" "}
                         <a
-                          href={LEGAL_PRIVACY_POLICY_PDF}
+                          href={legalPdfFetchUrl(LEGAL_PRIVACY_POLICY_FILE)}
                           className="app-legal-doc-link"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void downloadLegalPdf(LEGAL_PRIVACY_POLICY_FILE);
+                          }}
                         >
                           политикой конфиденциальности
                         </a>{" "}
                         и{" "}
                         <a
-                          href={LEGAL_USER_AGREEMENT_PDF}
+                          href={legalPdfFetchUrl(LEGAL_USER_AGREEMENT_FILE)}
                           className="app-legal-doc-link"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void downloadLegalPdf(LEGAL_USER_AGREEMENT_FILE);
+                          }}
                         >
                           пользовательским соглашением
                         </a>

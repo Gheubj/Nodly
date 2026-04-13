@@ -83,8 +83,10 @@ app.get("/api/legal/:filename", (req: Request, res: Response) => {
   }
   const downloadName =
     filename === "privacy-policy.pdf" ? "Nodly-privacy-policy.pdf" : "Nodly-user-agreement.pdf";
-  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Type", "application/octet-stream");
   res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "private, no-cache");
   createReadStream(filePath).pipe(res);
 });
 

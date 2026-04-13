@@ -2,9 +2,11 @@ import { Typography } from "antd";
 import { Link } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import {
-  LEGAL_PRIVACY_POLICY_PDF,
-  LEGAL_USER_AGREEMENT_PDF,
-  NODLY_CONTACT_EMAIL
+  LEGAL_PRIVACY_POLICY_FILE,
+  LEGAL_USER_AGREEMENT_FILE,
+  NODLY_CONTACT_EMAIL,
+  downloadLegalPdf,
+  legalPdfFetchUrl
 } from "@/shared/legal";
 
 const { Text } = Typography;
@@ -62,10 +64,24 @@ export function LandingFooter() {
               Документы
             </Text>
             <nav className="landing-footer__links">
-              <a href={LEGAL_PRIVACY_POLICY_PDF} className="landing-footer__a">
+              <a
+                href={legalPdfFetchUrl(LEGAL_PRIVACY_POLICY_FILE)}
+                className="landing-footer__a"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void downloadLegalPdf(LEGAL_PRIVACY_POLICY_FILE);
+                }}
+              >
                 Политика конфиденциальности (PDF)
               </a>
-              <a href={LEGAL_USER_AGREEMENT_PDF} className="landing-footer__a">
+              <a
+                href={legalPdfFetchUrl(LEGAL_USER_AGREEMENT_FILE)}
+                className="landing-footer__a"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void downloadLegalPdf(LEGAL_USER_AGREEMENT_FILE);
+                }}
+              >
                 Пользовательское соглашение (PDF)
               </a>
             </nav>
@@ -87,11 +103,25 @@ export function LandingFooter() {
         <div className="landing-footer__bottom">
           <Text type="secondary" style={{ fontSize: 12 }}>
             © {year} Nodly · ИИ и машинное обучение в браузере ·{" "}
-            <a href={LEGAL_PRIVACY_POLICY_PDF} className="landing-footer__a landing-footer__bottom-link">
+            <a
+              href={legalPdfFetchUrl(LEGAL_PRIVACY_POLICY_FILE)}
+              className="landing-footer__a landing-footer__bottom-link"
+              onClick={(e) => {
+                e.preventDefault();
+                void downloadLegalPdf(LEGAL_PRIVACY_POLICY_FILE);
+              }}
+            >
               Конфиденциальность
             </a>
             {" · "}
-            <a href={LEGAL_USER_AGREEMENT_PDF} className="landing-footer__a landing-footer__bottom-link">
+            <a
+              href={legalPdfFetchUrl(LEGAL_USER_AGREEMENT_FILE)}
+              className="landing-footer__a landing-footer__bottom-link"
+              onClick={(e) => {
+                e.preventDefault();
+                void downloadLegalPdf(LEGAL_USER_AGREEMENT_FILE);
+              }}
+            >
               Соглашение
             </a>
           </Text>
