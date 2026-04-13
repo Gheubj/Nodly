@@ -13,7 +13,6 @@ import {
   HomeSchoolStudentWelcome,
   type SchoolStudentSummary
 } from "@/app/HomeSchoolStudentWelcome";
-import { HomeSchoolStudentNextAction } from "@/app/HomeSchoolStudentNextAction";
 import { HomeDirectStudentPanel } from "@/app/HomeDirectStudentPanel";
 import { LandingGuestPaths } from "@/app/LandingGuestPaths";
 import { LandingFooter } from "@/app/LandingFooter";
@@ -163,9 +162,6 @@ export function LandingPage() {
             attentionCount={schoolSummary.assignmentAttentionCount ?? 0}
             summaryLoading={schoolSummaryLoading}
           />
-        ) : null}
-        {schoolStudent ? (
-          <HomeSchoolStudentNextAction rows={homeHwRows} loading={homeHwLoading} onRefresh={reloadHomeHw} />
         ) : null}
         {directStudent ? <HomeDirectStudentPanel /> : null}
 

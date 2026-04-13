@@ -77,17 +77,6 @@ export function AccountPage() {
     <div className="app-content account-page">
       {contextHolder}
       <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 560 }}>
-        <Button
-          type="link"
-          onClick={() => window.dispatchEvent(new Event("nodly-open-settings"))}
-          style={{ padding: 0, height: "auto" }}
-        >
-          Настройки (тема и оформление)
-        </Button>
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          Спрайт персонажа настраивается в разделе{" "}
-          <Link to="/studio">Разработка</Link> → вкладка «Персонаж».
-        </Text>
         <Title level={4} style={{ margin: 0 }}>
           Личный кабинет
         </Title>

@@ -27,6 +27,17 @@ function toSlotRow(r: HomeSchoolAssignmentRow): SlotStudentAssignmentRow {
   };
 }
 
+function isOverdueHomeworkOrProject(r: HomeSchoolAssignmentRow): boolean {
+  if (r.kind !== "homework" && r.kind !== "project") {
+    return false;
+  }
+  const st = r.submission?.status ?? "not_started";
+  if (!r.dueAt || st === "submitted" || st === "graded") {
+    return false;
+  }
+  return dayjs(r.dueAt).endOf("day").isBefore(dayjs());
+}
+
 function sortRows(list: HomeSchoolAssignmentRow[]) {
   list.sort((a, b) => {
     const da = a.dueAt ? dayjs(a.dueAt).valueOf() : Number.POSITIVE_INFINITY;
@@ -63,9 +74,10 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
   const navigate = useNavigate();
 
   const byKind = useMemo(() => {
-    const homework = sortRows(rows.filter((r) => r.kind === "homework"));
-    const classwork = sortRows(rows.filter((r) => r.kind === "classwork"));
-    const project = sortRows(rows.filter((r) => r.kind === "project"));
+    const visible = rows.filter((r) => !isOverdueHomeworkOrProject(r));
+    const homework = sortRows(visible.filter((r) => r.kind === "homework"));
+    const classwork = sortRows(visible.filter((r) => r.kind === "classwork"));
+    const project = sortRows(visible.filter((r) => r.kind === "project"));
     return { homework, classwork, project };
   }, [rows]);
 

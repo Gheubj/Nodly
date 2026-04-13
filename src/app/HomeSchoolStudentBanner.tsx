@@ -94,11 +94,6 @@ export function HomeSchoolStudentBanner({
           </Text>
           <Text style={{ fontSize: 13 }}>{next.lessonTitle ?? "Занятие"}</Text>
         </div>
-      ) : scheduleReady && slots.length === 0 ? (
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          В ближайшие дни занятий в расписании нет. Задания и работы на уроке — в{" "}
-          <Link to="/class">Обучении</Link>.
-        </Text>
       ) : null}
     </div>
   );
