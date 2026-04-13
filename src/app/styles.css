@@ -958,6 +958,12 @@ html[data-theme="dark"] .landing-home-next-lesson {
 }
 
 .landing-footer__links a,
+.landing-footer__a--inline {
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+}
+
 .landing-footer__a {
   color: var(--app-accent);
   font-size: 14px;

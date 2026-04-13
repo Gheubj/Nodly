@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactEl
 import {
   Badge,
   Button,
+  Checkbox,
   Drawer,
   Input,
   Layout,
@@ -25,9 +26,10 @@ import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient, setAccessToken, toUserErrorMessage } from "@/shared/api/client";
+import { LEGAL_PRIVACY_POLICY_PDF, LEGAL_USER_AGREEMENT_PDF } from "@/shared/legal";
 
 const { Header } = Layout;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 function OpenSettingsDrawerAndHome() {
   const navigate = useNavigate();
@@ -65,6 +67,7 @@ export function App() {
   const [studentMode, setStudentMode] = useState<"school" | "direct">("direct");
   const [nickname, setNickname] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [legalConsent, setLegalConsent] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [authLoginTab, setAuthLoginTab] = useState<"email" | "yandex">("email");
@@ -193,6 +196,10 @@ export function App() {
 
   const handleAuth = async () => {
     try {
+      if (isRegister && !legalConsent) {
+        messageApi.error("Нужно согласиться с политикой конфиденциальности и пользовательским соглашением");
+        return;
+      }
       if (isRegister) {
         await register({
           email,
@@ -233,6 +240,10 @@ export function App() {
     `app-header-nav-link${isActive ? " app-header-nav-link--active" : ""}`;
 
   const handleYandexContinue = () => {
+    if (isRegister && !legalConsent) {
+      messageApi.error("Нужно согласиться с политикой конфиденциальности и пользовательским соглашением");
+      return;
+    }
     const api = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
     const params = new URLSearchParams({
       role: yandexRole,
@@ -436,6 +447,7 @@ export function App() {
           setAuthOpen(false);
           setVerificationCode("");
           setAuthLoginTab("email");
+          setLegalConsent(false);
         }}
         footer={
           authLoginTab === "email"
@@ -446,11 +458,17 @@ export function App() {
                     setAuthOpen(false);
                     setVerificationCode("");
                     setAuthLoginTab("email");
+                    setLegalConsent(false);
                   }}
                 >
                   Отмена
                 </Button>,
-                <Button key="submit" type="primary" onClick={() => void handleAuth()}>
+                <Button
+                  key="submit"
+                  type="primary"
+                  disabled={isRegister && !legalConsent}
+                  onClick={() => void handleAuth()}
+                >
                   {isRegister ? "Создать аккаунт" : "Войти"}
                 </Button>
               ]
@@ -460,11 +478,17 @@ export function App() {
                   onClick={() => {
                     setAuthOpen(false);
                     setAuthLoginTab("email");
+                    setLegalConsent(false);
                   }}
                 >
                   Отмена
                 </Button>,
-                <Button key="yandex" type="primary" onClick={() => handleYandexContinue()}>
+                <Button
+                  key="yandex"
+                  type="primary"
+                  disabled={isRegister && !legalConsent}
+                  onClick={() => handleYandexContinue()}
+                >
                   Продолжить в Яндексе
                 </Button>
               ]
@@ -523,6 +547,30 @@ export function App() {
                         ]}
                         disabled={role !== "student"}
                       />
+                      <Space align="start" style={{ width: "100%" }}>
+                        <Checkbox checked={legalConsent} onChange={(e) => setLegalConsent(e.target.checked)} />
+                        <Text style={{ fontSize: 13, lineHeight: 1.5 }}>
+                          Согласен с{" "}
+                          <a
+                            href={LEGAL_PRIVACY_POLICY_PDF}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            политикой конфиденциальности
+                          </a>{" "}
+                          и{" "}
+                          <a
+                            href={LEGAL_USER_AGREEMENT_PDF}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            пользовательским соглашением
+                          </a>
+                          .
+                        </Text>
+                      </Space>
                     </>
                   ) : (
                     <Button
@@ -541,6 +589,7 @@ export function App() {
                     onClick={() => {
                       setIsRegister((v) => !v);
                       setVerificationCode("");
+                      setLegalConsent(false);
                     }}
                   >
                     {isRegister ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
@@ -576,6 +625,32 @@ export function App() {
                     ]}
                     disabled={yandexRole !== "student"}
                   />
+                  {isRegister ? (
+                    <Space align="start" style={{ width: "100%" }}>
+                      <Checkbox checked={legalConsent} onChange={(e) => setLegalConsent(e.target.checked)} />
+                      <Text style={{ fontSize: 13, lineHeight: 1.5 }}>
+                        Согласен с{" "}
+                        <a
+                          href={LEGAL_PRIVACY_POLICY_PDF}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          политикой конфиденциальности
+                        </a>{" "}
+                        и{" "}
+                        <a
+                          href={LEGAL_USER_AGREEMENT_PDF}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          пользовательским соглашением
+                        </a>
+                        .
+                      </Text>
+                    </Space>
+                  ) : null}
                 </Space>
               )
             }
