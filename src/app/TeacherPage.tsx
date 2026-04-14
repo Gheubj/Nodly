@@ -161,7 +161,7 @@ const COMMON_START_TIMES = [
 
 function disabledTimeForSelectedDate(selectedDate: dayjs.Dayjs | null) {
   if (!selectedDate || !selectedDate.isSame(dayjs(), "day")) {
-    return undefined;
+    return {};
   }
   const now = dayjs();
   const hour = now.hour();
@@ -1567,7 +1567,7 @@ export function TeacherPage() {
               format="HH:mm"
               minuteStep={5}
               needConfirm={false}
-              disabledTime={() => disabledTimeForSelectedDate(newSlotDate)}
+              disabledTime={(date) => disabledTimeForSelectedDate(newSlotDate ?? date)}
             />
             <Space wrap size={6} style={{ marginTop: 8 }}>
               {COMMON_START_TIMES.map((t) => (
@@ -1775,7 +1775,7 @@ export function TeacherPage() {
               format="HH:mm"
               minuteStep={5}
               needConfirm={false}
-              disabledTime={() => disabledTimeForSelectedDate(editSlotDate)}
+              disabledTime={(date) => disabledTimeForSelectedDate(editSlotDate ?? date)}
             />
             <Space wrap size={6} style={{ marginTop: 8 }}>
               {COMMON_START_TIMES.map((t) => (
