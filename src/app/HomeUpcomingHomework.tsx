@@ -178,61 +178,45 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
     );
   };
 
-  const hasAnyContent =
-    [...rowsByDueDay.values()].some((arr) => arr.length > 0) || undatedUnfinished.length > 0;
-
-  const emptyHint =
-    "Нет домашних заданий в видимых днях календаря. Просроченные и полный список — в разделе «Обучение» (фильтр «Просрочка»).";
-
   return (
     <Card className="landing-home-homework landing-home-schedule" title="Ближайшие ДЗ" size="small">
       {holder}
       <Spin spinning={loading}>
-        {!loading && !hasAnyContent ? (
-          <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-            {emptyHint}
-          </Paragraph>
-        ) : (
-          <>
-            <div className="landing-home-schedule__grid">
-              {columns.map((d) => {
-                const key = d.format("YYYY-MM-DD");
-                const dayRows = rowsByDueDay.get(key) ?? [];
-                const isToday = key === todayKey;
-                return (
-                  <div
-                    key={key}
-                    className={`landing-home-schedule__day${isToday ? " landing-home-schedule__day--today" : ""}`}
-                  >
-                    <Text strong className="landing-home-schedule__day-title">
-                      {isToday ? "Сегодня" : d.format("dd, D MMM")}
+        <div className="landing-home-schedule__grid">
+          {columns.map((d) => {
+            const key = d.format("YYYY-MM-DD");
+            const dayRows = rowsByDueDay.get(key) ?? [];
+            const isToday = key === todayKey;
+            return (
+              <div
+                key={key}
+                className={`landing-home-schedule__day${isToday ? " landing-home-schedule__day--today" : ""}`}
+              >
+                <Text strong className="landing-home-schedule__day-title">
+                  {isToday ? "Сегодня" : d.format("dd, D MMM")}
+                </Text>
+                <div className="landing-home-schedule__slots">
+                  {dayRows.length === 0 ? (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Нет ДЗ
                     </Text>
-                    <div className="landing-home-schedule__slots">
-                      {dayRows.length === 0 ? (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          Нет ДЗ
-                        </Text>
-                      ) : (
-                        dayRows.map((r) => renderHwSlot(r))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {undatedUnfinished.length > 0 ? (
-              <Paragraph style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                <Text strong>Без указанного срока: </Text>
-                {undatedUnfinished.map((r) => r.title).join(", ")}
-              </Paragraph>
-            ) : null}
-          </>
-        )}
-        {hasAnyContent ? (
-          <Link to="/class" className="landing-home-homework__link" style={{ marginTop: 12, display: "inline-block" }}>
-            Открыть Обучение
-          </Link>
+                  ) : (
+                    dayRows.map((r) => renderHwSlot(r))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {undatedUnfinished.length > 0 ? (
+          <Paragraph style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+            <Text strong>Без указанного срока: </Text>
+            {undatedUnfinished.map((r) => r.title).join(", ")}
+          </Paragraph>
         ) : null}
+        <Link to="/class" className="landing-home-homework__link" style={{ marginTop: 12, display: "inline-block" }}>
+          Открыть Обучение
+        </Link>
       </Spin>
     </Card>
   );
