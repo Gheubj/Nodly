@@ -117,9 +117,39 @@ function homeworkDueAfterLessonDays(slotStart: Date, daysAfter: number): Date {
   );
 }
 
+const LMS_HOMEWORK_HORIZON_DAYS = 4;
+
+const assignmentKindsLmsZ = ["classwork", "homework"] as const;
+
 function sortLinkedAssignmentsByKind<T extends { kind: string }>(items: T[]): T[] {
-  const rank = (k: string) => (k === "classwork" ? 0 : k === "homework" ? 1 : 2);
+  const rank = (k: string) => (k === "classwork" ? 0 : 1);
   return [...items].sort((a, b) => rank(a.kind) - rank(b.kind));
+}
+
+function homeworkEndOfLocalDayMs(d: Date): number {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x.getTime();
+}
+
+function homeworkOverdueUnfinished(dueAt: Date | null, st: string): boolean {
+  if (!dueAt || st === "submitted" || st === "graded") {
+    return false;
+  }
+  return homeworkEndOfLocalDayMs(dueAt) < Date.now();
+}
+
+function homeworkDueSoonUnfinished(dueAt: Date | null, st: string, horizonDays: number): boolean {
+  if (!dueAt || st === "submitted" || st === "graded") {
+    return false;
+  }
+  if (homeworkOverdueUnfinished(dueAt, st)) {
+    return false;
+  }
+  const horizon = new Date();
+  horizon.setDate(horizon.getDate() + horizonDays);
+  horizon.setHours(23, 59, 59, 999);
+  return homeworkEndOfLocalDayMs(dueAt) <= horizon.getTime();
 }
 
 export const COURSE_MODULE_HOURS: Record<CourseModule, number> = {
@@ -139,7 +169,7 @@ export function courseModuleToModuleKey(m: CourseModule): string {
   return map[m];
 }
 
-const assignmentKindZ = z.enum(["classwork", "homework", "project"]);
+const assignmentKindZ = z.enum(assignmentKindsLmsZ);
 
 async function assertTeacherClassroom(teacherId: string, classroomId: string) {
   const c = await prisma.classroom.findFirst({
@@ -176,7 +206,7 @@ export function registerLmsRoutes(app: Express) {
           where: {
             status: "submitted",
             teacherSeenAt: null,
-            assignment: { classroomId: { in: ids } }
+            assignment: { classroomId: { in: ids }, kind: { in: [...assignmentKindsLmsZ] } }
           }
         }),
         prisma.enrollment.count({
@@ -225,8 +255,8 @@ export function registerLmsRoutes(app: Express) {
       ]);
       let homeworkTodoCount = 0;
       let homeworkOverdueCount = 0;
+      let homeworkDueSoonCount = 0;
       let submittedPendingReviewCount = 0;
-      const now = Date.now();
       for (const a of homeworkAssignments) {
         const st = a.submissions[0]?.status ?? "not_started";
         if (st === "submitted") {
@@ -238,10 +268,10 @@ export function registerLmsRoutes(app: Express) {
         }
         homeworkTodoCount++;
         if (a.dueAt) {
-          const end = new Date(a.dueAt);
-          end.setHours(23, 59, 59, 999);
-          if (end.getTime() < now) {
+          if (homeworkOverdueUnfinished(a.dueAt, st)) {
             homeworkOverdueCount++;
+          } else if (homeworkDueSoonUnfinished(a.dueAt, st, LMS_HOMEWORK_HORIZON_DAYS)) {
+            homeworkDueSoonCount++;
           }
         }
       }
@@ -249,6 +279,7 @@ export function registerLmsRoutes(app: Express) {
         assignmentAttentionCount: attention,
         homeworkTodoCount,
         homeworkOverdueCount,
+        homeworkDueSoonCount,
         submittedPendingReviewCount
       });
       return;
@@ -437,7 +468,7 @@ export function registerLmsRoutes(app: Express) {
         include: {
           lessonTemplate: { select: { id: true, title: true } },
           slotAssignments: {
-            where: { published: true },
+            where: { published: true, kind: { in: [...assignmentKindsLmsZ] } },
             select: { id: true, title: true, kind: true, dueAt: true }
           }
         }
@@ -815,7 +846,7 @@ export function registerLmsRoutes(app: Express) {
         include: {
           lessonTemplate: { select: { id: true, title: true } },
           slotAssignments: {
-            where: { published: true },
+            where: { published: true, kind: { in: [...assignmentKindsLmsZ] } },
             select: { id: true, title: true, kind: true, dueAt: true }
           }
         }
@@ -942,7 +973,7 @@ export function registerLmsRoutes(app: Express) {
         return;
       }
       const list = await prisma.assignment.findMany({
-        where: { classroomId },
+        where: { classroomId, kind: { in: [...assignmentKindsLmsZ] } },
         orderBy: { createdAt: "desc" },
         include: {
           _count: { select: { submissions: true } }
@@ -1131,7 +1162,7 @@ export function registerLmsRoutes(app: Express) {
         await prisma.submission.createMany({ data: draftSubs, skipDuplicates: true });
       }
       const where: Prisma.SubmissionWhereInput = {
-        assignment: { classroomId }
+        assignment: { classroomId, kind: { in: [...assignmentKindsLmsZ] } }
       };
       if (assignmentId) {
         where.assignmentId = assignmentId;
@@ -1341,7 +1372,7 @@ export function registerLmsRoutes(app: Express) {
           orderBy: { joinedAt: "asc" }
         }),
         prisma.assignment.findMany({
-          where: { classroomId, published: true },
+          where: { classroomId, published: true, kind: { in: [...assignmentKindsLmsZ] } },
           orderBy: { createdAt: "asc" },
           select: { id: true, title: true, maxScore: true, kind: true }
         }),
@@ -1392,7 +1423,7 @@ export function registerLmsRoutes(app: Express) {
             title: true,
             school: { select: { name: true } },
             assignments: {
-              where: { published: true },
+              where: { published: true, kind: { in: [...assignmentKindsLmsZ] } },
               orderBy: { createdAt: "desc" },
               include: {
                 submissions: {
@@ -1463,7 +1494,7 @@ export function registerLmsRoutes(app: Express) {
       const assignmentId = String(req.params.assignmentId);
       const studentId = req.session!.sub;
       const assignment = await prisma.assignment.findFirst({
-        where: { id: assignmentId, published: true }
+        where: { id: assignmentId, published: true, kind: { in: [...assignmentKindsLmsZ] } }
       });
       if (!assignment) {
         res.status(404).json({ error: "Assignment not found" });

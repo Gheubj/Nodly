@@ -5,6 +5,7 @@ import {
   LEGAL_PRIVACY_POLICY_FILE,
   LEGAL_USER_AGREEMENT_FILE,
   NODLY_CONTACT_EMAIL,
+  NODLY_TELEGRAM_URL,
   downloadLegalPdf,
   legalPdfFetchUrl
 } from "@/shared/legal";
@@ -93,6 +94,15 @@ export function LandingFooter() {
             <div className="landing-footer__contact">
               <a href={`mailto:${CONTACT_EMAIL}`} className="landing-footer__a">
                 {CONTACT_EMAIL}
+              </a>
+              <a
+                href={NODLY_TELEGRAM_URL}
+                className="landing-footer__a"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "block", marginTop: 4 }}
+              >
+                Telegram: @NodlyEdu
               </a>
               <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 6 }}>
                 Вопросы и предложения по платформе

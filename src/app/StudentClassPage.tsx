@@ -65,8 +65,7 @@ const STATUS_RU: Record<string, string> = {
 
 const KIND_RU: Record<string, string> = {
   classwork: "На уроке",
-  homework: "ДЗ",
-  project: "Проект"
+  homework: "ДЗ"
 };
 
 function needsAttention(row: StudentAssignmentRow): boolean {
@@ -93,7 +92,7 @@ export function StudentClassPage() {
   const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
   const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
-  const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork" | "project">("all");
+  const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork">("all");
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -523,8 +522,7 @@ export function StudentClassPage() {
           options={[
             { value: "all", label: "Все типы" },
             { value: "homework", label: "ДЗ" },
-            { value: "classwork", label: "На уроке" },
-            { value: "project", label: "Проекты" }
+            { value: "classwork", label: "На уроке" }
           ]}
         />
       </Space>

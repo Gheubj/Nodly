@@ -1,8 +1,10 @@
-import { Button, Card, Space, Spin, Tabs, Tag, Typography, message } from "antd";
+import { Button, Card, Space, Spin, Tag, Typography, message } from "antd";
 import dayjs from "dayjs";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "@/shared/api/client";
+import { HOMEWORK_DUE_HORIZON_DAYS } from "@/shared/scheduleHorizon";
+import { isOverdueByDueAt, showOnHomeQuickHomework } from "@/shared/studentAssignmentDue";
 import type { HomeSchoolAssignmentRow } from "@/hooks/useHomeSchoolAssignments";
 import {
   diaryKindLabels,
@@ -27,19 +29,8 @@ function toSlotRow(r: HomeSchoolAssignmentRow): SlotStudentAssignmentRow {
   };
 }
 
-function isOverdueHomeworkOrProject(r: HomeSchoolAssignmentRow): boolean {
-  if (r.kind !== "homework" && r.kind !== "project") {
-    return false;
-  }
-  const st = r.submission?.status ?? "not_started";
-  if (!r.dueAt || st === "submitted" || st === "graded") {
-    return false;
-  }
-  return dayjs(r.dueAt).endOf("day").isBefore(dayjs());
-}
-
-function sortRows(list: HomeSchoolAssignmentRow[]) {
-  list.sort((a, b) => {
+function sortHomeworkQuick(list: HomeSchoolAssignmentRow[]) {
+  return [...list].sort((a, b) => {
     const da = a.dueAt ? dayjs(a.dueAt).valueOf() : Number.POSITIVE_INFINITY;
     const db = b.dueAt ? dayjs(b.dueAt).valueOf() : Number.POSITIVE_INFINITY;
     if (da !== db) {
@@ -47,20 +38,6 @@ function sortRows(list: HomeSchoolAssignmentRow[]) {
     }
     return a.title.localeCompare(b.title, "ru");
   });
-  return list;
-}
-
-function tagColorForKind(kind: string): string {
-  if (kind === "homework") {
-    return "purple";
-  }
-  if (kind === "classwork") {
-    return "blue";
-  }
-  if (kind === "project") {
-    return "geekblue";
-  }
-  return "default";
 }
 
 type Props = {
@@ -73,12 +50,12 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
   const [messageApi, holder] = message.useMessage();
   const navigate = useNavigate();
 
-  const byKind = useMemo(() => {
-    const visible = rows.filter((r) => !isOverdueHomeworkOrProject(r));
-    const homework = sortRows(visible.filter((r) => r.kind === "homework"));
-    const classwork = sortRows(visible.filter((r) => r.kind === "classwork"));
-    const project = sortRows(visible.filter((r) => r.kind === "project"));
-    return { homework, classwork, project };
+  const quickHomework = useMemo(() => {
+    const list = rows.filter((r) => {
+      const st = r.submission?.status ?? "not_started";
+      return showOnHomeQuickHomework(r.kind, r.dueAt, st, HOMEWORK_DUE_HORIZON_DAYS);
+    });
+    return sortHomeworkQuick(list);
   }, [rows]);
 
   const startOrOpen = async (row: SlotStudentAssignmentRow) => {
@@ -116,124 +93,93 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
     }
   };
 
-  const renderList = (list: HomeSchoolAssignmentRow[], emptyHint: string) => {
-    if (list.length === 0) {
-      return (
-        <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-          {emptyHint}
-        </Paragraph>
-      );
-    }
-    return (
-      <div className="landing-home-hw-row">
-        {list.map((r) => {
-          const row = toSlotRow(r);
-          const st = row.submission?.status ?? "not_started";
-          const hasProject = Boolean(row.submission?.projectId);
-          const sub = row.submission;
-          const graded = st === "graded" && sub != null && sub.score != null;
-          const scoreShown = graded ? sub.score : null;
-          const overdue =
-            r.dueAt &&
-            dayjs(r.dueAt).endOf("day").isBefore(dayjs()) &&
-            st !== "submitted" &&
-            st !== "graded";
-          const kindLabel = diaryKindLabels[r.kind] ?? r.kind;
-          return (
-            <div key={r.assignmentId} className="landing-home-hw-chip">
-              <Tag color={tagColorForKind(r.kind)} style={{ margin: 0, flexShrink: 0 }}>
-                {kindLabel}
-              </Tag>
-              {r.dueAt ? (
-                <Text type={overdue ? "danger" : "secondary"} style={{ fontSize: 11, flexShrink: 0 }}>
-                  до {dayjs(r.dueAt).format("DD.MM")}
-                  {overdue ? " · просрочено" : ""}
-                </Text>
-              ) : (
-                <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-                  без срока
-                </Text>
-              )}
-              {graded && scoreShown != null ? (
-                <Text type="success" style={{ fontSize: 11, flexShrink: 0 }}>
-                  {scoreShown}/{row.maxScore}
-                </Text>
-              ) : null}
-              {st === "submitted" && !graded ? (
-                <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-                  на проверке
-                </Text>
-              ) : null}
-              <Tag color="default" style={{ margin: 0, flexShrink: 0 }}>
-                {diaryStatusLabels[st] ?? st}
-              </Tag>
-              {studentSlotNeedsAttention(row) ? (
-                <Tag color="red" style={{ margin: 0, flexShrink: 0 }}>
-                  Важно
-                </Tag>
-              ) : null}
-              <Space size={4} wrap className="landing-home-hw-chip-btns">
-                {st === "not_started" || !row.submission ? (
-                  <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
-                    Начать
-                  </Button>
-                ) : null}
-                {(st === "draft" || st === "needs_revision") && hasProject ? (
-                  <Button size="small" onClick={() => void startOrOpen(row)}>
-                    Продолжить
-                  </Button>
-                ) : null}
-                {(st === "draft" || st === "needs_revision") && hasProject ? (
-                  <Button size="small" onClick={() => void submitWork(row)}>
-                    Сдать
-                  </Button>
-                ) : null}
-                {st === "graded" && studentSlotNeedsAttention(row) ? (
-                  <Button size="small" onClick={() => void markGradedSeen(row)}>
-                    Понятно
-                  </Button>
-                ) : null}
-              </Space>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const tabItems = [
-    {
-      key: "homework",
-      label: "Домашние",
-      children: renderList(
-        byKind.homework,
-        "Пока нет домашних заданий. Полный список — в разделе Обучение."
-      )
-    },
-    {
-      key: "classwork",
-      label: "На уроке",
-      children: renderList(
-        byKind.classwork,
-        "Классных работ пока нет. Они появятся, когда учитель выдаст задание к занятию."
-      )
-    },
-    {
-      key: "project",
-      label: "Проекты",
-      children: renderList(byKind.project, "Проектов от учителя пока нет.")
-    }
-  ];
-
-  const hasAny =
-    byKind.homework.length > 0 || byKind.classwork.length > 0 || byKind.project.length > 0;
+  const emptyHint =
+    "Нет домашних заданий со сроком в ближайшие несколько дней. Полный список и классные работы — в разделе Обучение.";
 
   return (
-    <Card className="landing-home-homework" title="Задания" size="small">
+    <Card className="landing-home-homework" title="ДЗ на ближайшие дни" size="small">
       {holder}
       <Spin spinning={loading}>
-        <Tabs size="small" items={tabItems} />
-        {hasAny ? (
+        <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 13 }}>
+          Здесь только домашние задания со сроком в горизонте {HOMEWORK_DUE_HORIZON_DAYS} дней и просроченные, по
+          которым ещё нужно что-то сделать.
+        </Paragraph>
+        {quickHomework.length === 0 ? (
+          <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
+            {emptyHint}
+          </Paragraph>
+        ) : (
+          <div className="landing-home-hw-row">
+            {quickHomework.map((r) => {
+              const row = toSlotRow(r);
+              const st = row.submission?.status ?? "not_started";
+              const hasProject = Boolean(row.submission?.projectId);
+              const sub = row.submission;
+              const graded = st === "graded" && sub != null && sub.score != null;
+              const scoreShown = graded ? sub.score : null;
+              const overdue = r.dueAt ? isOverdueByDueAt(r.dueAt, st) : false;
+              const kindLabel = diaryKindLabels[r.kind] ?? r.kind;
+              return (
+                <div key={r.assignmentId} className="landing-home-hw-chip">
+                  <Tag color="purple" style={{ margin: 0, flexShrink: 0 }}>
+                    {kindLabel}
+                  </Tag>
+                  {r.dueAt ? (
+                    <Text type={overdue ? "danger" : "secondary"} style={{ fontSize: 11, flexShrink: 0 }}>
+                      до {dayjs(r.dueAt).format("DD.MM")}
+                      {overdue ? " · просрочено" : ""}
+                    </Text>
+                  ) : (
+                    <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+                      без срока
+                    </Text>
+                  )}
+                  {graded && scoreShown != null ? (
+                    <Text type="success" style={{ fontSize: 11, flexShrink: 0 }}>
+                      {scoreShown}/{row.maxScore}
+                    </Text>
+                  ) : null}
+                  {st === "submitted" && !graded ? (
+                    <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+                      на проверке
+                    </Text>
+                  ) : null}
+                  <Tag color="default" style={{ margin: 0, flexShrink: 0 }}>
+                    {diaryStatusLabels[st] ?? st}
+                  </Tag>
+                  {studentSlotNeedsAttention(row) ? (
+                    <Tag color="red" style={{ margin: 0, flexShrink: 0 }}>
+                      Важно
+                    </Tag>
+                  ) : null}
+                  <Space size={4} wrap className="landing-home-hw-chip-btns">
+                    {st === "not_started" || !row.submission ? (
+                      <Button type="primary" size="small" onClick={() => void startOrOpen(row)}>
+                        Начать
+                      </Button>
+                    ) : null}
+                    {(st === "draft" || st === "needs_revision") && hasProject ? (
+                      <Button size="small" onClick={() => void startOrOpen(row)}>
+                        Продолжить
+                      </Button>
+                    ) : null}
+                    {(st === "draft" || st === "needs_revision") && hasProject ? (
+                      <Button size="small" onClick={() => void submitWork(row)}>
+                        Сдать
+                      </Button>
+                    ) : null}
+                    {st === "graded" && studentSlotNeedsAttention(row) ? (
+                      <Button size="small" onClick={() => void markGradedSeen(row)}>
+                        Понятно
+                      </Button>
+                    ) : null}
+                  </Space>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {quickHomework.length > 0 ? (
           <Link to="/class" className="landing-home-homework__link">
             Открыть Обучение
           </Link>

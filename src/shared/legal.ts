@@ -2,6 +2,7 @@ import { message } from "antd";
 import { getApiBaseUrl } from "@/shared/api/client";
 
 export const NODLY_CONTACT_EMAIL = "Nodly.edu@mail.ru";
+export const NODLY_TELEGRAM_URL = "https://t.me/NodlyEdu" as const;
 
 export const LEGAL_PRIVACY_POLICY_FILE = "privacy-policy.pdf" as const;
 export const LEGAL_USER_AGREEMENT_FILE = "user-agreement.pdf" as const;

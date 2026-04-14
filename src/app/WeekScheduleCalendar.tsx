@@ -2,6 +2,7 @@ import { Button, Card, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "dayjs/locale/ru";
+import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 
 dayjs.extend(isoWeek);
 dayjs.locale("ru");
@@ -52,8 +53,7 @@ export type WeekScheduleSlot = {
 
 export const diaryKindLabels: Record<string, string> = {
   classwork: "Классная работа",
-  homework: "ДЗ",
-  project: "Проект"
+  homework: "ДЗ"
 };
 
 export const diaryStatusLabels: Record<string, string> = {
@@ -242,7 +242,7 @@ export function WeekScheduleCalendar({
                                 <div key={la.id} className="week-schedule-slot__assignment">
                                   <Space align="start" wrap size={[6, 4]} style={{ width: "100%" }}>
                                     <Tag color={la.kind === "classwork" ? "blue" : "purple"}>
-                                      {diaryKindLabels[la.kind] ?? la.kind}
+                                      {diaryKindLabels[la.kind] ?? (la.kind === "homework" ? "ДЗ" : la.kind)}
                                     </Tag>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       {caption ? (
@@ -251,8 +251,18 @@ export function WeekScheduleCalendar({
                                         </Text>
                                       ) : null}
                                       {la.kind === "homework" && la.dueAt ? (
-                                        <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+                                        <Text
+                                          type={
+                                            isOverdueByDueAt(la.dueAt, row.submission?.status ?? "not_started")
+                                              ? "danger"
+                                              : "secondary"
+                                          }
+                                          style={{ fontSize: 11, display: "block" }}
+                                        >
                                           сдать до {dayjs(la.dueAt).format("DD.MM.YYYY")}
+                                          {isOverdueByDueAt(la.dueAt, row.submission?.status ?? "not_started")
+                                            ? " · просрочено"
+                                            : ""}
                                         </Text>
                                       ) : null}
                                       {graded && scoreShown != null ? (

@@ -140,8 +140,7 @@ const SUBMISSION_STATUS_RU: Record<string, string> = {
 
 const KIND_RU: Record<string, string> = {
   classwork: "На уроке",
-  homework: "ДЗ",
-  project: "Проект"
+  homework: "ДЗ"
 };
 
 export function TeacherPage() {
@@ -1722,8 +1721,7 @@ export function TeacherPage() {
             <Select
               options={[
                 { value: "homework", label: "ДЗ" },
-                { value: "classwork", label: "На уроке" },
-                { value: "project", label: "Проект" }
+                { value: "classwork", label: "На уроке" }
               ]}
             />
           </Form.Item>
@@ -1762,8 +1760,7 @@ export function TeacherPage() {
             <Select
               options={[
                 { value: "homework", label: "ДЗ" },
-                { value: "classwork", label: "На уроке" },
-                { value: "project", label: "Проект" }
+                { value: "classwork", label: "На уроке" }
               ]}
             />
           </Form.Item>

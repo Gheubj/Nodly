@@ -2,11 +2,12 @@ import { Card, Spin, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/shared/api/client";
+import { SCHEDULE_PREVIEW_DAY_COUNT } from "@/shared/scheduleHorizon";
 import { useSessionStore } from "@/store/useSessionStore";
 
 const { Text } = Typography;
 
-const DAY_COUNT = 4;
+const DAY_COUNT = SCHEDULE_PREVIEW_DAY_COUNT;
 
 export type SchedulePreviewSlot = {
   id: string;

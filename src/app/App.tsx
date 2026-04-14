@@ -85,6 +85,7 @@ export function App() {
     newEnrollmentCount?: number;
     homeworkTodoCount?: number;
     homeworkOverdueCount?: number;
+    homeworkDueSoonCount?: number;
     submittedPendingReviewCount?: number;
   }>({});
   const prevPathRef = useRef<string | null>(null);
@@ -105,6 +106,7 @@ export function App() {
         newEnrollmentCount?: number;
         homeworkTodoCount?: number;
         homeworkOverdueCount?: number;
+        homeworkDueSoonCount?: number;
         submittedPendingReviewCount?: number;
       }>("/api/me/summary");
       setMeSummary(data);

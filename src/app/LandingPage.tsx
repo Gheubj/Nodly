@@ -146,12 +146,7 @@ export function LandingPage() {
         {showGuestMarketing ? <LandingGuestPaths /> : null}
         {teacher ? <HomeTeacherSummary /> : null}
         {schoolStudent && user ? (
-          <HomeSchoolStudentWelcome
-            user={user}
-            enrollments={user.enrollments}
-            summary={schoolSummary}
-            summaryLoading={schoolSummaryLoading}
-          />
+          <HomeSchoolStudentWelcome user={user} summary={schoolSummary} summaryLoading={schoolSummaryLoading} />
         ) : null}
         {schoolStudent ? (
           <HomeSchoolStudentBanner
