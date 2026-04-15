@@ -327,10 +327,12 @@ export function App() {
                 Обучение
               </NavLink>
             ) : null}
-            {user?.role === "teacher" ? (
+            {user?.role === "teacher" || user?.role === "admin" ? (
               <Badge
                 count={
-                  (meSummary.pendingReviewCount ?? 0) + (meSummary.newEnrollmentCount ?? 0)
+                  user?.role === "teacher"
+                    ? (meSummary.pendingReviewCount ?? 0) + (meSummary.newEnrollmentCount ?? 0)
+                    : 0
                 }
                 size="small"
                 offset={[8, 2]}
@@ -347,7 +349,7 @@ export function App() {
                     }))
                   }
                 >
-                  Кабинет учителя
+                  {user?.role === "admin" ? "Админ" : "Кабинет учителя"}
                 </NavLink>
               </Badge>
             ) : null}

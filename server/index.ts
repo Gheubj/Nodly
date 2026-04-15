@@ -463,7 +463,6 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
     nickname: user.nickname,
     role: user.role,
     studentMode: user.studentMode,
-    isAdmin: user.isAdmin,
     hasPassword: Boolean(user.passwordHash),
     schoolsOwned: user.schoolsOwned,
     enrollments: user.enrollments.map(

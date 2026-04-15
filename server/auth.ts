@@ -30,7 +30,7 @@ export function signRefreshToken(payload: SessionPayload) {
 const YANDEX_OAUTH_STATE_TYP = "yandex_oauth";
 
 /** Подписанный state для OAuth Яндекса: роль и режим ученика при первом создании пользователя. */
-export function signYandexOAuthState(role: UserRole, studentMode: StudentMode): string {
+export function signYandexOAuthState(role: "teacher" | "student", studentMode: StudentMode): string {
   const mode: StudentMode = role === "teacher" ? "direct" : studentMode;
   return jwt.sign(
     { typ: YANDEX_OAUTH_STATE_TYP, role, studentMode: mode },
@@ -41,7 +41,7 @@ export function signYandexOAuthState(role: UserRole, studentMode: StudentMode): 
 
 export function verifyYandexOAuthState(
   token: string
-): { role: UserRole; studentMode: StudentMode } | null {
+): { role: "teacher" | "student"; studentMode: StudentMode } | null {
   try {
     const decoded = jwt.verify(token, config.jwtAccessSecret) as {
       typ?: string;
@@ -166,9 +166,9 @@ export async function adminRequired(req: AuthenticatedRequest, res: Response, ne
     }
     const row = await prisma.user.findUnique({
       where: { id: userId },
-      select: { isAdmin: true }
+      select: { role: true }
     });
-    if (!row?.isAdmin) {
+    if (row?.role !== "admin") {
       res.status(403).json({ error: "Admin only" });
       return;
     }

@@ -1060,7 +1060,7 @@ export function TeacherPage() {
     );
   }
 
-  if (user.role !== "teacher") {
+  if (user.role !== "teacher" && user.role !== "admin") {
     return (
       <div className="app-content account-page">
         <Card>
@@ -1261,7 +1261,7 @@ export function TeacherPage() {
                             >
                               Методичка
                             </Button>
-                            {user.isAdmin === true ? (
+                            {user.role === "admin" ? (
                               <Button size="small" onClick={() => openLessonEditor(row)}>
                                 Материалы (админ)
                               </Button>
@@ -1321,7 +1321,7 @@ export function TeacherPage() {
   );
 
   const adminTab =
-    user.isAdmin === true ? (
+    user.role === "admin" ? (
       <Card title="Новый шаблон урока (каталог)">
         <Paragraph type="secondary">
           Снапшот — JSON Blockly-проекта (как в API проектов). Ученики увидят урок в «Обучении»; учитель может
@@ -1467,8 +1467,11 @@ export function TeacherPage() {
     { key: "gradebook", label: "Журнал", children: gradebookTab },
     { key: "roadmap", label: "Планы развития", children: roadmapTab }
   ];
-  if (user.isAdmin === true) {
+  if (user.role === "admin") {
     tabItems.splice(3, 0, { key: "admin", label: "Админ: шаблоны", children: adminTab });
+  }
+  if (user.role === "admin") {
+    tabItems.splice(0, tabItems.length, { key: "admin", label: "Админ: шаблоны", children: adminTab });
   }
 
   return (

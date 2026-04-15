@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { apiClient, getApiBaseUrl, setAccessToken } from "@/shared/api/client";
 
-export type UserRole = "teacher" | "student";
+export type UserRole = "teacher" | "student" | "admin";
 export type StudentMode = "school" | "direct";
 
 export interface SessionEnrollment {
@@ -20,7 +20,6 @@ export interface SessionUser {
   nickname: string;
   role: UserRole;
   studentMode: StudentMode;
-  isAdmin?: boolean;
   /** false для аккаунта только через OAuth без установленного пароля */
   hasPassword?: boolean;
   enrollments?: SessionEnrollment[];
