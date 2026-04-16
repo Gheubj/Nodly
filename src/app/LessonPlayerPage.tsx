@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Card, Layout, Space, Spin, Typography, message } from "antd";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { LessonFlowView } from "@/components/LessonFlowView";
@@ -11,7 +11,6 @@ import {
   parseLessonPlayerState,
   type LessonPlayerStateV1
 } from "@/shared/types/lessonPlayerState";
-import { createStudioProjectFromLessonTemplate } from "@/hooks/useOpenLessonTemplate";
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -27,7 +26,6 @@ type Bootstrap = {
 
 export function LessonPlayerPage() {
   const { user } = useSessionStore();
-  const navigate = useNavigate();
   const { lessonId = "" } = useParams();
   const [searchParams] = useSearchParams();
   const assignmentId = searchParams.get("assignmentId");
@@ -37,7 +35,6 @@ export function LessonPlayerPage() {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [playerState, setPlayerState] = useState<LessonPlayerStateV1>({ v: 1, checkpoints: {} });
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
-  const [openingStudio, setOpeningStudio] = useState(false);
 
   const lessonContent: LessonContent = useMemo(() => {
     if (!bootstrap?.lessonContent || typeof bootstrap.lessonContent !== "object") {
@@ -95,24 +92,6 @@ export function LessonPlayerPage() {
     void load();
   }, [load]);
 
-  const openStudio = async () => {
-    if (!bootstrap) {
-      return;
-    }
-    setOpeningStudio(true);
-    try {
-      const projectId = await createStudioProjectFromLessonTemplate({
-        id: lessonId,
-        title: bootstrap.title
-      });
-      navigate(`/studio?project=${encodeURIComponent(projectId)}`);
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось открыть Studio");
-    } finally {
-      setOpeningStudio(false);
-    }
-  };
-
   if (!user) {
     return (
       <Content className="app-content">
@@ -135,6 +114,7 @@ export function LessonPlayerPage() {
   }
 
   const checkpointsOk = (blockId: string) => playerState.checkpoints?.[blockId] === "ok";
+  const miniDevDone = (blockId: string) => Boolean(playerState.miniDevDone?.[blockId]);
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
     const raw = draftAnswers[blockId] ?? "";
@@ -154,6 +134,17 @@ export function LessonPlayerPage() {
   const allCheckpointsDone =
     checkpointBlockIds.length === 0 || checkpointBlockIds.every((id) => checkpointsOk(id));
 
+  const toggleMiniDevDone = async (blockId: string) => {
+    const next: LessonPlayerStateV1 = {
+      ...playerState,
+      miniDevDone: {
+        ...(playerState.miniDevDone ?? {}),
+        [blockId]: !miniDevDone(blockId)
+      }
+    };
+    await persistState(next);
+  };
+
   return (
     <Content className="app-content lesson-player-page">
       {holder}
@@ -171,6 +162,7 @@ export function LessonPlayerPage() {
             <Space wrap>
               <Link to="/learning">Каталог</Link>
               <Link to="/class">Класс</Link>
+              <Link to="/">На главную</Link>
             </Space>
           </div>
           {bootstrap?.assignmentTitle ? (
@@ -196,12 +188,12 @@ export function LessonPlayerPage() {
               <LessonFlowView
                 blocks={flowBlocks}
                 checkpointOk={checkpointsOk}
+                miniDevDone={miniDevDone}
                 draftAnswers={draftAnswers}
                 onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
+                onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
                 saving={saving}
-                onOpenStudio={() => void openStudio()}
-                openingStudio={openingStudio}
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
                 <Alert type="success" showIcon message="Все контрольные вопросы пройдены" />

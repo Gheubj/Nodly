@@ -2,10 +2,10 @@ export type LessonPlayerCheckpointStatus = "pending" | "ok";
 
 export type LessonPlayerStateV1 = {
   v: 1;
-  /** Просмотрен блок материалов (слайды/PDF) */
-  materialsDone?: boolean;
-  /** Индексы чекпоинтов, сданных верно */
+  /** Чекпоинты, сданные верно */
   checkpoints?: Record<string, LessonPlayerCheckpointStatus>;
+  /** Мини-разработка: блоки, отмеченные как выполненные */
+  miniDevDone?: Record<string, boolean>;
 };
 
 export function normalizeCheckpointAnswer(s: string): string {
@@ -14,7 +14,12 @@ export function normalizeCheckpointAnswer(s: string): string {
 
 export function parseLessonPlayerState(raw: unknown): LessonPlayerStateV1 {
   if (raw && typeof raw === "object" && (raw as { v?: unknown }).v === 1) {
-    return raw as LessonPlayerStateV1;
+    const v = raw as LessonPlayerStateV1;
+    return {
+      v: 1,
+      checkpoints: v.checkpoints ?? {},
+      miniDevDone: v.miniDevDone ?? {}
+    };
   }
-  return { v: 1, checkpoints: {} };
+  return { v: 1, checkpoints: {}, miniDevDone: {} };
 }

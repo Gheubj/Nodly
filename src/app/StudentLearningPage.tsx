@@ -3,7 +3,7 @@ import { Button, Card, List, Select, Space, Typography, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { useOpenLessonTemplate, type LessonTemplateListItem } from "@/hooks/useOpenLessonTemplate";
+import type { LessonTemplateListItem } from "@/hooks/useOpenLessonTemplate";
 
 const { Title, Paragraph } = Typography;
 
@@ -11,7 +11,6 @@ export function StudentLearningPage() {
   const { user } = useSessionStore();
   const navigate = useNavigate();
   const [messageApi, pageMessageHolder] = message.useMessage();
-  const { openTemplate, openingId, contextHolder } = useOpenLessonTemplate();
   const [templates, setTemplates] = useState<LessonTemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [focusId, setFocusId] = useState<string>("");
@@ -80,14 +79,12 @@ export function StudentLearningPage() {
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       {pageMessageHolder}
-      {contextHolder}
       <div>
         <Title level={5} style={{ marginTop: 0 }}>
           Обучение
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Урок открывается в одном интерактивном режиме: презентация, шаги и проверки в одной ленте. Studio — для
-          свободной разработки по кнопке внутри урока или ниже.
+          Урок открывается только в интерактивном формате: презентация, мини-разработка и проверки в одной ленте.
         </Paragraph>
       </div>
       <Card size="small" title="Каталог">
@@ -113,9 +110,6 @@ export function StudentLearningPage() {
                 <Button type="primary" size="large" onClick={() => navigate(`/lesson/${encodeURIComponent(active.id)}`)}>
                   Открыть урок
                 </Button>
-                <Button loading={openingId === active.id} onClick={() => void openTemplate(active)}>
-                  Открыть в Studio (песочница)
-                </Button>
               </Space>
             </Card>
           ) : null}
@@ -135,14 +129,6 @@ export function StudentLearningPage() {
                   >
                     Открыть урок
                   </Button>,
-                  <Button
-                    key="go"
-                    size="small"
-                    loading={openingId === item.id}
-                    onClick={() => void openTemplate(item)}
-                  >
-                    Studio
-                  </Button>
                 ]}
               >
                 <List.Item.Meta title={item.title} description={item.description ?? `Модуль: ${item.moduleKey}`} />

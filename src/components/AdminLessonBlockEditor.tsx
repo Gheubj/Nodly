@@ -12,7 +12,7 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "text", label: "Текст" },
   { value: "image", label: "Картинка" },
   { value: "pdf", label: "PDF (в ленту)" },
-  { value: "studio", label: "Практика Studio" },
+  { value: "studio", label: "Мини-разработка" },
   { value: "checkpoint", label: "Контрольный вопрос" },
   { value: "divider", label: "Разделитель" }
 ];
@@ -36,8 +36,8 @@ function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
         id,
         type: "studio",
         title: "Практика",
-        instruction: "Опиши, что сделать в Studio.",
-        ctaAction: "open_studio"
+        instruction: "Опиши интерактивную практику внутри урока.",
+        ctaAction: null
       };
     case "checkpoint":
       return { id, type: "checkpoint", question: "Вопрос?", expectedAnswer: "Ответ" };
@@ -133,7 +133,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Сверху вниз — как увидит ученик: картинки и PDF на всю ширину, затем вопросы и кнопки Studio.
+        Сверху вниз — как увидит ученик: единая лента с картинками/PDF, мини-разработкой и проверкой.
       </Paragraph>
       <Dropdown
         menu={{
@@ -229,7 +229,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                 onChange={(e) => setBlock(index, { instruction: e.target.value })}
               />
               <Input
-                placeholder="ctaAction (open_studio)"
+                placeholder="Доп. действие (необязательно)"
                 value={block.ctaAction ?? ""}
                 onChange={(e) => setBlock(index, { ctaAction: e.target.value || null })}
               />

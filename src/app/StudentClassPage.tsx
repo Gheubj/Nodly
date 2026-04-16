@@ -525,36 +525,6 @@ export function StudentClassPage() {
     })[0];
   }, [activeLesson, assignmentsForClass]);
 
-  const lessonActionsBlock = (row: StudentAssignmentRow | null) => {
-    if (!row) {
-      return (
-        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Для этого урока пока нет привязанного задания. Попроси учителя выдать задание по шаблону урока.
-        </Paragraph>
-      );
-    }
-    const st = row.submission?.status ?? "not_started";
-    return (
-      <Space direction="vertical" size="small" style={{ width: "100%" }}>
-        <Text>
-          Связанное задание: <Text strong>{row.title}</Text>
-        </Text>
-        <Text type="secondary">Статус: {STATUS_RU[st] ?? st}</Text>
-        <Space wrap>
-          <Button onClick={() => void startOrOpen(row)} type={st === "not_started" ? "primary" : "default"}>
-            {st === "not_started" ? "Открыть стартовый проект" : "Открыть в Studio"}
-          </Button>
-          {(st === "draft" || st === "needs_revision") && row.submission?.projectId ? (
-            <Button onClick={() => void submitWork(row)}>Сдать работу</Button>
-          ) : null}
-          {st === "graded" && needsAttention(row) ? (
-            <Button onClick={() => void markGradedSeen(row)}>Отметить как просмотрено</Button>
-          ) : null}
-        </Space>
-      </Space>
-    );
-  };
-
   const lessonTab = (
     <Spin spinning={courseScheduleLoading}>
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -626,7 +596,9 @@ export function StudentClassPage() {
                   задании.
                 </Paragraph>
               ) : null}
-              {lessonActionsBlock(assignmentForActiveLesson)}
+              <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
+                Сдача и статус задания остаются во вкладках «Дневник» и «Все задания».
+              </Paragraph>
             </Space>
           </Card>
         )}

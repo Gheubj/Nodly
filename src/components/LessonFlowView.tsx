@@ -15,23 +15,23 @@ function isStudioCta(cta: string | null | undefined): boolean {
 export type LessonFlowViewProps = {
   blocks: LessonContentBlock[];
   checkpointOk: (blockId: string) => boolean;
+  miniDevDone: (blockId: string) => boolean;
   draftAnswers: Record<string, string>;
   onDraftChange: (blockId: string, value: string) => void;
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
+  onToggleMiniDevDone: (blockId: string) => void;
   saving: boolean;
-  onOpenStudio: () => void;
-  openingStudio: boolean;
 };
 
 export function LessonFlowView({
   blocks,
   checkpointOk,
+  miniDevDone,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
-  saving,
-  onOpenStudio,
-  openingStudio
+  onToggleMiniDevDone,
+  saving
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
 
@@ -87,11 +87,15 @@ export function LessonFlowView({
                 <Text strong>{block.title}</Text>
               </Paragraph>
               <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>{block.instruction}</Paragraph>
-              {isStudioCta(block.ctaAction) ? (
-                <Button type="primary" loading={openingStudio} onClick={() => void onOpenStudio()}>
-                  Открыть в Studio
+              <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                <Input.TextArea rows={3} placeholder="Заметка ученика по мини-разработке (необязательно)" />
+                <Button type={miniDevDone(block.id) ? "default" : "primary"} onClick={() => onToggleMiniDevDone(block.id)}>
+                  {miniDevDone(block.id) ? "Отмечено выполненным" : "Отметить мини-разработку выполненной"}
                 </Button>
-              ) : null}
+                {isStudioCta(block.ctaAction) ? (
+                  <Text type="secondary">Этот блок был импортирован из старого формата Studio и работает как мини-разработка.</Text>
+                ) : null}
+              </Space>
             </div>
           );
         }

@@ -20,18 +20,17 @@ import {
   Tabs,
   Tag,
   Typography,
-  Upload,
   message
 } from "antd";
-import type { UploadProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckOutlined, CopyOutlined, TeamOutlined, UploadOutlined } from "@ant-design/icons";
+import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
+import { LessonFlowView } from "@/components/LessonFlowView";
 import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
 import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
 import { EMPTY_LESSON_CONTENT, type LessonContent, type LessonContentBlock } from "@/shared/types/lessonContent";
@@ -223,34 +222,8 @@ export function TeacherPage() {
   const [lessonEditorSaving, setLessonEditorSaving] = useState(false);
   const [lessonEditorLesson, setLessonEditorLesson] = useState<TeacherCourseLesson | null>(null);
   const [lessonEditorSummary, setLessonEditorSummary] = useState("");
-  const [lessonEditorJson, setLessonEditorJson] = useState(
-    JSON.stringify(EMPTY_LESSON_CONTENT, null, 2)
-  );
-  const [lessonEditorPdfUrl, setLessonEditorPdfUrl] = useState("");
-  const [lessonPdfUploading, setLessonPdfUploading] = useState(false);
-  const [lessonEditorTab, setLessonEditorTab] = useState<"visual" | "json">("visual");
   const [lessonEditorBlocks, setLessonEditorBlocks] = useState<LessonContentBlock[]>([]);
   const [adminStudioProjectId, setAdminStudioProjectId] = useState("");
-
-  const handleLessonPdfUpload: UploadProps["customRequest"] = async (options, _info) => {
-    void _info;
-    const { file, onError, onSuccess } = options;
-    const blob = file as File;
-    setLessonPdfUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("pdf", blob, blob.name || "lesson.pdf");
-      const res = await apiClient.postForm<{ url: string }>("/api/admin/uploads/lesson-pdf", fd);
-      setLessonEditorPdfUrl(res.url);
-      messageApi.success("PDF загружен");
-      onSuccess?.(res, new XMLHttpRequest());
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить PDF");
-      onError?.(e instanceof Error ? e : new Error("upload"));
-    } finally {
-      setLessonPdfUploading(false);
-    }
-  };
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
@@ -945,11 +918,7 @@ export function TeacherPage() {
     setLessonEditorLesson(lesson);
     setLessonEditorSummary(lesson.studentSummary ?? "");
     const content = lesson.lessonContent ?? EMPTY_LESSON_CONTENT;
-    const pdf = content.presentationPdfUrl;
-    setLessonEditorPdfUrl(typeof pdf === "string" && pdf.length > 0 ? pdf : "");
-    setLessonEditorJson(JSON.stringify(content, null, 2));
     setLessonEditorBlocks(expandLessonContentToBlocks(content));
-    setLessonEditorTab("visual");
     setLessonEditorOpen(true);
   };
 
@@ -982,19 +951,7 @@ export function TeacherPage() {
     if (!lessonEditorLesson) {
       return;
     }
-    let lessonContent: LessonContent;
-    if (lessonEditorTab === "visual") {
-      lessonContent = lessonContentFromBlocks(lessonEditorBlocks);
-    } else {
-      try {
-        lessonContent = JSON.parse(lessonEditorJson) as LessonContent;
-      } catch {
-        messageApi.error("Некорректный JSON материалов урока");
-        return;
-      }
-      const pdfTrim = lessonEditorPdfUrl.trim();
-      lessonContent.presentationPdfUrl = pdfTrim.length > 0 ? pdfTrim : null;
-    }
+    const lessonContent: LessonContent = lessonContentFromBlocks(lessonEditorBlocks);
     setLessonEditorSaving(true);
     try {
       await apiClient.patch(`/api/admin/lesson-templates/${lessonEditorLesson.id}/content`, {
@@ -2150,72 +2107,22 @@ export function TeacherPage() {
               style={{ marginTop: 4 }}
             />
           </div>
-          <Tabs
-            activeKey={lessonEditorTab}
-            onChange={(k) => {
-              const key = k as "visual" | "json";
-              if (key === "json") {
-                setLessonEditorJson(JSON.stringify(lessonContentFromBlocks(lessonEditorBlocks), null, 2));
-              }
-              if (key === "visual") {
-                try {
-                  const parsed = JSON.parse(lessonEditorJson) as LessonContent;
-                  setLessonEditorBlocks(expandLessonContentToBlocks(parsed));
-                } catch {
-                  /* keep blocks */
-                }
-              }
-              setLessonEditorTab(key);
-            }}
-            items={[
-              {
-                key: "visual",
-                label: "Конструктор",
-                children: <AdminLessonBlockEditor blocks={lessonEditorBlocks} onChange={setLessonEditorBlocks} />
-              },
-              {
-                key: "json",
-                label: "JSON",
-                children: (
-                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    <div>
-                      <Text type="secondary">PDF (legacy, опционально)</Text>
-                      <Input
-                        style={{ marginTop: 4 }}
-                        placeholder="/api/uploads/… или https://…"
-                        value={lessonEditorPdfUrl}
-                        onChange={(e) => setLessonEditorPdfUrl(e.target.value)}
-                      />
-                      {user?.role === "admin" ? (
-                        <Upload
-                          accept="application/pdf,.pdf"
-                          maxCount={1}
-                          showUploadList={false}
-                          customRequest={(opts, info) => void handleLessonPdfUpload(opts, info)}
-                        >
-                          <Button style={{ marginTop: 8 }} icon={<UploadOutlined />} loading={lessonPdfUploading}>
-                            Загрузить PDF
-                          </Button>
-                        </Upload>
-                      ) : null}
-                    </div>
-                    <div>
-                      <Text type="secondary">lessonContent</Text>
-                      <TextArea
-                        rows={14}
-                        value={lessonEditorJson}
-                        onChange={(e) => setLessonEditorJson(e.target.value)}
-                        style={{ marginTop: 4, fontFamily: "monospace" }}
-                      />
-                      <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-                        Поле <Text code>blocks</Text> — основной формат; legacy-поля для совместимости.
-                      </Paragraph>
-                    </div>
-                  </Space>
-                )
-              }
-            ]}
-          />
+          <AdminLessonBlockEditor blocks={lessonEditorBlocks} onChange={setLessonEditorBlocks} />
+          <div>
+            <Text type="secondary">Предпросмотр (как увидит ученик)</Text>
+            <div style={{ marginTop: 8 }}>
+              <LessonFlowView
+                blocks={lessonEditorBlocks}
+                checkpointOk={() => false}
+                miniDevDone={() => false}
+                draftAnswers={{}}
+                onDraftChange={() => {}}
+                onVerifyCheckpoint={() => {}}
+                onToggleMiniDevDone={() => {}}
+                saving={false}
+              />
+            </div>
+          </div>
         </Space>
       </Modal>
 
