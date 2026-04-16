@@ -880,21 +880,25 @@ app.get("/api/projects", authRequired, async (req: AuthenticatedRequest, res) =>
 
 app.get("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res) => {
   const projectId = String(req.params.id);
+  const session = req.session!;
+  const isAdmin = session.role === "admin";
   const project = await prisma.project.findFirst({
-    where: { id: projectId, userId: req.session!.sub },
+    where: isAdmin ? { id: projectId } : { id: projectId, userId: session.sub },
     include: { snapshot: true }
   });
   if (!project?.snapshot) {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+  const readOnly = isAdmin && project.userId !== session.sub;
   res.json({
     meta: {
       id: project.id,
       userId: project.userId,
       title: project.title,
       createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString()
+      updatedAt: project.updatedAt.toISOString(),
+      ...(readOnly ? { readOnly: true as const } : {})
     },
     snapshot: project.snapshot.payload
   });
@@ -902,6 +906,15 @@ app.get("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res
 
 app.put("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res) => {
   const projectId = String(req.params.id);
+  const session = req.session!;
+  const existingOwner = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true }
+  });
+  if (existingOwner && existingOwner.userId !== session.sub) {
+    res.status(403).json({ error: "Cannot modify another user's project" });
+    return;
+  }
   const parsed = z
     .object({
       title: z.string().min(1),
@@ -917,7 +930,7 @@ app.put("/api/projects/:id", authRequired, async (req: AuthenticatedRequest, res
   const createData: Prisma.ProjectCreateInput = {
     id: projectId,
     title: parsed.data.title,
-    user: { connect: { id: req.session!.sub } },
+    user: { connect: { id: session.sub } },
     snapshot: { create: { payload: parsed.data.snapshot as Prisma.InputJsonValue } },
     ...(parsed.data.lessonTemplateId
       ? { lessonTemplate: { connect: { id: parsed.data.lessonTemplateId } } }

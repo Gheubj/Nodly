@@ -23,7 +23,7 @@ import {
   message
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -183,6 +183,7 @@ export function TeacherPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const { user } = useSessionStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("classes");
   const [tabBadges, setTabBadges] = useState({ newEnroll: 0, pending: 0 });
   const [loading, setLoading] = useState(true);
@@ -211,6 +212,8 @@ export function TeacherPage() {
   const [lessonEditorJson, setLessonEditorJson] = useState(
     JSON.stringify(EMPTY_LESSON_CONTENT, null, 2)
   );
+  const [lessonEditorPdfUrl, setLessonEditorPdfUrl] = useState("");
+  const [adminStudioProjectId, setAdminStudioProjectId] = useState("");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
@@ -874,7 +877,10 @@ export function TeacherPage() {
   const openLessonEditor = (lesson: TeacherCourseLesson) => {
     setLessonEditorLesson(lesson);
     setLessonEditorSummary(lesson.studentSummary ?? "");
-    setLessonEditorJson(JSON.stringify(lesson.lessonContent ?? EMPTY_LESSON_CONTENT, null, 2));
+    const content = lesson.lessonContent ?? EMPTY_LESSON_CONTENT;
+    const pdf = content.presentationPdfUrl;
+    setLessonEditorPdfUrl(typeof pdf === "string" && pdf.length > 0 ? pdf : "");
+    setLessonEditorJson(JSON.stringify(content, null, 2));
     setLessonEditorOpen(true);
   };
 
@@ -914,6 +920,8 @@ export function TeacherPage() {
       messageApi.error("Некорректный JSON материалов урока");
       return;
     }
+    const pdfTrim = lessonEditorPdfUrl.trim();
+    lessonContent.presentationPdfUrl = pdfTrim.length > 0 ? pdfTrim : null;
     setLessonEditorSaving(true);
     try {
       await apiClient.patch(`/api/admin/lesson-templates/${lessonEditorLesson.id}/content`, {
@@ -1378,10 +1386,43 @@ export function TeacherPage() {
   const adminTab =
     user.role === "admin" ? (
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Card title="Открыть проект в Studio (админ)">
+          <Paragraph type="secondary" style={{ marginTop: 0 }}>
+            Вставь ID проекта (UUID из журнала, ссылки ученика или БД). Откроется только просмотр, если проект не твой —
+            сохранить в облако нельзя.
+          </Paragraph>
+          <Space wrap>
+            <Input
+              style={{ minWidth: 280, maxWidth: 420 }}
+              placeholder="id проекта"
+              value={adminStudioProjectId}
+              onChange={(e) => setAdminStudioProjectId(e.target.value)}
+            />
+            <Button
+              type="primary"
+              disabled={!adminStudioProjectId.trim()}
+              onClick={() => {
+                const id = adminStudioProjectId.trim();
+                navigate(`/studio?project=${encodeURIComponent(id)}`);
+              }}
+            >
+              Открыть в Studio
+            </Button>
+            <Button
+              disabled={!adminStudioProjectId.trim()}
+              onClick={() => {
+                const id = adminStudioProjectId.trim();
+                window.open(`/studio?project=${encodeURIComponent(id)}`, "_blank", "noopener,noreferrer");
+              }}
+            >
+              В новой вкладке
+            </Button>
+          </Space>
+        </Card>
         <Card title="Каталог уроков (шаблоны курса)">
           <Paragraph type="secondary" style={{ marginTop: 0 }}>
             Здесь все опубликованные шаблоны. Кнопка «Материалы и PDF» открывает редактор: краткое описание для ученика,
-            JSON <Text code>lessonContent</Text> (в т.ч. <Text code>presentationPdfUrl</Text>).
+            поле ссылки на PDF и JSON <Text code>lessonContent</Text> (слайды, шаги, подсказки).
           </Paragraph>
           <Table<LessonTemplateListItem>
             size="small"
@@ -1974,6 +2015,19 @@ export function TeacherPage() {
               placeholder="Краткое описание урока в таблице курса"
               style={{ marginTop: 4 }}
             />
+          </div>
+          <div>
+            <Text type="secondary">PDF презентации (URL или путь)</Text>
+            <Input
+              style={{ marginTop: 4 }}
+              placeholder="Например /course-assets/module-a/lesson1.pdf или https://…/file.pdf"
+              value={lessonEditorPdfUrl}
+              onChange={(e) => setLessonEditorPdfUrl(e.target.value)}
+            />
+            <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0, fontSize: 12 }}>
+              Положи файл в папку <Text code>public/</Text> репозитория и укажи путь с корня сайта. При сохранении это
+              значение записывается в <Text code>presentationPdfUrl</Text>.
+            </Paragraph>
           </div>
           <div>
             <Text type="secondary">lessonContent (JSON)</Text>

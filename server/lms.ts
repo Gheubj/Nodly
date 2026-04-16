@@ -202,8 +202,21 @@ const lessonContentHintZ = z.object({
   title: z.string().min(1).max(180),
   text: z.string().min(1).max(8000)
 });
+const presentationPdfUrlZ = z
+  .union([z.string().max(2048), z.null()])
+  .optional()
+  .refine(
+    (s) =>
+      s === undefined ||
+      s === null ||
+      s === "" ||
+      s.startsWith("/") ||
+      /^https?:\/\//i.test(s),
+    { message: "presentationPdfUrl: нужен https-URL или путь с / в начале" }
+  );
+
 const lessonContentZ = z.object({
-  presentationPdfUrl: z.string().url().optional().nullable(),
+  presentationPdfUrl: presentationPdfUrlZ,
   slides: z.array(lessonContentSlideZ).default([]),
   practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
   checkpoints: z.array(lessonContentCheckpointZ).default([]),

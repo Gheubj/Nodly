@@ -284,7 +284,7 @@ export function StudioPage() {
 
   const handleSave = async () => {
     if (readOnly) {
-      messageApi.warning("Это просмотр работы ученика — сохранение отключено.");
+      messageApi.warning("Режим только просмотра — сохранение в облако отключено.");
       return;
     }
     const normalizedUserId = resolvedUserId.trim();
