@@ -215,7 +215,60 @@ const presentationPdfUrlZ = z
     { message: "presentationPdfUrl: нужен https-URL или путь с / в начале" }
   );
 
+const blockMediaUrlZ = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((s) => s.startsWith("/") || /^https?:\/\//i.test(s), { message: "url: https или путь с /" });
+
+const lessonBlockIdZ = z.string().min(1).max(80);
+const textBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("text"),
+  body: z.string().min(1).max(20000)
+});
+const imageBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("image"),
+  url: blockMediaUrlZ,
+  caption: z.string().max(500).optional().nullable()
+});
+const pdfBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("pdf"),
+  url: blockMediaUrlZ,
+  caption: z.string().max(500).optional().nullable()
+});
+const studioBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("studio"),
+  title: z.string().min(1).max(180),
+  instruction: z.string().min(1).max(8000),
+  ctaAction: z.string().max(120).optional().nullable()
+});
+const checkpointBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("checkpoint"),
+  question: z.string().min(1).max(8000),
+  expectedAnswer: z.string().min(1).max(8000)
+});
+const dividerBlockZ = z.object({
+  id: lessonBlockIdZ,
+  type: z.literal("divider")
+});
+
+const lessonBlockZ = z.discriminatedUnion("type", [
+  textBlockZ,
+  imageBlockZ,
+  pdfBlockZ,
+  studioBlockZ,
+  checkpointBlockZ,
+  dividerBlockZ
+]);
+
 const lessonContentZ = z.object({
+  schemaVersion: z.number().int().min(1).max(10).optional(),
+  blocks: z.array(lessonBlockZ).max(100).optional(),
   presentationPdfUrl: presentationPdfUrlZ,
   slides: z.array(lessonContentSlideZ).default([]),
   practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
@@ -1105,7 +1158,8 @@ export function registerLmsRoutes(app: Express) {
           moduleKey: z.string().min(1),
           sortOrder: z.number().int().optional(),
           starterPayload: z.record(z.string(), z.unknown()),
-          published: z.boolean().optional()
+          published: z.boolean().optional(),
+          lessonContent: lessonContentZ.optional()
         })
         .safeParse(req.body);
       if (!parsed.success) {
@@ -1119,7 +1173,10 @@ export function registerLmsRoutes(app: Express) {
           moduleKey: parsed.data.moduleKey,
           sortOrder: parsed.data.sortOrder ?? 0,
           starterPayload: parsed.data.starterPayload as Prisma.InputJsonValue,
-          published: parsed.data.published ?? true
+          published: parsed.data.published ?? true,
+          ...(parsed.data.lessonContent !== undefined
+            ? { lessonContent: parsed.data.lessonContent as Prisma.InputJsonValue }
+            : {})
         }
       });
       res.json({ id: row.id });

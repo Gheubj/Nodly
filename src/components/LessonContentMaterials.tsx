@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, Card, Collapse, Space, Typography } from "antd";
 import type { LessonContent } from "@/shared/types/lessonContent";
-import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
+import { pdfEmbedUrl, resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 
 const { Text, Paragraph } = Typography;
 
@@ -44,12 +44,13 @@ export function LessonContentMaterials({
             <Space direction="vertical" size="small" style={{ width: "100%" }}>
               <Button
                 type="default"
-                onClick={() => window.open(resolveLessonMediaUrl(c.presentationPdfUrl), "_blank", "noreferrer")}
+                onClick={() => window.open(pdfEmbedUrl(c.presentationPdfUrl), "_blank", "noreferrer")}
               >
                 Открыть презентацию PDF
               </Button>
               <iframe
-                src={resolveLessonMediaUrl(c.presentationPdfUrl)}
+                src={pdfEmbedUrl(c.presentationPdfUrl)}
+                className="lesson-flow__pdf"
                 title={`PDF: ${lessonTitle}`}
                 style={{ width: "100%", minHeight: 420, border: "1px solid var(--ant-color-border)" }}
               />
@@ -68,7 +69,7 @@ export function LessonContentMaterials({
                 {slide.mediaUrl ? (
                   <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
                     Материал:{" "}
-                    <a href={slide.mediaUrl} target="_blank" rel="noreferrer">
+                    <a href={resolveLessonMediaUrl(slide.mediaUrl)} target="_blank" rel="noreferrer">
                       открыть ссылку
                     </a>
                   </Paragraph>

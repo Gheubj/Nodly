@@ -32,7 +32,9 @@ import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { WeekScheduleCalendar } from "@/app/WeekScheduleCalendar";
-import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
+import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
+import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
+import { EMPTY_LESSON_CONTENT, type LessonContent, type LessonContentBlock } from "@/shared/types/lessonContent";
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -226,6 +228,8 @@ export function TeacherPage() {
   );
   const [lessonEditorPdfUrl, setLessonEditorPdfUrl] = useState("");
   const [lessonPdfUploading, setLessonPdfUploading] = useState(false);
+  const [lessonEditorTab, setLessonEditorTab] = useState<"visual" | "json">("visual");
+  const [lessonEditorBlocks, setLessonEditorBlocks] = useState<LessonContentBlock[]>([]);
   const [adminStudioProjectId, setAdminStudioProjectId] = useState("");
 
   const handleLessonPdfUpload: UploadProps["customRequest"] = async (options, _info) => {
@@ -924,7 +928,8 @@ export function TeacherPage() {
         moduleKey: vals.moduleKey,
         sortOrder: vals.sortOrder ?? 0,
         starterPayload,
-        published: vals.published ?? true
+        published: vals.published ?? true,
+        lessonContent: lessonContentFromBlocks([])
       });
       messageApi.success("Шаблон создан");
       const list = await apiClient.get<LessonTemplateListItem[]>("/api/lesson-templates");
@@ -943,6 +948,8 @@ export function TeacherPage() {
     const pdf = content.presentationPdfUrl;
     setLessonEditorPdfUrl(typeof pdf === "string" && pdf.length > 0 ? pdf : "");
     setLessonEditorJson(JSON.stringify(content, null, 2));
+    setLessonEditorBlocks(expandLessonContentToBlocks(content));
+    setLessonEditorTab("visual");
     setLessonEditorOpen(true);
   };
 
@@ -976,14 +983,18 @@ export function TeacherPage() {
       return;
     }
     let lessonContent: LessonContent;
-    try {
-      lessonContent = JSON.parse(lessonEditorJson) as LessonContent;
-    } catch {
-      messageApi.error("Некорректный JSON материалов урока");
-      return;
+    if (lessonEditorTab === "visual") {
+      lessonContent = lessonContentFromBlocks(lessonEditorBlocks);
+    } else {
+      try {
+        lessonContent = JSON.parse(lessonEditorJson) as LessonContent;
+      } catch {
+        messageApi.error("Некорректный JSON материалов урока");
+        return;
+      }
+      const pdfTrim = lessonEditorPdfUrl.trim();
+      lessonContent.presentationPdfUrl = pdfTrim.length > 0 ? pdfTrim : null;
     }
-    const pdfTrim = lessonEditorPdfUrl.trim();
-    lessonContent.presentationPdfUrl = pdfTrim.length > 0 ? pdfTrim : null;
     setLessonEditorSaving(true);
     try {
       await apiClient.patch(`/api/admin/lesson-templates/${lessonEditorLesson.id}/content`, {
@@ -2120,9 +2131,9 @@ export function TeacherPage() {
       </Drawer>
 
       <Modal
-        title={lessonEditorLesson ? `Материалы урока: ${lessonEditorLesson.title}` : "Материалы урока"}
+        title={lessonEditorLesson ? `Урок: ${lessonEditorLesson.title}` : "Урок"}
         open={lessonEditorOpen}
-        width={760}
+        width={960}
         okText="Сохранить"
         confirmLoading={lessonEditorSaving}
         onCancel={() => setLessonEditorOpen(false)}
@@ -2139,44 +2150,72 @@ export function TeacherPage() {
               style={{ marginTop: 4 }}
             />
           </div>
-          <div>
-            <Text type="secondary">PDF презентации (URL или путь)</Text>
-            <Input
-              style={{ marginTop: 4 }}
-              placeholder="Например /course-assets/module-a/lesson1.pdf или https://…/file.pdf"
-              value={lessonEditorPdfUrl}
-              onChange={(e) => setLessonEditorPdfUrl(e.target.value)}
-            />
-            <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0, fontSize: 12 }}>
-              Можно вставить ссылку вручную (в т.ч. путь к файлу в <Text code>public/</Text>) или загрузить PDF на
-              сервер — после сохранения урока ученики увидят презентацию по адресу в{" "}
-              <Text code>presentationPdfUrl</Text>.
-            </Paragraph>
-            {user?.role === "admin" ? (
-              <Upload
-                accept="application/pdf,.pdf"
-                maxCount={1}
-                showUploadList={false}
-                customRequest={(opts, info) => void handleLessonPdfUpload(opts, info)}
-              >
-                <Button style={{ marginTop: 8 }} icon={<UploadOutlined />} loading={lessonPdfUploading}>
-                  Загрузить PDF на сервер
-                </Button>
-              </Upload>
-            ) : null}
-          </div>
-          <div>
-            <Text type="secondary">lessonContent (JSON)</Text>
-            <TextArea
-              rows={16}
-              value={lessonEditorJson}
-              onChange={(e) => setLessonEditorJson(e.target.value)}
-              style={{ marginTop: 4, fontFamily: "monospace" }}
-            />
-            <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-              Поддерживаемые поля: presentationPdfUrl, slides[], practiceSteps[], checkpoints[], hints[].
-            </Paragraph>
-          </div>
+          <Tabs
+            activeKey={lessonEditorTab}
+            onChange={(k) => {
+              const key = k as "visual" | "json";
+              if (key === "json") {
+                setLessonEditorJson(JSON.stringify(lessonContentFromBlocks(lessonEditorBlocks), null, 2));
+              }
+              if (key === "visual") {
+                try {
+                  const parsed = JSON.parse(lessonEditorJson) as LessonContent;
+                  setLessonEditorBlocks(expandLessonContentToBlocks(parsed));
+                } catch {
+                  /* keep blocks */
+                }
+              }
+              setLessonEditorTab(key);
+            }}
+            items={[
+              {
+                key: "visual",
+                label: "Конструктор",
+                children: <AdminLessonBlockEditor blocks={lessonEditorBlocks} onChange={setLessonEditorBlocks} />
+              },
+              {
+                key: "json",
+                label: "JSON",
+                children: (
+                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                    <div>
+                      <Text type="secondary">PDF (legacy, опционально)</Text>
+                      <Input
+                        style={{ marginTop: 4 }}
+                        placeholder="/api/uploads/… или https://…"
+                        value={lessonEditorPdfUrl}
+                        onChange={(e) => setLessonEditorPdfUrl(e.target.value)}
+                      />
+                      {user?.role === "admin" ? (
+                        <Upload
+                          accept="application/pdf,.pdf"
+                          maxCount={1}
+                          showUploadList={false}
+                          customRequest={(opts, info) => void handleLessonPdfUpload(opts, info)}
+                        >
+                          <Button style={{ marginTop: 8 }} icon={<UploadOutlined />} loading={lessonPdfUploading}>
+                            Загрузить PDF
+                          </Button>
+                        </Upload>
+                      ) : null}
+                    </div>
+                    <div>
+                      <Text type="secondary">lessonContent</Text>
+                      <TextArea
+                        rows={14}
+                        value={lessonEditorJson}
+                        onChange={(e) => setLessonEditorJson(e.target.value)}
+                        style={{ marginTop: 4, fontFamily: "monospace" }}
+                      />
+                      <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+                        Поле <Text code>blocks</Text> — основной формат; legacy-поля для совместимости.
+                      </Paragraph>
+                    </div>
+                  </Space>
+                )
+              }
+            ]}
+          />
         </Space>
       </Modal>
 

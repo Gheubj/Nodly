@@ -5,12 +5,11 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { LessonContentMaterials } from "@/components/LessonContentMaterials";
 import { courseModuleStudentLabel, courseModuleToApiModuleKey } from "@/shared/courseModuleLabels";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
-import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
+import type { LessonContent } from "@/shared/types/lessonContent";
 import dayjs from "dayjs";
 
 const { Title, Paragraph, Text } = Typography;
@@ -496,7 +495,6 @@ export function StudentClassPage() {
     () => (courseData?.lessons ?? []).find((l) => l.id === lessonFocusId) ?? null,
     [courseData?.lessons, lessonFocusId]
   );
-  const activeLessonContent = activeLesson?.lessonContent ?? EMPTY_LESSON_CONTENT;
   const assignmentForActiveLesson = useMemo(() => {
     if (!activeLesson) {
       return null;
@@ -600,32 +598,37 @@ export function StudentClassPage() {
         {!activeLesson ? (
           <Empty description="Выбери урок" />
         ) : (
-          <LessonContentMaterials
-            lessonTitle={activeLesson.title}
-            studentSummary={activeLesson.studentSummary}
-            lessonContent={activeLessonContent}
-            showCheckpointAnswers
-            footer={
-              <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                {assignmentForActiveLesson ? (
-                  <Paragraph style={{ marginBottom: 0 }}>
-                    <Link
-                      to={`/lesson/${encodeURIComponent(activeLesson.id)}?assignmentId=${encodeURIComponent(assignmentForActiveLesson.assignmentId)}`}
-                    >
-                      Интерактивное прохождение (чекпоинты и сохранение прогресса)
-                    </Link>
-                  </Paragraph>
-                ) : (
-                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Когда учитель выдаст задание по этому шаблону урока, здесь появится ссылка на интерактивное
-                    прохождение с сохранением прогресса.
-                  </Paragraph>
-                )}
-                <Link to={`/lesson/${encodeURIComponent(activeLesson.id)}`}>Открыть плеер без привязки к заданию</Link>
-                {lessonActionsBlock(assignmentForActiveLesson)}
-              </Space>
-            }
-          />
+          <Card title={activeLesson.title}>
+            {activeLesson.studentSummary ? (
+              <Paragraph style={{ marginBottom: 16 }}>{activeLesson.studentSummary}</Paragraph>
+            ) : (
+              <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                Краткое описание урока пока не добавлено.
+              </Paragraph>
+            )}
+            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+              <Button
+                type="primary"
+                size="large"
+                onClick={() =>
+                  navigate(
+                    assignmentForActiveLesson
+                      ? `/lesson/${encodeURIComponent(activeLesson.id)}?assignmentId=${encodeURIComponent(assignmentForActiveLesson.assignmentId)}`
+                      : `/lesson/${encodeURIComponent(activeLesson.id)}`
+                  )
+                }
+              >
+                Открыть урок (интерактивно)
+              </Button>
+              {!assignmentForActiveLesson ? (
+                <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
+                  Если учитель привяжет задание к этому шаблону, открой урок из задания — тогда прогресс сохранится в
+                  задании.
+                </Paragraph>
+              ) : null}
+              {lessonActionsBlock(assignmentForActiveLesson)}
+            </Space>
+          </Card>
         )}
       </Space>
     </Spin>

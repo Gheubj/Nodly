@@ -20,7 +20,18 @@ export interface LessonContentHint {
   text: string;
 }
 
+/** Блоки «ленты» урока (конструктор + плеер). Если заданы — плеер строит единый поток. */
+export type LessonContentBlock =
+  | { id: string; type: "text"; body: string }
+  | { id: string; type: "image"; url: string; caption?: string | null }
+  | { id: string; type: "pdf"; url: string; caption?: string | null }
+  | { id: string; type: "studio"; title: string; instruction: string; ctaAction?: string | null }
+  | { id: string; type: "checkpoint"; question: string; expectedAnswer: string }
+  | { id: string; type: "divider" };
+
 export interface LessonContent {
+  schemaVersion?: number;
+  blocks?: LessonContentBlock[];
   presentationPdfUrl?: string | null;
   slides: LessonContentSlide[];
   practiceSteps: LessonContentPracticeStep[];

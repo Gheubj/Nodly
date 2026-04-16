@@ -1,21 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Alert,
-  Button,
-  Card,
-  Input,
-  Layout,
-  Space,
-  Spin,
-  Tag,
-  Typography,
-  message
-} from "antd";
+import { Alert, Card, Layout, Space, Spin, Typography, message } from "antd";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
-import { LessonContentMaterials } from "@/components/LessonContentMaterials";
+import { LessonFlowView } from "@/components/LessonFlowView";
 import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
+import { expandLessonContentToBlocks } from "@/shared/lessonContentBlocks";
 import {
   normalizeCheckpointAnswer,
   parseLessonPlayerState,
@@ -35,14 +25,6 @@ type Bootstrap = {
   state: unknown;
 };
 
-function isStudioCta(cta: string | null | undefined): boolean {
-  if (!cta) {
-    return false;
-  }
-  const s = cta.toLowerCase();
-  return s.includes("studio") || s === "open_studio";
-}
-
 export function LessonPlayerPage() {
   const { user } = useSessionStore();
   const navigate = useNavigate();
@@ -54,7 +36,7 @@ export function LessonPlayerPage() {
   const [saving, setSaving] = useState(false);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [playerState, setPlayerState] = useState<LessonPlayerStateV1>({ v: 1, checkpoints: {} });
-  const [draftAnswers, setDraftAnswers] = useState<Record<number, string>>({});
+  const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const [openingStudio, setOpeningStudio] = useState(false);
 
   const lessonContent: LessonContent = useMemo(() => {
@@ -63,6 +45,13 @@ export function LessonPlayerPage() {
     }
     return { ...EMPTY_LESSON_CONTENT, ...(bootstrap.lessonContent as LessonContent) };
   }, [bootstrap]);
+
+  const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
+
+  const checkpointBlockIds = useMemo(
+    () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
+    [flowBlocks]
+  );
 
   const persistState = useCallback(
     async (next: LessonPlayerStateV1) => {
@@ -145,10 +134,10 @@ export function LessonPlayerPage() {
     );
   }
 
-  const checkpointsOk = (idx: number) => playerState.checkpoints?.[String(idx)] === "ok";
+  const checkpointsOk = (blockId: string) => playerState.checkpoints?.[blockId] === "ok";
 
-  const verifyCheckpoint = async (idx: number, expected: string) => {
-    const raw = draftAnswers[idx] ?? "";
+  const verifyCheckpoint = async (blockId: string, expected: string) => {
+    const raw = draftAnswers[blockId] ?? "";
     if (normalizeCheckpointAnswer(raw) !== normalizeCheckpointAnswer(expected)) {
       messageApi.warning("Пока не совпадает с ожидаемым ответом — попробуй ещё раз.");
       return;
@@ -156,33 +145,32 @@ export function LessonPlayerPage() {
     const next: LessonPlayerStateV1 = {
       ...playerState,
       v: 1,
-      checkpoints: { ...playerState.checkpoints, [String(idx)]: "ok" }
+      checkpoints: { ...playerState.checkpoints, [blockId]: "ok" }
     };
     await persistState(next);
     messageApi.success("Верно!");
   };
 
-  const markMaterialsDone = async () => {
-    await persistState({ ...playerState, v: 1, materialsDone: true });
-    messageApi.success("Отмечено");
-  };
-
   const allCheckpointsDone =
-    lessonContent.checkpoints.length === 0 ||
-    lessonContent.checkpoints.every((_, i) => checkpointsOk(i));
+    checkpointBlockIds.length === 0 || checkpointBlockIds.every((id) => checkpointsOk(id));
 
   return (
-    <Content className="app-content">
+    <Content className="app-content lesson-player-page">
       {holder}
       <Spin spinning={loading}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: 960, margin: "0 auto" }}>
           <div>
             <Title level={4} style={{ marginTop: 0 }}>
               {bootstrap?.title ?? "Урок"}
             </Title>
+            {bootstrap?.studentSummary ? (
+              <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                {bootstrap.studentSummary}
+              </Paragraph>
+            ) : null}
             <Space wrap>
-              <Link to="/learning">К каталогу (самостоятельно)</Link>
-              <Link to="/class">К классу</Link>
+              <Link to="/learning">Каталог</Link>
+              <Link to="/class">Класс</Link>
             </Space>
           </div>
           {bootstrap?.assignmentTitle ? (
@@ -197,76 +185,25 @@ export function LessonPlayerPage() {
             <Card>Не удалось загрузить урок.</Card>
           ) : bootstrap ? (
             <>
-              <Card title="Шаг 1 · Материалы">
-                <LessonContentMaterials
-                  lessonTitle={bootstrap.title}
-                  studentSummary={bootstrap.studentSummary}
-                  lessonContent={lessonContent}
-                  showCheckpointAnswers={false}
-                  showCheckpointsSection={false}
+              {flowBlocks.length === 0 ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="Урок пока без блоков"
+                  description="Администратору нужно добавить блоки в конструкторе или заполнить JSON материалов."
                 />
-                <Button
-                  type="primary"
-                  style={{ marginTop: 16 }}
-                  loading={saving}
-                  disabled={Boolean(playerState.materialsDone)}
-                  onClick={() => void markMaterialsDone()}
-                >
-                  {playerState.materialsDone ? "Материалы отмечены просмотренными" : "Я просмотрел материалы"}
-                </Button>
-              </Card>
-
-              <Card title="Шаг 2 · Практика в Studio">
-                <Paragraph type="secondary">
-                  По шагам ниже можно открыть полную среду разработки. Стартовый проект создаётся из шаблона урока.
-                </Paragraph>
-                <Space direction="vertical" style={{ width: "100%" }}>
-                  {lessonContent.practiceSteps.map((step, idx) => (
-                    <Card key={`p-${idx}`} size="small" title={`${idx + 1}. ${step.title}`}>
-                      <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 8 }}>{step.instruction}</Paragraph>
-                      {isStudioCta(step.ctaAction) ? (
-                        <Button type="primary" loading={openingStudio} onClick={() => void openStudio()}>
-                          Открыть в Studio
-                        </Button>
-                      ) : null}
-                    </Card>
-                  ))}
-                  {lessonContent.practiceSteps.length === 0 ? (
-                    <Paragraph type="secondary">Практические шаги не заданы.</Paragraph>
-                  ) : null}
-                </Space>
-              </Card>
-
-              <Card title="Шаг 3 · Контрольные вопросы">
-                {lessonContent.checkpoints.length === 0 ? (
-                  <Paragraph type="secondary">Вопросы не заданы.</Paragraph>
-                ) : (
-                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    {lessonContent.checkpoints.map((cp, idx) => (
-                      <Card key={`c-${idx}`} size="small" title={`Вопрос ${idx + 1}`}>
-                        <Paragraph>{cp.question}</Paragraph>
-                        {checkpointsOk(idx) ? (
-                          <Tag color="success">Верно</Tag>
-                        ) : (
-                          <Space direction="vertical" style={{ width: "100%" }}>
-                            <Input.TextArea
-                              rows={2}
-                              placeholder="Твой ответ"
-                              value={draftAnswers[idx] ?? ""}
-                              onChange={(e) => setDraftAnswers((d) => ({ ...d, [idx]: e.target.value }))}
-                            />
-                            <Button loading={saving} onClick={() => void verifyCheckpoint(idx, cp.expectedAnswer)}>
-                              Проверить
-                            </Button>
-                          </Space>
-                        )}
-                      </Card>
-                    ))}
-                  </Space>
-                )}
-              </Card>
-
-              {allCheckpointsDone && lessonContent.checkpoints.length > 0 ? (
+              ) : null}
+              <LessonFlowView
+                blocks={flowBlocks}
+                checkpointOk={checkpointsOk}
+                draftAnswers={draftAnswers}
+                onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
+                onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
+                saving={saving}
+                onOpenStudio={() => void openStudio()}
+                openingStudio={openingStudio}
+              />
+              {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
                 <Alert type="success" showIcon message="Все контрольные вопросы пройдены" />
               ) : null}
             </>

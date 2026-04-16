@@ -1496,3 +1496,53 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   font-size: 0.9rem;
   margin-bottom: 0 !important;
 }
+
+/* Единая «лента» урока: PDF и картинки на всю ширину контента */
+.lesson-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.lesson-flow__segment {
+  margin: 0 0 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  background: var(--app-surface, #fff);
+}
+
+.lesson-flow__pdf {
+  width: 100%;
+  min-height: 82vh;
+  max-height: 95vh;
+  border: 0;
+  display: block;
+  background: #0b1220;
+}
+
+.lesson-flow__image {
+  width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: top;
+}
+
+.lesson-flow__text {
+  padding: 16px 18px;
+}
+
+.lesson-flow__studio {
+  padding: 16px 18px;
+}
+
+.lesson-flow__checkpoint {
+  padding: 16px 18px;
+}
+
+.lesson-flow__divider {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border: 0;
+}
