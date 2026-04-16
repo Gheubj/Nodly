@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Input, Space, Spin, Typography, message } from "antd";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Alert, Button, Card, Space, Spin, Typography, message } from "antd";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
 import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
 import { EMPTY_LESSON_CONTENT, type LessonContentBlock } from "@/shared/types/lessonContent";
 
-const { Title, Paragraph, Text } = Typography;
-const { TextArea } = Input;
+const { Title, Text, Paragraph } = Typography;
 
 type TemplateContentPayload = {
   id: string;
@@ -29,7 +28,6 @@ export function AdminLessonTemplateEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [template, setTemplate] = useState<TemplateContentPayload | null>(null);
-  const [studentSummary, setStudentSummary] = useState("");
   const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
 
   const title = useMemo(() => template?.title ?? "Шаблон урока", [template?.title]);
@@ -49,12 +47,11 @@ export function AdminLessonTemplateEditorPage() {
           return;
         }
         setTemplate(data);
-        setStudentSummary(data.studentSummary ?? "");
         const content =
           data.lessonContent && typeof data.lessonContent === "object"
             ? (data.lessonContent as { blocks?: unknown[] })
             : EMPTY_LESSON_CONTENT;
-        setBlocks(expandLessonContentToBlocks(content as any));
+        setBlocks(expandLessonContentToBlocks(content as any).filter((b) => b.type !== "divider"));
       } catch (e) {
         if (!cancelled) {
           messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить шаблон");
@@ -86,33 +83,20 @@ export function AdminLessonTemplateEditorPage() {
     <div className="app-content">
       {holder}
       <Spin spinning={loading || saving}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          <div>
-            <Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
+        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <div className="admin-lesson-editor__header">
+            <Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
               {title}
             </Title>
-            <Space wrap>
-              <Link to="/admin/templates">Назад к шаблонам</Link>
-              <Link to="/">На главную</Link>
+            <Space wrap size={10}>
+              <Button type="link" style={{ paddingInline: 0 }} onClick={() => navigate("/admin/templates")}>
+                Назад
+              </Button>
+              <Alert type="warning" showIcon message="Не забудь сохранить изменения перед выходом." />
             </Space>
           </div>
 
-          <Card title="Кратко для ученика">
-            <TextArea
-              rows={3}
-              value={studentSummary}
-              onChange={(e) => setStudentSummary(e.target.value)}
-              placeholder="Краткое описание урока"
-            />
-            <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
-              Ниже — пустой холст урока. Добавляй блоки в нужном порядке.
-            </Paragraph>
-          </Card>
-
           <div>
-            <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-              Холст урока (редактирование как в Colab): добавляй блоки через `+` между ячейками.
-            </Paragraph>
             <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
           </div>
 
@@ -126,7 +110,7 @@ export function AdminLessonTemplateEditorPage() {
                 setSaving(true);
                 try {
                   await apiClient.patch(`/api/admin/lesson-templates/${encodeURIComponent(templateId)}/content`, {
-                    studentSummary: studentSummary.trim() || null,
+                    studentSummary: template?.studentSummary ?? null,
                     lessonContent: lessonContentFromBlocks(blocks)
                   });
                   messageApi.success("Шаблон сохранен");

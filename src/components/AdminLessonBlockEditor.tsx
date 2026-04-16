@@ -1,19 +1,20 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Dropdown, Input, Select, Space, Typography, Upload, message } from "antd";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { apiClient } from "@/shared/api/client";
 import { newLessonBlockId } from "@/shared/lessonContentBlocks";
+import { useSessionStore } from "@/store/useSessionStore";
+import { listProjects } from "@/features/project/projectRepository";
 import type { UploadProps } from "antd";
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "text", label: "Текст" },
   { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
-  { value: "checkpoint", label: "Контрольный вопрос" },
-  { value: "divider", label: "Разделитель" }
+  { value: "checkpoint", label: "Контрольный вопрос" }
 ];
 
 function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
@@ -33,13 +34,13 @@ function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
       return {
         id,
         type: "studio",
-        title: "Практика",
-        instruction: "Опиши интерактивную практику внутри урока.",
+        instruction: "",
         ctaAction: null,
-        studioPracticeKind: "template"
+        studioPracticeKind: "empty",
+        studioWorkspaceLevel: 1
       };
     case "checkpoint":
-      return { id, type: "checkpoint", question: "Вопрос?", expectedAnswer: "Ответ" };
+      return { id, type: "checkpoint", question: "", expectedAnswer: "", answerMode: "text", options: [] };
     default:
       return { id, type: "divider" };
   }
@@ -51,7 +52,34 @@ export type AdminLessonBlockEditorProps = {
 };
 
 export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEditorProps) {
+  const { user } = useSessionStore();
   const [uploadBusy, setUploadBusy] = useState<Record<string, boolean>>({});
+  const [projectOptions, setProjectOptions] = useState<Array<{ value: string; label: string }>>([]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setProjectOptions([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await listProjects(userId);
+        if (cancelled) {
+          return;
+        }
+        setProjectOptions(list.map((p) => ({ value: p.id, label: p.title })));
+      } catch {
+        if (!cancelled) {
+          setProjectOptions([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const setBusy = useCallback((blockId: string, v: boolean) => {
     setUploadBusy((prev) => ({ ...prev, [blockId]: v }));
@@ -135,11 +163,16 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     };
   };
 
+  const studioProjectSelectOptions = useMemo(
+    () => [
+      { value: "__empty__", label: "Пустая практика" },
+      ...projectOptions.map((item) => ({ value: item.value, label: item.label }))
+    ],
+    [projectOptions]
+  );
+
   return (
     <Space direction="vertical" size="middle" style={{ width: "100%" }} className="lesson-block-editor">
-      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Сверху вниз — как увидит ученик: единая colab-лента с markdown, медиа и мини-разработкой.
-      </Paragraph>
       {blocks.length === 0 ? (
         <div className="lesson-block-editor__insert-row lesson-block-editor__insert-row--empty">
           <Dropdown
@@ -201,7 +234,6 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%" }}>
               <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
-              <Text type="secondary">Поддерживается markdown (заголовки, списки, **жирный**, ссылки, таблицы).</Text>
             </Space>
           ) : null}
           {block.type === "media" ? (
@@ -251,75 +283,48 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
           ) : null}
           {block.type === "studio" ? (
             <Space direction="vertical" style={{ width: "100%" }}>
-              <Input value={block.title} onChange={(e) => setBlock(index, { title: e.target.value })} />
               <Input.TextArea
                 rows={3}
                 value={block.instruction}
                 onChange={(e) => setBlock(index, { instruction: e.target.value })}
               />
-              <Input
-                placeholder="Доп. действие (необязательно)"
-                value={block.ctaAction ?? ""}
-                onChange={(e) => setBlock(index, { ctaAction: e.target.value || null })}
-              />
-              <div>
-                <Text type="secondary">Стартовый проект для ученика</Text>
-                <Select
-                  style={{ width: "100%", marginTop: 6 }}
-                  value={block.studioPracticeKind ?? "template"}
+              <Select
+                  style={{ width: "100%" }}
+                  value={block.studioPracticeKind === "project_clone" && block.referenceProjectId ? block.referenceProjectId : "__empty__"}
+                  options={studioProjectSelectOptions}
+                  showSearch
+                  optionFilterProp="label"
                   onChange={(v) => {
-                    const kind = v as "template" | "project_clone" | "empty";
-                    if (kind === "template") {
-                      setBlock(index, {
-                        studioPracticeKind: "template",
-                        referenceProjectId: null,
-                        studioWorkspaceLevel: undefined
-                      });
-                    } else if (kind === "empty") {
+                    if (v === "__empty__") {
                       setBlock(index, {
                         studioPracticeKind: "empty",
                         referenceProjectId: null,
                         studioWorkspaceLevel: block.studioWorkspaceLevel ?? 1
                       });
-                    } else {
-                      setBlock(index, {
-                        studioPracticeKind: "project_clone",
-                        studioWorkspaceLevel: undefined
-                      });
+                      return;
                     }
+                    setBlock(index, {
+                      studioPracticeKind: "project_clone",
+                      referenceProjectId: v,
+                      studioWorkspaceLevel: undefined
+                    });
                   }}
-                  options={[
-                    { value: "template", label: "Как в шаблоне урока (starterPayload в LMS)" },
-                    {
-                      value: "project_clone",
-                      label: "Копия готового облачного проекта (создай в «Разработка», вставь id из URL)"
-                    },
-                    {
-                      value: "empty",
-                      label: "Пустая практика — только уровень Blockly (данные и блоки ученик добавит сам)"
-                    }
-                  ]}
                 />
-              </div>
-              {(block.studioPracticeKind ?? "template") === "project_clone" ? (
-                <Input
-                  placeholder="ID проекта, например p_abc123…"
-                  value={block.referenceProjectId ?? ""}
-                  onChange={(e) => setBlock(index, { referenceProjectId: e.target.value.trim() || null })}
-                />
-              ) : null}
-              {(block.studioPracticeKind ?? "template") === "empty" ? (
                 <Select
                   style={{ width: "100%" }}
                   value={block.studioWorkspaceLevel ?? 1}
-                  onChange={(v) => setBlock(index, { studioWorkspaceLevel: v as 1 | 2 | 3 })}
+                  disabled={block.studioPracticeKind === "project_clone" && Boolean(block.referenceProjectId)}
+                  title={block.studioPracticeKind === "project_clone" ? "Для проекта из библиотеки уровень берется из проекта" : undefined}
+                  placeholder="Уровень Blockly"
+                  onChange={(v) => {
+                    setBlock(index, { studioWorkspaceLevel: v as 1 | 2 | 3 });
+                  }}
                   options={[
-                    { value: 1, label: "Уровень Blockly 1 (ученик не переключает)" },
+                    { value: 1, label: "Уровень Blockly 1" },
                     { value: 2, label: "Уровень Blockly 2" },
                     { value: 3, label: "Уровень Blockly 3" }
                   ]}
                 />
-              ) : null}
             </Space>
           ) : null}
           {block.type === "checkpoint" ? (
@@ -329,14 +334,63 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                 value={block.question}
                 onChange={(e) => setBlock(index, { question: e.target.value })}
               />
-              <Input
-                placeholder="Ожидаемый ответ"
-                value={block.expectedAnswer}
-                onChange={(e) => setBlock(index, { expectedAnswer: e.target.value })}
+              <Select
+                value={block.answerMode ?? "text"}
+                onChange={(v) => setBlock(index, { answerMode: v as "text" | "single" | "multi" })}
+                options={[
+                  { value: "text", label: "Свободный ввод" },
+                  { value: "single", label: "Один вариант" },
+                  { value: "multi", label: "Несколько вариантов" }
+                ]}
               />
+              {(block.answerMode ?? "text") !== "text" ? (
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Варианты, каждый с новой строки"
+                  value={(block.options ?? []).join("\n")}
+                  onChange={(e) =>
+                    setBlock(index, {
+                      options: e.target.value
+                        .split("\n")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    })
+                  }
+                />
+              ) : null}
+              {(block.answerMode ?? "text") === "text" ? (
+                <Input
+                  placeholder="Ожидаемый ответ"
+                  value={block.expectedAnswer}
+                  onChange={(e) => setBlock(index, { expectedAnswer: e.target.value })}
+                />
+              ) : null}
+              {(block.answerMode ?? "text") === "single" ? (
+                <Select
+                  placeholder="Правильный вариант"
+                  value={block.expectedAnswer || undefined}
+                  options={(block.options ?? []).map((o) => ({ value: o, label: o }))}
+                  onChange={(v) => setBlock(index, { expectedAnswer: String(v) })}
+                />
+              ) : null}
+              {(block.answerMode ?? "text") === "multi" ? (
+                <Select
+                  mode="multiple"
+                  placeholder="Правильные варианты"
+                  value={
+                    block.expectedAnswer
+                      ? block.expectedAnswer
+                          .split("||")
+                          .map((x) => x.trim())
+                          .filter(Boolean)
+                      : []
+                  }
+                  options={(block.options ?? []).map((o) => ({ value: o, label: o }))}
+                  onChange={(values) => setBlock(index, { expectedAnswer: values.map(String).join("||") })}
+                />
+              ) : null}
             </Space>
           ) : null}
-            {block.type === "divider" ? <Text type="secondary">Разделитель между блоками</Text> : null}
           </Card>
           {index === blocks.length - 1 ? (
             <div className="lesson-block-editor__insert-row">

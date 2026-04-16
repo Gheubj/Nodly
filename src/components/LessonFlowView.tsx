@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Button, Input, Space, Spin, Tag, Typography } from "antd";
+import { Button, Checkbox, Input, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
@@ -90,7 +90,7 @@ export function LessonFlowView({
     <div className={`lesson-flow${isColab ? " lesson-flow--colab" : ""}`}>
       {blocks.map((block) => {
         if (block.type === "divider") {
-          return <div key={block.id} className={`lesson-flow__divider${isColab ? " lesson-flow__divider--colab" : ""}`} role="separator" />;
+          return null;
         }
         if (block.type === "text") {
           return (
@@ -121,9 +121,6 @@ export function LessonFlowView({
           }
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__studio${isColab ? " lesson-flow__segment--colab" : ""}`}>
-              <Paragraph style={{ marginBottom: 8 }}>
-                <Text strong>{block.title}</Text>
-              </Paragraph>
               <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
@@ -151,6 +148,13 @@ export function LessonFlowView({
         if (block.type === "checkpoint") {
           checkpointOrdinal += 1;
           const ok = checkpointOk(block.id);
+          const answerMode = block.answerMode ?? "text";
+          const options = (block.options ?? []).filter(Boolean);
+          const raw = draftAnswers[block.id] ?? "";
+          const selected = raw
+            .split("||")
+            .map((s) => s.trim())
+            .filter(Boolean);
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__checkpoint${isColab ? " lesson-flow__segment--colab" : ""}`}>
               <Paragraph style={{ marginBottom: 8 }}>
@@ -162,12 +166,28 @@ export function LessonFlowView({
                 <Tag color="success">Верно</Tag>
               ) : (
                 <Space direction="vertical" style={{ width: "100%" }} size="small">
-                  <Input.TextArea
-                    rows={2}
-                    placeholder="Ответ"
-                    value={draftAnswers[block.id] ?? ""}
-                    onChange={(e) => onDraftChange(block.id, e.target.value)}
-                  />
+                  {answerMode === "text" ? (
+                    <Input.TextArea
+                      rows={2}
+                      placeholder="Ответ"
+                      value={raw}
+                      onChange={(e) => onDraftChange(block.id, e.target.value)}
+                    />
+                  ) : null}
+                  {answerMode === "single" ? (
+                    <Radio.Group
+                      value={selected[0] ?? ""}
+                      options={options.map((o) => ({ label: o, value: o }))}
+                      onChange={(e) => onDraftChange(block.id, String(e.target.value))}
+                    />
+                  ) : null}
+                  {answerMode === "multi" ? (
+                    <Checkbox.Group
+                      value={selected}
+                      options={options}
+                      onChange={(values) => onDraftChange(block.id, values.map(String).join("||"))}
+                    />
+                  ) : null}
                   <Button loading={saving} onClick={() => void onVerifyCheckpoint(block.id, block.expectedAnswer)}>
                     Проверить
                   </Button>

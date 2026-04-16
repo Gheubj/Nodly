@@ -124,7 +124,27 @@ export function LessonPlayerPage() {
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
     const raw = draftAnswers[blockId] ?? "";
-    if (normalizeCheckpointAnswer(raw) !== normalizeCheckpointAnswer(expected)) {
+    const block = flowBlocks.find((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint" && b.id === blockId);
+    const mode = block?.answerMode ?? "text";
+    const actualNormalized =
+      mode === "multi"
+        ? raw
+            .split("||")
+            .map((x) => normalizeCheckpointAnswer(x))
+            .filter(Boolean)
+            .sort()
+            .join("||")
+        : normalizeCheckpointAnswer(raw);
+    const expectedNormalized =
+      mode === "multi"
+        ? expected
+            .split("||")
+            .map((x) => normalizeCheckpointAnswer(x))
+            .filter(Boolean)
+            .sort()
+            .join("||")
+        : normalizeCheckpointAnswer(expected);
+    if (actualNormalized !== expectedNormalized) {
       messageApi.warning("Пока не совпадает с ожидаемым ответом — попробуй ещё раз.");
       return;
     }

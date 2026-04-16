@@ -1689,6 +1689,26 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   min-height: 0;
 }
 
+.studio-mini-host {
+  font-size: 13px;
+}
+
+.studio-mini-host .ant-btn {
+  font-size: 12px;
+  height: 26px;
+  padding-inline: 10px;
+}
+
+.studio-mini-host .blockly-root__toolbar {
+  margin-bottom: 4px;
+}
+
+.studio-mini-host .blockly-palette-btn {
+  min-height: 24px;
+  font-size: 12px;
+  padding-left: 10px;
+}
+
 .lesson-block-editor__card.ant-card {
   border-color: transparent;
   box-shadow: none;
@@ -1717,4 +1737,8 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-block-editor__cell .ant-card-body {
   padding-top: 14px;
+}
+
+.admin-lesson-editor__header {
+  margin-bottom: -8px;
 }

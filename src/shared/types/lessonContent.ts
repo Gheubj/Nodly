@@ -13,6 +13,8 @@ export interface LessonContentPracticeStep {
 export interface LessonContentCheckpoint {
   question: string;
   expectedAnswer: string;
+  answerMode?: "text" | "single" | "multi";
+  options?: string[];
 }
 
 export interface LessonContentHint {
@@ -30,7 +32,6 @@ export type LessonContentBlock =
   | {
       id: string;
       type: "studio";
-      title: string;
       instruction: string;
       ctaAction?: string | null;
       /**
@@ -45,7 +46,14 @@ export type LessonContentBlock =
       /** Для `empty`: уровень 1–3 (обязателен при пустой практике) */
       studioWorkspaceLevel?: 1 | 2 | 3;
     }
-  | { id: string; type: "checkpoint"; question: string; expectedAnswer: string }
+  | {
+      id: string;
+      type: "checkpoint";
+      question: string;
+      expectedAnswer: string;
+      answerMode?: "text" | "single" | "multi";
+      options?: string[];
+    }
   | { id: string; type: "divider" };
 
 export interface LessonContent {

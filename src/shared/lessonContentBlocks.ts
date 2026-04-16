@@ -64,7 +64,6 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
     out.push({
       id: newLessonBlockId(),
       type: "studio",
-      title: p.title,
       instruction: p.instruction,
       ctaAction: p.ctaAction ?? null
     });
@@ -75,7 +74,9 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
       id: newLessonBlockId(),
       type: "checkpoint",
       question: c.question,
-      expectedAnswer: c.expectedAnswer
+      expectedAnswer: c.expectedAnswer,
+      answerMode: c.answerMode ?? "text",
+      options: c.options ?? []
     });
   }
   for (let i = 0; i < lc.hints.length; i++) {
