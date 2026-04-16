@@ -421,6 +421,12 @@ export function TeacherPage() {
   }, []);
 
   useEffect(() => {
+    if (user?.role === "admin") {
+      setActiveTab("admin");
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
     if (lmsClassroomId) {
       void loadAssignments(lmsClassroomId);
       void loadSubmissions(lmsClassroomId, filterAssignmentId);
@@ -872,6 +878,31 @@ export function TeacherPage() {
     setLessonEditorOpen(true);
   };
 
+  const openLessonEditorFromCatalog = async (row: LessonTemplateListItem) => {
+    try {
+      const data = await apiClient.get<{
+        id: string;
+        title: string;
+        moduleKey: string;
+        sortOrder: number;
+        studentSummary: string | null;
+        lessonContent: LessonContent | null;
+      }>(`/api/lesson-templates/${row.id}/content`);
+      openLessonEditor({
+        id: data.id,
+        title: data.title,
+        description: row.description,
+        moduleKey: data.moduleKey,
+        sortOrder: data.sortOrder,
+        teacherGuideMd: null,
+        studentSummary: data.studentSummary,
+        lessonContent: data.lessonContent ?? undefined
+      });
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить урок");
+    }
+  };
+
   const submitLessonEditor = async () => {
     if (!lessonEditorLesson) {
       return;
@@ -891,6 +922,14 @@ export function TeacherPage() {
       });
       messageApi.success("Материалы урока сохранены");
       setLessonEditorOpen(false);
+      if (user?.role === "admin") {
+        try {
+          const list = await apiClient.get<LessonTemplateListItem[]>("/api/lesson-templates");
+          setTemplates(list);
+        } catch {
+          /* ignore */
+        }
+      }
       if (lmsClassroomId) {
         const c = await apiClient.get<TeacherCourseResponse>(`/api/teacher/classrooms/${lmsClassroomId}/course`);
         setCourseBundle(c);
@@ -1320,37 +1359,68 @@ export function TeacherPage() {
     </Space>
   );
 
+  const adminCatalogColumns: ColumnsType<LessonTemplateListItem> = [
+    { title: "Порядок", dataIndex: "sortOrder", key: "sortOrder", width: 88 },
+    { title: "Модуль", dataIndex: "moduleKey", key: "moduleKey", width: 140 },
+    { title: "Урок", dataIndex: "title", key: "title" },
+    {
+      title: "",
+      key: "actions",
+      width: 160,
+      render: (_, row) => (
+        <Button type="link" size="small" onClick={() => void openLessonEditorFromCatalog(row)}>
+          Материалы и PDF
+        </Button>
+      )
+    }
+  ];
+
   const adminTab =
     user.role === "admin" ? (
-      <Card title="Новый шаблон урока (каталог)">
-        <Paragraph type="secondary">
-          Снапшот — JSON Blockly-проекта (как в API проектов). Ученики увидят урок в «Обучении»; учитель может
-          привязать шаблон к заданию.
-        </Paragraph>
-        <Form layout="vertical" onFinish={(v) => void submitAdminTemplate(v)} style={{ maxWidth: 560 }}>
-          <Form.Item name="title" label="Название" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="moduleKey" label="Ключ модуля" initialValue="module_a" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="sortOrder" label="Порядок" initialValue={0}>
-            <InputNumber style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="description" label="Описание">
-            <Input />
-          </Form.Item>
-          <Form.Item name="published" label="Опубликован" valuePropName="checked" initialValue>
-            <Switch />
-          </Form.Item>
-          <Form.Item label="starterPayload (JSON)">
-            <TextArea rows={12} value={adminStarterJson} onChange={(e) => setAdminStarterJson(e.target.value)} />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={adminSubmitting}>
-            Создать шаблон
-          </Button>
-        </Form>
-      </Card>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Card title="Каталог уроков (шаблоны курса)">
+          <Paragraph type="secondary" style={{ marginTop: 0 }}>
+            Здесь все опубликованные шаблоны. Кнопка «Материалы и PDF» открывает редактор: краткое описание для ученика,
+            JSON <Text code>lessonContent</Text> (в т.ч. <Text code>presentationPdfUrl</Text>).
+          </Paragraph>
+          <Table<LessonTemplateListItem>
+            size="small"
+            rowKey="id"
+            dataSource={templates}
+            columns={adminCatalogColumns}
+            pagination={{ pageSize: 12 }}
+            locale={{ emptyText: "Шаблонов пока нет — создай первый ниже" }}
+          />
+        </Card>
+        <Card title="Новый шаблон урока (каталог)">
+          <Paragraph type="secondary">
+            Снапшот — JSON Blockly-проекта (как в API проектов). Учителя привязывают шаблон к заданию в своём классе.
+          </Paragraph>
+          <Form layout="vertical" onFinish={(v) => void submitAdminTemplate(v)} style={{ maxWidth: 560 }}>
+            <Form.Item name="title" label="Название" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="moduleKey" label="Ключ модуля" initialValue="module_a" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="sortOrder" label="Порядок" initialValue={0}>
+              <InputNumber style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item name="description" label="Описание">
+              <Input />
+            </Form.Item>
+            <Form.Item name="published" label="Опубликован" valuePropName="checked" initialValue>
+              <Switch />
+            </Form.Item>
+            <Form.Item label="starterPayload (JSON)">
+              <TextArea rows={12} value={adminStarterJson} onChange={(e) => setAdminStarterJson(e.target.value)} />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={adminSubmitting}>
+              Создать шаблон
+            </Button>
+          </Form>
+        </Card>
+      </Space>
     ) : (
       <Card>
         <Paragraph>Раздел только для администраторов.</Paragraph>
@@ -1444,42 +1514,39 @@ export function TeacherPage() {
     </Card>
   );
 
-  const tabItems = [
-    {
-      key: "classes",
-      label: (
-        <Badge count={tabBadges.newEnroll} size="small" offset={[10, 0]}>
-          <span>Классы и ученики</span>
-        </Badge>
-      ),
-      children: classesTab
-    },
-    {
-      key: "assignments",
-      label: (
-        <Badge count={tabBadges.pending} size="small" offset={[10, 0]}>
-          <span>Задания и проверка</span>
-        </Badge>
-      ),
-      children: assignmentsTab
-    },
-    { key: "schedule", label: "Расписание", children: scheduleCabinetTab },
-    { key: "gradebook", label: "Журнал", children: gradebookTab },
-    { key: "roadmap", label: "Планы развития", children: roadmapTab }
-  ];
-  if (user.role === "admin") {
-    tabItems.splice(3, 0, { key: "admin", label: "Админ: шаблоны", children: adminTab });
-  }
-  if (user.role === "admin") {
-    tabItems.splice(0, tabItems.length, { key: "admin", label: "Админ: шаблоны", children: adminTab });
-  }
+  const tabItems =
+    user.role === "admin"
+      ? [{ key: "admin", label: "Админ: шаблоны", children: adminTab }]
+      : [
+          {
+            key: "classes",
+            label: (
+              <Badge count={tabBadges.newEnroll} size="small" offset={[10, 0]}>
+                <span>Классы и ученики</span>
+              </Badge>
+            ),
+            children: classesTab
+          },
+          {
+            key: "assignments",
+            label: (
+              <Badge count={tabBadges.pending} size="small" offset={[10, 0]}>
+                <span>Задания и проверка</span>
+              </Badge>
+            ),
+            children: assignmentsTab
+          },
+          { key: "schedule", label: "Расписание", children: scheduleCabinetTab },
+          { key: "gradebook", label: "Журнал", children: gradebookTab },
+          { key: "roadmap", label: "Планы развития", children: roadmapTab }
+        ];
 
   return (
     <div className="app-content account-page lms-shell-wide">
       {contextHolder}
       <Space direction="vertical" size="large" style={{ width: "100%", maxWidth: "none" }}>
         <Title level={4} style={{ margin: 0 }}>
-          Кабинет учителя
+          {user.role === "admin" ? "Админ — шаблоны курса" : "Кабинет учителя"}
         </Title>
         <Tabs
           activeKey={activeTab}
