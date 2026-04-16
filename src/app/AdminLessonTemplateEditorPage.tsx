@@ -125,6 +125,7 @@ export function AdminLessonTemplateEditorPage() {
               onVerifyCheckpoint={() => {}}
               onToggleMiniDevDone={() => {}}
               saving={false}
+              variant="colab"
             />
           </Card>
 

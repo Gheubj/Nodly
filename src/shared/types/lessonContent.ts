@@ -23,9 +23,28 @@ export interface LessonContentHint {
 /** Блоки «ленты» урока (конструктор + плеер). Если заданы — плеер строит единый поток. */
 export type LessonContentBlock =
   | { id: string; type: "text"; body: string }
+  | { id: string; type: "media"; kind: "image" | "pdf"; url: string; caption?: string | null }
+  /** Legacy: старые уроки могли хранить image/pdf отдельно. */
   | { id: string; type: "image"; url: string; caption?: string | null }
   | { id: string; type: "pdf"; url: string; caption?: string | null }
-  | { id: string; type: "studio"; title: string; instruction: string; ctaAction?: string | null }
+  | {
+      id: string;
+      type: "studio";
+      title: string;
+      instruction: string;
+      ctaAction?: string | null;
+      /**
+       * Источник стартового проекта для мини-разработки ученика.
+       * `template` — снимок из поля starterPayload шаблона урока (как раньше).
+       * `project_clone` — копия облачного проекта `referenceProjectId` (админ готовит данные в «Разработка»).
+       * `empty` — пустой проект; уровень Blockly задаётся только `studioWorkspaceLevel` (ученик не выбирает).
+       */
+      studioPracticeKind?: "template" | "project_clone" | "empty";
+      /** Для `project_clone`: id облачного проекта-образца (из URL /studio?project=…) */
+      referenceProjectId?: string | null;
+      /** Для `empty`: уровень 1–3 (обязателен при пустой практике) */
+      studioWorkspaceLevel?: 1 | 2 | 3;
+    }
   | { id: string; type: "checkpoint"; question: string; expectedAnswer: string }
   | { id: string; type: "divider" };
 

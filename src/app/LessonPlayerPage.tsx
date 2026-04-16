@@ -11,7 +11,6 @@ import {
   parseLessonPlayerState,
   type LessonPlayerStateV1
 } from "@/shared/types/lessonPlayerState";
-import { createStudioProjectFromLessonTemplate } from "@/hooks/useOpenLessonTemplate";
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -165,10 +164,14 @@ export function LessonPlayerPage() {
     setAutoCreatingMini((prev) => ({ ...prev, [blockId]: true }));
     setSaving(true);
     try {
-      const projectId = await createStudioProjectFromLessonTemplate({
-        id: lessonId,
-        title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
-      });
+      const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
+      const { projectId } = await apiClient.post<{ projectId: string }>(
+        `/api/student/lessons/${encodeURIComponent(lessonId)}/mini-dev-project${q}`,
+        {
+          blockId,
+          title: `${bootstrap.title} · мини-${blockId.slice(0, 6)}`
+        }
+      );
       const next: LessonPlayerStateV1 = {
         ...playerState,
         miniDevProjectIds: {
@@ -251,6 +254,7 @@ export function LessonPlayerPage() {
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
                 saving={saving}
                 bareMiniStudio
+                variant="colab"
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 ? (
                 <Alert type="success" showIcon message="Все контрольные вопросы пройдены" />

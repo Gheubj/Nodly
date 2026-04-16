@@ -16,6 +16,82 @@ import {
   type AuthenticatedRequest
 } from "./auth.js";
 
+const EMPTY_MINI_PROJECT_SNAPSHOT: Record<string, unknown> = {
+  imageDatasets: [],
+  tabularDatasets: [],
+  imagePredictionInputs: [],
+  tabularPredictionInputs: [],
+  savedModels: [],
+  blocklyState: "",
+  workspaceLevel: 1
+};
+
+function cloneJson<T>(v: T): T {
+  return structuredClone(v);
+}
+
+function lessonFlowBlocksFromContent(lessonContent: unknown): unknown[] {
+  if (!lessonContent || typeof lessonContent !== "object") {
+    return [];
+  }
+  const blocks = (lessonContent as { blocks?: unknown }).blocks;
+  return Array.isArray(blocks) ? blocks : [];
+}
+
+type MiniPracticeParsed =
+  | { kind: "template" }
+  | { kind: "project_clone"; referenceProjectId: string }
+  | { kind: "empty"; workspaceLevel: 1 | 2 | 3 };
+
+function parseMiniStudioBlock(block: unknown): MiniPracticeParsed | null {
+  if (!block || typeof block !== "object") {
+    return null;
+  }
+  const b = block as Record<string, unknown>;
+  if (b.type !== "studio") {
+    return null;
+  }
+  const kindRaw = b.studioPracticeKind;
+  const ref =
+    typeof b.referenceProjectId === "string" && b.referenceProjectId.trim().length > 0
+      ? b.referenceProjectId.trim()
+      : null;
+  const w = b.studioWorkspaceLevel;
+  const level: 1 | 2 | 3 | null =
+    w === 1 || w === 2 || w === 3 ? w : w === "1" || w === "2" || w === "3" ? (Number(w) as 1 | 2 | 3) : null;
+
+  if (kindRaw === "template") {
+    return { kind: "template" };
+  }
+  if (kindRaw === "empty") {
+    if (level == null) {
+      throw new Error("Для пустой практики в блоке урока нужно выбрать уровень Blockly (1–3)");
+    }
+    return { kind: "empty", workspaceLevel: level };
+  }
+  if (kindRaw === "project_clone") {
+    if (!ref) {
+      throw new Error("Для копии проекта укажите id облачного проекта-образца");
+    }
+    return { kind: "project_clone", referenceProjectId: ref };
+  }
+  if (ref) {
+    return { kind: "project_clone", referenceProjectId: ref };
+  }
+  return { kind: "template" };
+}
+
+function normalizeProjectSnapshotPayload(raw: unknown): Record<string, unknown> {
+  const empty = cloneJson(EMPTY_MINI_PROJECT_SNAPSHOT);
+  const src = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const merged: Record<string, unknown> = { ...empty, ...src };
+  const wl = merged.workspaceLevel;
+  if (wl !== 1 && wl !== 2 && wl !== 3) {
+    merged.workspaceLevel = 1;
+  }
+  return merged;
+}
+
 async function notifyEnrolledStudentsNewAssignment(classroomId: string, assignmentTitle: string) {
   const classroom = await prisma.classroom.findUnique({
     where: { id: classroomId },
@@ -2077,6 +2153,111 @@ export function registerLmsRoutes(app: Express) {
         assignmentTitle,
         state: progress?.state ?? {}
       });
+    }
+  );
+
+  app.post(
+    "/api/student/lessons/:lessonId/mini-dev-project",
+    authRequired,
+    roleGuard(["student"]),
+    async (req: AuthenticatedRequest, res) => {
+      const lessonId = String(req.params.lessonId);
+      const assignmentIdRaw = req.query.assignmentId;
+      const assignmentId =
+        typeof assignmentIdRaw === "string" && assignmentIdRaw.length > 0 ? assignmentIdRaw : null;
+
+      const body = z
+        .object({
+          blockId: z.string().min(1),
+          title: z.string().min(1).optional()
+        })
+        .safeParse(req.body);
+      if (!body.success) {
+        res.status(400).json({ error: body.error.message });
+        return;
+      }
+
+      if (assignmentId) {
+        const sub = await prisma.submission.findFirst({
+          where: { studentId: req.session!.sub, assignmentId },
+          include: { assignment: { select: { lessonTemplateId: true } } }
+        });
+        if (!sub || sub.assignment.lessonTemplateId !== lessonId) {
+          res.status(403).json({ error: "Нет доступа к этому заданию или урок не совпадает" });
+          return;
+        }
+      }
+
+      const lesson = await prisma.lessonTemplate.findFirst({
+        where: { id: lessonId, published: true },
+        select: { id: true, title: true, lessonContent: true, starterPayload: true }
+      });
+      if (!lesson) {
+        res.status(404).json({ error: "Урок не найден" });
+        return;
+      }
+
+      const blocks = lessonFlowBlocksFromContent(lesson.lessonContent);
+      const block = blocks.find(
+        (b) => typeof b === "object" && b !== null && (b as { id?: string }).id === body.data.blockId
+      );
+      if (!block) {
+        res.status(400).json({ error: "Блок с таким id не найден в уроке" });
+        return;
+      }
+
+      let parsed: MiniPracticeParsed;
+      try {
+        const p = parseMiniStudioBlock(block);
+        if (!p) {
+          res.status(400).json({ error: "Это не блок мини-разработки" });
+          return;
+        }
+        parsed = p;
+      } catch (e) {
+        res.status(400).json({ error: e instanceof Error ? e.message : "Ошибка настройки блока" });
+        return;
+      }
+
+      let snapshotPayload: Record<string, unknown>;
+      if (parsed.kind === "template") {
+        snapshotPayload = normalizeProjectSnapshotPayload(lesson.starterPayload);
+      } else if (parsed.kind === "empty") {
+        snapshotPayload = {
+          ...cloneJson(EMPTY_MINI_PROJECT_SNAPSHOT),
+          workspaceLevel: parsed.workspaceLevel
+        };
+      } else {
+        const ref = await prisma.project.findFirst({
+          where: { id: parsed.referenceProjectId },
+          include: { snapshot: true }
+        });
+        if (!ref?.snapshot?.payload) {
+          res.status(400).json({
+            error:
+              "Проект-образец не найден. Создайте проект в «Разработка», сохраните в облако и проверьте id в блоке урока."
+          });
+          return;
+        }
+        snapshotPayload = normalizeProjectSnapshotPayload(ref.snapshot.payload);
+      }
+
+      const projectId = `p_${randomBytes(12).toString("hex")}`;
+      const title = body.data.title?.trim() || `${lesson.title} · мини`;
+
+      await prisma.project.create({
+        data: {
+          id: projectId,
+          userId: req.session!.sub,
+          title,
+          lessonTemplateId: lessonId,
+          snapshot: {
+            create: { payload: snapshotPayload as Prisma.InputJsonValue }
+          }
+        }
+      });
+
+      res.json({ projectId });
     }
   );
 

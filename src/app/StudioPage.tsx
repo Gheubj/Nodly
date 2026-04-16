@@ -42,7 +42,8 @@ const EMPTY_SNAPSHOT: NodlyProjectSnapshot = {
   imagePredictionInputs: [],
   tabularPredictionInputs: [],
   savedModels: [],
-  blocklyState: ""
+  blocklyState: "",
+  workspaceLevel: 1
 };
 
 interface SubmissionContext {
@@ -468,7 +469,10 @@ export function StudioPage() {
       </div> : null}
       <div className="studio-page__main">
         <div className="studio-page__blockly">
-          <BlocklyWorkspace />
+          <BlocklyWorkspace
+            miniStudioToolbar={isMini}
+            onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
+          />
         </div>
         <StudioStagePanel />
       </div>
@@ -490,8 +494,6 @@ export function StudioPage() {
       ) : (
         projectWorkspace
       )}
-      {!isMini ? (
-        <>
       <Drawer
         title="Данные проекта"
         placement="right"
@@ -503,6 +505,8 @@ export function StudioPage() {
       >
         <DataLibrary variant="drawer" />
       </Drawer>
+      {!isMini ? (
+        <>
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Черновик"}`}
         open={libraryOpen}

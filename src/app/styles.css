@@ -1521,6 +1521,26 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   background: var(--app-surface, #fff);
 }
 
+.lesson-flow--colab {
+  max-width: min(980px, 100%);
+  margin: 0 auto;
+  gap: 2px;
+}
+
+.lesson-flow__segment--colab {
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.lesson-flow__segment--colab:hover,
+.lesson-flow__segment--colab:focus-within {
+  border-color: color-mix(in srgb, var(--ant-color-border, #cbd5e1) 90%, transparent);
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
+}
+
 /* PDF в ленте: рендер страниц в canvas (LessonPdfReader), без панели браузера */
 .lesson-flow__pdf-reader {
   position: relative;
@@ -1570,6 +1590,48 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   padding: 16px 18px;
 }
 
+.lesson-flow__markdown {
+  color: var(--app-text);
+  line-height: 1.6;
+}
+
+.lesson-flow__markdown > :first-child {
+  margin-top: 0;
+}
+
+.lesson-flow__markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.lesson-flow__markdown h1,
+.lesson-flow__markdown h2,
+.lesson-flow__markdown h3 {
+  line-height: 1.3;
+  margin-top: 0.85em;
+}
+
+.lesson-flow__markdown pre {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-surface) 88%, rgba(148, 163, 184, 0.12));
+}
+
+.lesson-flow__markdown code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.lesson-flow__markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.lesson-flow__markdown th,
+.lesson-flow__markdown td {
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  padding: 6px 8px;
+}
+
 .lesson-flow__studio {
   padding: 16px 18px;
 }
@@ -1583,6 +1645,11 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   margin: 8px 0;
   background: var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border: 0;
+}
+
+.lesson-flow__divider--colab {
+  margin: 10px 0;
+  opacity: 0.55;
 }
 
 .lesson-flow__mini-dev-frame {
@@ -1620,4 +1687,16 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .studio-mini-host .studio-page__blockly {
   min-height: 0;
+}
+
+.lesson-block-editor__card.ant-card {
+  border-color: transparent;
+  box-shadow: none;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.lesson-block-editor__card.ant-card:hover,
+.lesson-block-editor__card.ant-card:focus-within {
+  border-color: var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
 }

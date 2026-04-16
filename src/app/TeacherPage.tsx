@@ -1965,6 +1965,7 @@ export function TeacherPage() {
                 onVerifyCheckpoint={() => {}}
                 onToggleMiniDevDone={() => {}}
                 saving={false}
+                variant="colab"
               />
             </div>
           </div>

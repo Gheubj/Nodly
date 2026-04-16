@@ -10,8 +10,7 @@ const { Text, Paragraph } = Typography;
 
 const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "text", label: "Текст" },
-  { value: "image", label: "Картинка" },
-  { value: "pdf", label: "PDF (в ленту)" },
+  { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
   { value: "checkpoint", label: "Контрольный вопрос" },
   { value: "divider", label: "Разделитель" }
@@ -22,22 +21,22 @@ function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
   switch (type) {
     case "text":
       return { id, type: "text", body: "Текст блока" };
-    case "image":
+    case "media":
       return {
         id,
-        type: "image",
+        type: "media",
+        kind: "image",
         url: "https://placehold.co/1200x600/png?text=Замени+URL+или+загрузи+файл",
         caption: null
       };
-    case "pdf":
-      return { id, type: "pdf", url: "/", caption: "Презентация" };
     case "studio":
       return {
         id,
         type: "studio",
         title: "Практика",
         instruction: "Опиши интерактивную практику внутри урока.",
-        ctaAction: null
+        ctaAction: null,
+        studioPracticeKind: "template"
       };
     case "checkpoint":
       return { id, type: "checkpoint", question: "Вопрос?", expectedAnswer: "Ответ" };
@@ -88,7 +87,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     onChange(blocks.filter((_, i) => i !== index));
   };
 
-  const uploadImageForBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
+  const uploadImageForMediaBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
     return async (options) => {
       const { file, onError, onSuccess } = options;
       const blob = file as File;
@@ -97,7 +96,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
         const fd = new FormData();
         fd.append("image", blob, blob.name || "slide.png");
         const res = await apiClient.postForm<{ url: string }>("/api/admin/uploads/lesson-image", fd);
-        setBlock(index, { url: res.url } as Partial<Extract<LessonContentBlock, { type: "image" }>>);
+        setBlock(index, { url: res.url } as Partial<Extract<LessonContentBlock, { type: "media" }>>);
         message.success("Изображение загружено");
         onSuccess?.(res, new XMLHttpRequest());
       } catch (e) {
@@ -109,7 +108,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     };
   };
 
-  const uploadPdfForBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
+  const uploadPdfForMediaBlock = (blockId: string, index: number): UploadProps["customRequest"] => {
     return async (options) => {
       const { file, onError, onSuccess } = options;
       const blob = file as File;
@@ -118,7 +117,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
         const fd = new FormData();
         fd.append("pdf", blob, blob.name || "lesson.pdf");
         const res = await apiClient.postForm<{ url: string }>("/api/admin/uploads/lesson-pdf", fd);
-        setBlock(index, { url: res.url } as Partial<Extract<LessonContentBlock, { type: "pdf" }>>);
+        setBlock(index, { url: res.url } as Partial<Extract<LessonContentBlock, { type: "media" }>>);
         message.success("PDF загружен");
         onSuccess?.(res, new XMLHttpRequest());
       } catch (e) {
@@ -131,9 +130,9 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
   };
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+    <Space direction="vertical" size="middle" style={{ width: "100%" }} className="lesson-block-editor">
       <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-        Сверху вниз — как увидит ученик: единая лента с картинками/PDF, мини-разработкой и проверкой.
+        Сверху вниз — как увидит ученик: единая colab-лента с markdown, медиа и мини-разработкой.
       </Paragraph>
       <Dropdown
         menu={{
@@ -151,6 +150,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
       {blocks.map((block, index) => (
         <Card
           key={block.id}
+          className="lesson-block-editor__card"
           size="small"
           title={
             <Space wrap>
@@ -174,47 +174,51 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
           }
         >
           {block.type === "text" ? (
-            <Input.TextArea rows={4} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
-          ) : null}
-          {block.type === "image" ? (
             <Space direction="vertical" style={{ width: "100%" }}>
+              <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
+              <Text type="secondary">Поддерживается markdown (заголовки, списки, **жирный**, ссылки, таблицы).</Text>
+            </Space>
+          ) : null}
+          {block.type === "media" ? (
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Select
+                value={block.kind}
+                options={[
+                  { value: "image", label: "Картинка" },
+                  { value: "pdf", label: "PDF" }
+                ]}
+                onChange={(v) => setBlock(index, { kind: v as "image" | "pdf" })}
+              />
               <Input
-                placeholder="URL картинки"
+                placeholder={block.kind === "pdf" ? "URL PDF" : "URL картинки"}
                 value={block.url}
                 onChange={(e) => setBlock(index, { url: e.target.value })}
               />
-              <Upload
-                accept="image/*"
-                maxCount={1}
-                showUploadList={false}
-                customRequest={uploadImageForBlock(block.id, index)}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadBusy[block.id]}>
-                  Загрузить картинку
-                </Button>
-              </Upload>
+              {block.kind === "pdf" ? (
+                <Upload
+                  accept="application/pdf,.pdf"
+                  maxCount={1}
+                  showUploadList={false}
+                  customRequest={uploadPdfForMediaBlock(block.id, index)}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploadBusy[block.id]}>
+                    Загрузить PDF
+                  </Button>
+                </Upload>
+              ) : (
+                <Upload
+                  accept="image/*"
+                  maxCount={1}
+                  showUploadList={false}
+                  customRequest={uploadImageForMediaBlock(block.id, index)}
+                >
+                  <Button icon={<UploadOutlined />} loading={uploadBusy[block.id]}>
+                    Загрузить картинку
+                  </Button>
+                </Upload>
+              )}
               <Input
-                placeholder="Подпись (необязательно)"
-                value={block.caption ?? ""}
-                onChange={(e) => setBlock(index, { caption: e.target.value || null })}
-              />
-            </Space>
-          ) : null}
-          {block.type === "pdf" ? (
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Input placeholder="URL PDF" value={block.url} onChange={(e) => setBlock(index, { url: e.target.value })} />
-              <Upload
-                accept="application/pdf,.pdf"
-                maxCount={1}
-                showUploadList={false}
-                customRequest={uploadPdfForBlock(block.id, index)}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadBusy[block.id]}>
-                  Загрузить PDF
-                </Button>
-              </Upload>
-              <Input
-                placeholder="Заголовок над презентацией"
+                placeholder={block.kind === "pdf" ? "Заголовок над презентацией" : "Подпись (необязательно)"}
                 value={block.caption ?? ""}
                 onChange={(e) => setBlock(index, { caption: e.target.value || null })}
               />
@@ -233,6 +237,64 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                 value={block.ctaAction ?? ""}
                 onChange={(e) => setBlock(index, { ctaAction: e.target.value || null })}
               />
+              <div>
+                <Text type="secondary">Стартовый проект для ученика</Text>
+                <Select
+                  style={{ width: "100%", marginTop: 6 }}
+                  value={block.studioPracticeKind ?? "template"}
+                  onChange={(v) => {
+                    const kind = v as "template" | "project_clone" | "empty";
+                    if (kind === "template") {
+                      setBlock(index, {
+                        studioPracticeKind: "template",
+                        referenceProjectId: null,
+                        studioWorkspaceLevel: undefined
+                      });
+                    } else if (kind === "empty") {
+                      setBlock(index, {
+                        studioPracticeKind: "empty",
+                        referenceProjectId: null,
+                        studioWorkspaceLevel: block.studioWorkspaceLevel ?? 1
+                      });
+                    } else {
+                      setBlock(index, {
+                        studioPracticeKind: "project_clone",
+                        studioWorkspaceLevel: undefined
+                      });
+                    }
+                  }}
+                  options={[
+                    { value: "template", label: "Как в шаблоне урока (starterPayload в LMS)" },
+                    {
+                      value: "project_clone",
+                      label: "Копия готового облачного проекта (создай в «Разработка», вставь id из URL)"
+                    },
+                    {
+                      value: "empty",
+                      label: "Пустая практика — только уровень Blockly (данные и блоки ученик добавит сам)"
+                    }
+                  ]}
+                />
+              </div>
+              {(block.studioPracticeKind ?? "template") === "project_clone" ? (
+                <Input
+                  placeholder="ID проекта, например p_abc123…"
+                  value={block.referenceProjectId ?? ""}
+                  onChange={(e) => setBlock(index, { referenceProjectId: e.target.value.trim() || null })}
+                />
+              ) : null}
+              {(block.studioPracticeKind ?? "template") === "empty" ? (
+                <Select
+                  style={{ width: "100%" }}
+                  value={block.studioWorkspaceLevel ?? 1}
+                  onChange={(v) => setBlock(index, { studioWorkspaceLevel: v as 1 | 2 | 3 })}
+                  options={[
+                    { value: 1, label: "Уровень Blockly 1 (ученик не переключает)" },
+                    { value: 2, label: "Уровень Blockly 2" },
+                    { value: 3, label: "Уровень Blockly 3" }
+                  ]}
+                />
+              ) : null}
             </Space>
           ) : null}
           {block.type === "checkpoint" ? (

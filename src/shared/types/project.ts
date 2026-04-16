@@ -25,6 +25,8 @@ export interface NodlyProjectSnapshot {
   /** Сохранённые модели: метаданные в проекте, веса в IndexedDB по id */
   savedModels?: SavedModelEntry[];
   blocklyState: string;
+  /** Уровень палитры Blockly (1–3), в т.ч. для мини-студии без выбора у ученика */
+  workspaceLevel?: 1 | 2 | 3;
 }
 
 export interface NodlyProject {

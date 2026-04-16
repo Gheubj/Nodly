@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { QuestionCircleOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { Alert, Button, Segmented, Space, Tag, Tooltip } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
@@ -656,7 +656,13 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
   };
 }
 
-export function BlocklyWorkspace() {
+export type BlocklyWorkspaceProps = {
+  /** Мини-студия в уроке: без переключателя уровней, с кнопкой «Данные» как в полной студии */
+  miniStudioToolbar?: boolean;
+  onOpenDataLibrary?: () => void;
+};
+
+export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: BlocklyWorkspaceProps = {}) {
   const htmlTheme = useHtmlDataTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -1303,17 +1309,30 @@ export function BlocklyWorkspace() {
           <Button type="text" size="small" icon={<QuestionCircleOutlined />} aria-label="Как запускать сценарий" />
         </Tooltip>
         <Space size={8} wrap>
-          {workspaceLevel === 3 ? <Tag color="processing">Скоро больше блоков</Tag> : null}
-          <Segmented<WorkspaceLevel>
-            size="small"
-            value={workspaceLevel}
-            onChange={(v) => setWorkspaceLevel(v)}
-            options={[
-              { label: "Уровень 1", value: 1 },
-              { label: "Уровень 2", value: 2 },
-              { label: "Уровень 3", value: 3 }
-            ]}
-          />
+          {miniStudioToolbar ? (
+            <Button
+              type="default"
+              size="small"
+              icon={<DatabaseOutlined />}
+              onClick={() => onOpenDataLibrary?.()}
+            >
+              Данные
+            </Button>
+          ) : (
+            <>
+              {workspaceLevel === 3 ? <Tag color="processing">Скоро больше блоков</Tag> : null}
+              <Segmented<WorkspaceLevel>
+                size="small"
+                value={workspaceLevel}
+                onChange={(v) => setWorkspaceLevel(v)}
+                options={[
+                  { label: "Уровень 1", value: 1 },
+                  { label: "Уровень 2", value: 2 },
+                  { label: "Уровень 3", value: 3 }
+                ]}
+              />
+            </>
+          )}
         </Space>
       </div>
       <div className="blockly-layout">

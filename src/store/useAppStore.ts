@@ -27,6 +27,16 @@ function readWorkspaceLevel(): WorkspaceLevel {
   return 1;
 }
 
+function normalizeWorkspaceLevelFromSnapshot(value: unknown): WorkspaceLevel {
+  if (value === 1 || value === 2 || value === 3) {
+    return value;
+  }
+  if (value === "1" || value === "2" || value === "3") {
+    return Number(value) as WorkspaceLevel;
+  }
+  return 1;
+}
+
 interface AppState {
   activeProject: NodlyProjectMeta | null;
   imageDatasets: ImageDataset[];
@@ -213,7 +223,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       imagePredictionInputs: state.imagePredictionInputs,
       tabularPredictionInputs: state.tabularPredictionInputs,
       savedModels: state.savedModels,
-      blocklyState: state.blocklyState
+      blocklyState: state.blocklyState,
+      workspaceLevel: state.workspaceLevel
     };
   },
   loadProjectSnapshot: (snapshot) =>
@@ -224,6 +235,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       tabularPredictionInputs: snapshot.tabularPredictionInputs,
       savedModels: snapshot.savedModels ?? [],
       blocklyState: snapshot.blocklyState,
+      workspaceLevel: normalizeWorkspaceLevelFromSnapshot(snapshot.workspaceLevel),
       prediction: null,
       evaluation: null,
       training: { isTraining: false, progress: 0, message: "Проект загружен" }

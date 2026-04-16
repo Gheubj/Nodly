@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Button, Input, Space, Spin, Tag, Typography } from "antd";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { LessonContentBlock } from "@/shared/types/lessonContent";
 import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 
@@ -28,6 +30,7 @@ export type LessonFlowViewProps = {
   onToggleMiniDevDone: (blockId: string) => void;
   saving: boolean;
   bareMiniStudio?: boolean;
+  variant?: "classic" | "colab";
 };
 
 export function LessonFlowView({
@@ -40,58 +43,64 @@ export function LessonFlowView({
   onVerifyCheckpoint,
   onToggleMiniDevDone,
   saving,
-  bareMiniStudio = false
+  bareMiniStudio = false,
+  variant = "classic"
 }: LessonFlowViewProps) {
   let checkpointOrdinal = 0;
+  const isColab = variant === "colab";
+
+  const renderMarkdown = (value: string, className?: string) => (
+    <div className={className}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+    </div>
+  );
+
+  const renderMedia = (block: Extract<LessonContentBlock, { type: "media" | "image" | "pdf" }>) => {
+    const mediaKind = block.type === "media" ? block.kind : block.type;
+    const caption = block.caption ?? "";
+    if (mediaKind === "image") {
+      return (
+        <div key={block.id} className={`lesson-flow__segment${isColab ? " lesson-flow__segment--colab" : ""}`}>
+          <img className="lesson-flow__image" src={resolveLessonMediaUrl(block.url)} alt={caption} />
+          {caption ? <div className="lesson-flow__text"><Text type="secondary">{caption}</Text></div> : null}
+        </div>
+      );
+    }
+    return (
+      <div key={block.id} className={`lesson-flow__segment${isColab ? " lesson-flow__segment--colab" : ""}`}>
+        {caption ? (
+          <div className="lesson-flow__text" style={{ borderBottom: "1px solid var(--ant-color-border)" }}>
+            <Text strong>{caption}</Text>
+          </div>
+        ) : null}
+        <Suspense
+          fallback={
+            <div className="lesson-flow__pdf-reader-loading">
+              <Spin />
+            </div>
+          }
+        >
+          <LessonPdfReader src={block.url} caption={caption || null} />
+        </Suspense>
+      </div>
+    );
+  };
 
   return (
-    <div className="lesson-flow">
+    <div className={`lesson-flow${isColab ? " lesson-flow--colab" : ""}`}>
       {blocks.map((block) => {
         if (block.type === "divider") {
-          return <div key={block.id} className="lesson-flow__divider" role="separator" />;
+          return <div key={block.id} className={`lesson-flow__divider${isColab ? " lesson-flow__divider--colab" : ""}`} role="separator" />;
         }
         if (block.type === "text") {
           return (
-            <div key={block.id} className="lesson-flow__segment lesson-flow__text">
-              <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{block.body}</Paragraph>
+            <div key={block.id} className={`lesson-flow__segment lesson-flow__text${isColab ? " lesson-flow__segment--colab" : ""}`}>
+              {renderMarkdown(block.body, "lesson-flow__markdown")}
             </div>
           );
         }
-        if (block.type === "image") {
-          return (
-            <div key={block.id} className="lesson-flow__segment">
-              <img
-                className="lesson-flow__image"
-                src={resolveLessonMediaUrl(block.url)}
-                alt={block.caption ?? ""}
-              />
-              {block.caption ? (
-                <div className="lesson-flow__text">
-                  <Text type="secondary">{block.caption}</Text>
-                </div>
-              ) : null}
-            </div>
-          );
-        }
-        if (block.type === "pdf") {
-          return (
-            <div key={block.id} className="lesson-flow__segment">
-              {block.caption ? (
-                <div className="lesson-flow__text" style={{ borderBottom: "1px solid var(--ant-color-border)" }}>
-                  <Text strong>{block.caption}</Text>
-                </div>
-              ) : null}
-              <Suspense
-                fallback={
-                  <div className="lesson-flow__pdf-reader-loading">
-                    <Spin />
-                  </div>
-                }
-              >
-                <LessonPdfReader src={block.url} caption={block.caption} />
-              </Suspense>
-            </div>
-          );
+        if (block.type === "media" || block.type === "image" || block.type === "pdf") {
+          return renderMedia(block);
         }
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
@@ -111,11 +120,11 @@ export function LessonFlowView({
             );
           }
           return (
-            <div key={block.id} className="lesson-flow__segment lesson-flow__studio">
+            <div key={block.id} className={`lesson-flow__segment lesson-flow__studio${isColab ? " lesson-flow__segment--colab" : ""}`}>
               <Paragraph style={{ marginBottom: 8 }}>
                 <Text strong>{block.title}</Text>
               </Paragraph>
-              <Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>{block.instruction}</Paragraph>
+              <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
                   <iframe
@@ -143,7 +152,7 @@ export function LessonFlowView({
           checkpointOrdinal += 1;
           const ok = checkpointOk(block.id);
           return (
-            <div key={block.id} className="lesson-flow__segment lesson-flow__checkpoint">
+            <div key={block.id} className={`lesson-flow__segment lesson-flow__checkpoint${isColab ? " lesson-flow__segment--colab" : ""}`}>
               <Paragraph style={{ marginBottom: 8 }}>
                 <Text strong>
                   Вопрос {checkpointOrdinal}: {block.question}

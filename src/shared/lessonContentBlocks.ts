@@ -7,11 +7,33 @@ export function newLessonBlockId(): string {
   return `b_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function normalizeBlock(block: LessonContentBlock): LessonContentBlock {
+  if (block.type === "image") {
+    return {
+      id: block.id,
+      type: "media",
+      kind: "image",
+      url: block.url,
+      caption: block.caption ?? null
+    };
+  }
+  if (block.type === "pdf") {
+    return {
+      id: block.id,
+      type: "media",
+      kind: "pdf",
+      url: block.url,
+      caption: block.caption ?? null
+    };
+  }
+  return block;
+}
+
 /** Если в контенте уже есть blocks — используем их; иначе собираем из legacy-полей (одна «лента»). */
 export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlock[] {
   if (Array.isArray(lc.blocks)) {
     if (lc.blocks.length > 0) {
-      return lc.blocks;
+      return lc.blocks.map(normalizeBlock);
     }
     if (lc.schemaVersion === 2) {
       return [];
@@ -21,7 +43,8 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
   if (lc.presentationPdfUrl) {
     out.push({
       id: newLessonBlockId(),
-      type: "pdf",
+      type: "media",
+      kind: "pdf",
       url: lc.presentationPdfUrl,
       caption: "Презентация"
     });
@@ -33,7 +56,7 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
       out.push({ id: newLessonBlockId(), type: "text", body });
     }
     if (s.mediaUrl) {
-      out.push({ id: newLessonBlockId(), type: "image", url: s.mediaUrl, caption: null });
+      out.push({ id: newLessonBlockId(), type: "media", kind: "image", url: s.mediaUrl, caption: null });
     }
   }
   for (let i = 0; i < lc.practiceSteps.length; i++) {
@@ -68,10 +91,14 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
 
 /** Сохраняем в БД: плеер читает `blocks`, legacy-поля очищаем, чтобы не дублировать. */
 export function lessonContentFromBlocks(blocks: LessonContentBlock[]): LessonContent {
-  const firstPdf = blocks.find((b): b is Extract<LessonContentBlock, { type: "pdf" }> => b.type === "pdf");
+  const normalized = blocks.map(normalizeBlock);
+  const firstPdf = normalized.find(
+    (b): b is { type: "media"; kind: "pdf"; id: string; url: string; caption?: string | null } =>
+      b.type === "media" && b.kind === "pdf"
+  );
   return {
     schemaVersion: 2,
-    blocks,
+    blocks: normalized,
     presentationPdfUrl: firstPdf?.url ?? null,
     slides: [],
     practiceSteps: [],
