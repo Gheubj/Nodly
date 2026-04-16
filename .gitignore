@@ -4,3 +4,4 @@ dist-server/
 *.tsbuildinfo
 .env
 .DS_Store
+data/uploads/

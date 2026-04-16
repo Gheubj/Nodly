@@ -36,6 +36,7 @@ import {
   registerLmsRoutes
 } from "./lms.js";
 import { startHomeworkDueReminderScheduler } from "./homeworkDueReminders.js";
+import { registerLessonPdfUploadRoutes } from "./lessonPdfUpload.js";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
 registerLmsRoutes(app);
+registerLessonPdfUploadRoutes(app);
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,

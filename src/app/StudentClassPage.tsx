@@ -5,6 +5,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
+import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { passedLessonTemplateIdsFromSlots } from "@/shared/scheduleSlotPast";
 import { isOverdueByDueAt } from "@/shared/studentAssignmentDue";
 import { WeekScheduleCalendar, type SlotStudentAssignmentRow } from "@/app/WeekScheduleCalendar";
@@ -591,12 +592,18 @@ export function StudentClassPage() {
                   <Space direction="vertical" size="small" style={{ width: "100%" }}>
                     <Button
                       type="default"
-                      onClick={() => window.open(activeLessonContent.presentationPdfUrl ?? "", "_blank", "noreferrer")}
+                      onClick={() =>
+                        window.open(
+                          resolveLessonMediaUrl(activeLessonContent.presentationPdfUrl),
+                          "_blank",
+                          "noreferrer"
+                        )
+                      }
                     >
                       Открыть презентацию PDF
                     </Button>
                     <iframe
-                      src={activeLessonContent.presentationPdfUrl}
+                      src={resolveLessonMediaUrl(activeLessonContent.presentationPdfUrl)}
                       title={`PDF урока: ${activeLesson.title}`}
                       style={{ width: "100%", minHeight: 420, border: "1px solid var(--ant-color-border)" }}
                     />

@@ -142,10 +142,51 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function requestForm<T>(path: string, formData: FormData): Promise<T> {
+  const headers = new Headers();
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    headers
+  });
+  if (response.status === 401 && path !== "/api/auth/refresh") {
+    const refresh = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include"
+    });
+    if (refresh.ok) {
+      const data = (await refresh.json()) as { accessToken?: string };
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+        return requestForm<T>(path, formData);
+      }
+    }
+    setAccessToken("");
+  }
+  if (!response.ok) {
+    let apiError: string | undefined;
+    let fallbackText = "";
+    try {
+      const data = (await response.json()) as { error?: string; message?: string };
+      apiError = typeof data.error === "string" ? data.error : typeof data.message === "string" ? data.message : "";
+    } catch {
+      fallbackText = await response.text();
+    }
+    const userMessage = apiError?.trim() || fallbackText.trim() || mapStatusToUserMessage(response.status);
+    throw new ApiError(response.status, userMessage, `HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  postForm: <T>(path: string, formData: FormData) => requestForm<T>(path, formData),
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>

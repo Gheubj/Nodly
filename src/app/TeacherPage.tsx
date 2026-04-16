@@ -20,11 +20,13 @@ import {
   Tabs,
   Tag,
   Typography,
+  Upload,
   message
 } from "antd";
+import type { UploadProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckOutlined, CopyOutlined, TeamOutlined } from "@ant-design/icons";
+import { CheckOutlined, CopyOutlined, TeamOutlined, UploadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -213,7 +215,28 @@ export function TeacherPage() {
     JSON.stringify(EMPTY_LESSON_CONTENT, null, 2)
   );
   const [lessonEditorPdfUrl, setLessonEditorPdfUrl] = useState("");
+  const [lessonPdfUploading, setLessonPdfUploading] = useState(false);
   const [adminStudioProjectId, setAdminStudioProjectId] = useState("");
+
+  const handleLessonPdfUpload: UploadProps["customRequest"] = async (options, _info) => {
+    void _info;
+    const { file, onError, onSuccess } = options;
+    const blob = file as File;
+    setLessonPdfUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("pdf", blob, blob.name || "lesson.pdf");
+      const res = await apiClient.postForm<{ url: string }>("/api/admin/uploads/lesson-pdf", fd);
+      setLessonEditorPdfUrl(res.url);
+      messageApi.success("PDF загружен");
+      onSuccess?.(res, new XMLHttpRequest());
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить PDF");
+      onError?.(e instanceof Error ? e : new Error("upload"));
+    } finally {
+      setLessonPdfUploading(false);
+    }
+  };
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
@@ -2025,9 +2048,22 @@ export function TeacherPage() {
               onChange={(e) => setLessonEditorPdfUrl(e.target.value)}
             />
             <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0, fontSize: 12 }}>
-              Положи файл в папку <Text code>public/</Text> репозитория и укажи путь с корня сайта. При сохранении это
-              значение записывается в <Text code>presentationPdfUrl</Text>.
+              Можно вставить ссылку вручную (в т.ч. путь к файлу в <Text code>public/</Text>) или загрузить PDF на
+              сервер — после сохранения урока ученики увидят презентацию по адресу в{" "}
+              <Text code>presentationPdfUrl</Text>.
             </Paragraph>
+            {user?.role === "admin" ? (
+              <Upload
+                accept="application/pdf,.pdf"
+                maxCount={1}
+                showUploadList={false}
+                customRequest={(opts, info) => void handleLessonPdfUpload(opts, info)}
+              >
+                <Button style={{ marginTop: 8 }} icon={<UploadOutlined />} loading={lessonPdfUploading}>
+                  Загрузить PDF на сервер
+                </Button>
+              </Upload>
+            ) : null}
           </div>
           <div>
             <Text type="secondary">lessonContent (JSON)</Text>
