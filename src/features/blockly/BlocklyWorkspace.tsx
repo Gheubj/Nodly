@@ -48,7 +48,6 @@ const DEFAULT_TRAIN_CONFIG = {
 } as const;
 
 type BlockCommand =
-  | { type: "start" }
   | {
       type: "train";
       modelTypeRef: string;
@@ -115,6 +114,18 @@ function getTrainDatasetOptions(modelType: ModelType) {
 }
 
 const TABULAR_MANUAL_REF = "tabular:__manual__";
+
+/** Порядок запуска нескольких шляп: сверху вниз, при одной высоте — слева направо. */
+function sortBlocklyHatsByWorkspaceOrder(hats: Blockly.Block[]): Blockly.Block[] {
+  return [...hats].sort((a, b) => {
+    const pa = a.getRelativeToSurfaceXY();
+    const pb = b.getRelativeToSurfaceXY();
+    if (pa.y !== pb.y) {
+      return pa.y - pb.y;
+    }
+    return pa.x - pb.x;
+  });
+}
 
 function getSavedModelBlocklyOptions(): [string, string][] {
   const models = useAppStore.getState().savedModels;
@@ -188,7 +199,8 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         title: "Старт",
         group: "events",
         shape: "hat",
-        description: "Запускает основной сценарий проекта"
+        description:
+          "Запуск сценария по клику. Несколько блоков «Старт» выполняются по очереди: выше по полю раньше, на одной линии — левее раньше."
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
       { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
@@ -228,21 +240,24 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       title: "Старт",
       group: "events",
       shape: "hat",
-      description: "Запускает основной сценарий проекта"
+      description:
+        "Запуск сценария по клику. Несколько «Старт» выполняются по очереди: выше по полю раньше, на одной линии — левее раньше."
     },
     {
       type: "noda_on_trained",
       title: "когда модель обучена",
       group: "events",
       shape: "hat",
-      description: "Срабатывает после успешного обучения модели"
+      description:
+        "Цепочка после успешного обучения в основном сценарии (не из этого события). Несколько таких шляп — по очереди, в том же порядке, что на поле."
     },
     {
       type: "noda_on_predicted",
       title: "когда получено предсказание",
       group: "events",
       shape: "hat",
-      description: "Срабатывает после команды предсказать"
+      description:
+        "Цепочка после «Предсказать» в основном сценарии. Несколько шляп — по очереди по положению на поле. Уровень 1: блока нет в палитре."
     },
     { type: "noda_train_model", title: "Обучить модель", group: "model", shape: "stack" },
     { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
@@ -856,19 +871,16 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
     return commands;
   };
 
-  const readCommandsFromHat = (hatType: string): BlockCommand[] => {
+  const collectCommandChainsFromHatType = (hatType: string): BlockCommand[][] => {
     const workspace = workspaceRef.current;
     if (!workspace) {
       return [];
     }
-    const hatBlock = workspace.getTopBlocks(true).find((block) => block.type === hatType);
-    if (!hatBlock) {
-      return [];
-    }
-    return [{ type: "start" }, ...parseCommandChain(hatBlock.getNextBlock())];
+    const hats = sortBlocklyHatsByWorkspaceOrder(
+      workspace.getTopBlocks(true).filter((block) => block.type === hatType && block.isEnabled())
+    );
+    return hats.map((hat) => parseCommandChain(hat.getNextBlock())).filter((chain) => chain.length > 0);
   };
-
-  const readCommandsFromStart = (): BlockCommand[] => readCommandsFromHat("noda_start");
 
   const runEventChain = async (kind: "trained" | "predicted") => {
     const ws = workspaceRef.current;
@@ -880,11 +892,10 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
       return;
     }
     const hatType = kind === "trained" ? "noda_on_trained" : "noda_on_predicted";
-    const commands = readCommandsFromHat(hatType);
-    if (commands.length === 0) {
-      return;
+    const chains = collectCommandChainsFromHatType(hatType);
+    for (const commands of chains) {
+      await executeCommands(commands, { fromEvent: true });
     }
-    await executeCommands(commands, { fromEvent: true });
   };
 
   const lastEvaluationRef = useRef<ModelEvaluation | null>(null);
@@ -1134,15 +1145,33 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
       const state = useAppStore.getState();
       lastEvaluationRef.current = null;
       state.setEvaluation(null);
-      const commands = readCommandsFromStart();
-      if (commands.length === 0) {
+      const workspace = workspaceRef.current;
+      if (!workspace) {
+        return;
+      }
+      const startHats = sortBlocklyHatsByWorkspaceOrder(
+        workspace.getTopBlocks(true).filter((block) => block.type === "noda_start" && block.isEnabled())
+      );
+      if (startHats.length === 0) {
         state.setTraining({
           isTraining: false,
-          message: "Добавь блок Старт и соедини с ним блоки обучения/предсказания."
+          message: "Добавь блок «Старт» и присоединяй к нему цепочку команд."
         });
         return;
       }
-      await executeCommands(commands);
+      const chains = startHats
+        .map((hat) => parseCommandChain(hat.getNextBlock()))
+        .filter((chain) => chain.length > 0);
+      if (chains.length === 0) {
+        state.setTraining({
+          isTraining: false,
+          message: "Подключи к «Старт» хотя бы один блок (обучение, предсказание и т.д.)."
+        });
+        return;
+      }
+      for (const commands of chains) {
+        await executeCommands(commands);
+      }
     } catch (error) {
       useAppStore.getState().setTraining({
         isTraining: false,
