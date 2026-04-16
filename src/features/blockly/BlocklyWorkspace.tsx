@@ -178,14 +178,36 @@ function getPredictInputOptions(savedModelId: string): [string, string][] {
   return [...fromLibrary, manual];
 }
 
+/** Тип модели из блока «Обучить модель» выше по той же цепочке (ещё до запуска обучения). */
+function findDeclaredModelTypeAbovePredict(predictBlock: Blockly.Block | null): ModelType | null {
+  if (!predictBlock) {
+    return null;
+  }
+  let cur: Blockly.Block | null = predictBlock.getPreviousBlock();
+  while (cur) {
+    if (cur.type === "noda_train_model_simple" || cur.type === "noda_train_model") {
+      const modelBlock = cur.getInputTargetBlock("MODEL");
+      const ref = modelBlock
+        ? String(modelBlock.getFieldValue("MODEL_TYPE_REF") ?? "image_knn")
+        : "image_knn";
+      return parseModelTypeRef(ref);
+    }
+    cur = cur.getPreviousBlock();
+  }
+  return null;
+}
+
+function resolvePredictL1ModelType(predictBlock: Blockly.Block | null): ModelType | null {
+  return findDeclaredModelTypeAbovePredict(predictBlock) ?? getLastTrainedModelType();
+}
+
 /**
- * Уровень 1, блок «Предсказать»: только источник входа — строка в блоке или строка/файл из «Данные».
- * Модель не выбирается (последняя обученная в памяти).
+ * Уровень 1, блок «Предсказать»: источник входа по типу модели из цепочки или из памяти после обучения.
  */
-function getPredictL1DataSourceOptions(): [string, string][] {
-  const modelType = getLastTrainedModelType();
+function getPredictL1DataSourceOptionsForBlock(predictBlock: Blockly.Block): [string, string][] {
+  const modelType = resolvePredictL1ModelType(predictBlock);
   if (!modelType) {
-    return [["Сначала обучите модель", "none"]];
+    return [["Соедините «Обучить модель» выше или выполните обучение", "none"]];
   }
   const state = useAppStore.getState();
   if (isImageModel(modelType)) {
@@ -392,13 +414,35 @@ function refreshNodlyPredictInlineRow(block: Blockly.Block) {
 
 /** Уровень 1: строка в блоке только для таблиц и только при выборе «Ввести в блоке». */
 function refreshNodlyPredictL1InlineRow(block: Blockly.Block) {
-  const modelType = getLastTrainedModelType();
+  const modelType = resolvePredictL1ModelType(block);
   const ref = block.getFieldValue("INPUT_REF");
   const show = !!modelType && modelType !== "image_knn" && ref === TABULAR_MANUAL_REF;
   block.getInput("INLINE_ROW")?.setVisible(show);
   const svg = block as Blockly.BlockSvg;
   if (svg.rendered) {
     svg.render();
+  }
+}
+
+/** Если список входов сменился (например, появился тип модели из «Обучить модель»), подправить значение поля. */
+function resyncPredictL1InputDropdown(block: Blockly.Block) {
+  if (block.type !== "noda_predict_l1") {
+    return;
+  }
+  const opts = getPredictL1DataSourceOptionsForBlock(block);
+  const valid = new Set(opts.map(([, v]) => v));
+  const cur = String(block.getFieldValue("INPUT_REF") ?? "none");
+  if (!valid.has(cur)) {
+    block.setFieldValue(opts[0]?.[1] ?? "none", "INPUT_REF");
+  }
+  refreshNodlyPredictL1InlineRow(block);
+}
+
+function refreshAllPredictL1Blocks(workspace: Blockly.WorkspaceSvg) {
+  for (const b of workspace.getAllBlocks(false)) {
+    if (b.type === "noda_predict_l1") {
+      resyncPredictL1InputDropdown(b);
+    }
   }
 }
 
@@ -590,8 +634,9 @@ function registerBlocks() {
       this.appendDummyInput()
         .appendField("предсказать")
         .appendField(
-          new Blockly.FieldDropdown(function () {
-            return getPredictL1DataSourceOptions();
+          new Blockly.FieldDropdown(function (this: Blockly.Field<string>) {
+            const src = this.getSourceBlock();
+            return src ? getPredictL1DataSourceOptionsForBlock(src) : [["—", "none"]];
           }),
           "INPUT_REF"
         );
@@ -1348,6 +1393,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
         : getDefaultWorkspaceJson(trainType);
     Blockly.serialization.workspaces.load(initialState, workspaceRef.current);
     clampBlocksToViewport(workspaceRef.current);
+    refreshAllPredictL1Blocks(workspaceRef.current);
     const clickHandler = (event: Blockly.Events.Abstract) => {
       if (!workspaceRef.current) {
         return;
@@ -1383,9 +1429,40 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
         clampBlocksToViewport(workspaceRef.current);
       }
     };
+    const predictL1SyncHandler = (event: Blockly.Events.Abstract) => {
+      const ws = workspaceRef.current;
+      if (!ws) {
+        return;
+      }
+      let need = false;
+      if (
+        event.type === Blockly.Events.BLOCK_MOVE ||
+        event.type === Blockly.Events.BLOCK_CREATE ||
+        event.type === Blockly.Events.BLOCK_DELETE
+      ) {
+        need = true;
+      } else if (event.type === Blockly.Events.BLOCK_CHANGE) {
+        const bid = (event as Blockly.Events.BlockChange).blockId;
+        if (bid) {
+          const b = ws.getBlockById(bid);
+          if (b) {
+            const t = b.type;
+            need =
+              t === "noda_predict_l1" ||
+              t === "noda_train_model_simple" ||
+              t === "noda_train_model" ||
+              t.startsWith("noda_model_");
+          }
+        }
+      }
+      if (need) {
+        refreshAllPredictL1Blocks(ws);
+      }
+    };
     workspaceRef.current.addChangeListener(clickHandler);
     workspaceRef.current.addChangeListener(persistHandler);
     workspaceRef.current.addChangeListener(boundsHandler);
+    workspaceRef.current.addChangeListener(predictL1SyncHandler);
     const resizeHandler = () => {
       if (workspaceRef.current) {
         Blockly.svgResize(workspaceRef.current);
@@ -1403,6 +1480,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
       workspaceRef.current?.removeChangeListener(clickHandler);
       workspaceRef.current?.removeChangeListener(persistHandler);
       workspaceRef.current?.removeChangeListener(boundsHandler);
+      workspaceRef.current?.removeChangeListener(predictL1SyncHandler);
       window.removeEventListener("resize", resizeHandler);
       if (vv) {
         vv.removeEventListener("resize", resizeHandler);
@@ -1435,6 +1513,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
     try {
       Blockly.serialization.workspaces.load(JSON.parse(blocklyState), workspaceRef.current);
       Blockly.svgResize(workspaceRef.current);
+      refreshAllPredictL1Blocks(workspaceRef.current);
     } catch {
       // Ignore malformed saved state.
     }
