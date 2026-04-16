@@ -1522,13 +1522,13 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
 }
 
 .lesson-flow--colab {
-  max-width: min(1680px, 100%);
+  max-width: min(1580px, 100%);
   margin: 0 auto;
   gap: 2px;
 }
 
 .lesson-player-page__head {
-  max-width: min(1680px, 100%);
+  max-width: min(1580px, 100%);
   margin: 0 auto;
   width: 100%;
 }
