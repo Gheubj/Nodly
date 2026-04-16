@@ -223,7 +223,6 @@ export function TeacherPage() {
   const [lessonEditorLesson, setLessonEditorLesson] = useState<TeacherCourseLesson | null>(null);
   const [lessonEditorSummary, setLessonEditorSummary] = useState("");
   const [lessonEditorBlocks, setLessonEditorBlocks] = useState<LessonContentBlock[]>([]);
-  const [adminStudioProjectId, setAdminStudioProjectId] = useState("");
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [newSlotLessonId, setNewSlotLessonId] = useState<string | undefined>(undefined);
   const [newSlotDate, setNewSlotDate] = useState<dayjs.Dayjs | null>(null);
@@ -269,21 +268,6 @@ export function TeacherPage() {
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [gradeForm] = Form.useForm();
-  const [adminStarterJson, setAdminStarterJson] = useState(
-    JSON.stringify(
-      {
-        imageDatasets: [],
-        tabularDatasets: [],
-        imagePredictionInputs: [],
-        tabularPredictionInputs: [],
-        savedModels: [],
-        blocklyState: ""
-      },
-      null,
-      2
-    )
-  );
-  const [adminSubmitting, setAdminSubmitting] = useState(false);
 
   const syncTeacherBadges = useCallback(async () => {
     try {
@@ -879,72 +863,12 @@ export function TeacherPage() {
     }
   };
 
-  const submitAdminTemplate = async (vals: {
-    title: string;
-    moduleKey: string;
-    sortOrder?: number;
-    description?: string;
-    published?: boolean;
-  }) => {
-    let starterPayload: Record<string, unknown>;
-    try {
-      starterPayload = JSON.parse(adminStarterJson) as Record<string, unknown>;
-    } catch {
-      messageApi.error("Некорректный JSON снапшота");
-      return;
-    }
-    setAdminSubmitting(true);
-    try {
-      await apiClient.post("/api/admin/lesson-templates", {
-        title: vals.title,
-        description: vals.description,
-        moduleKey: vals.moduleKey,
-        sortOrder: vals.sortOrder ?? 0,
-        starterPayload,
-        published: vals.published ?? true,
-        lessonContent: lessonContentFromBlocks([])
-      });
-      messageApi.success("Шаблон создан");
-      const list = await apiClient.get<LessonTemplateListItem[]>("/api/lesson-templates");
-      setTemplates(list);
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Ошибка");
-    } finally {
-      setAdminSubmitting(false);
-    }
-  };
-
   const openLessonEditor = (lesson: TeacherCourseLesson) => {
     setLessonEditorLesson(lesson);
     setLessonEditorSummary(lesson.studentSummary ?? "");
     const content = lesson.lessonContent ?? EMPTY_LESSON_CONTENT;
     setLessonEditorBlocks(expandLessonContentToBlocks(content));
     setLessonEditorOpen(true);
-  };
-
-  const openLessonEditorFromCatalog = async (row: LessonTemplateListItem) => {
-    try {
-      const data = await apiClient.get<{
-        id: string;
-        title: string;
-        moduleKey: string;
-        sortOrder: number;
-        studentSummary: string | null;
-        lessonContent: LessonContent | null;
-      }>(`/api/lesson-templates/${row.id}/content`);
-      openLessonEditor({
-        id: data.id,
-        title: data.title,
-        description: row.description,
-        moduleKey: data.moduleKey,
-        sortOrder: data.sortOrder,
-        teacherGuideMd: null,
-        studentSummary: data.studentSummary,
-        lessonContent: data.lessonContent ?? undefined
-      });
-    } catch (e) {
-      messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить урок");
-    }
   };
 
   const submitLessonEditor = async () => {
@@ -1458,99 +1382,19 @@ export function TeacherPage() {
     </Space>
   );
 
-  const adminCatalogColumns: ColumnsType<LessonTemplateListItem> = [
-    { title: "Порядок", dataIndex: "sortOrder", key: "sortOrder", width: 88 },
-    { title: "Модуль", dataIndex: "moduleKey", key: "moduleKey", width: 140 },
-    { title: "Урок", dataIndex: "title", key: "title" },
-    {
-      title: "",
-      key: "actions",
-      width: 160,
-      render: (_, row) => (
-        <Button type="link" size="small" onClick={() => void openLessonEditorFromCatalog(row)}>
-          Материалы и PDF
-        </Button>
-      )
-    }
-  ];
-
   const adminTab =
     user.role === "admin" ? (
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        <Card title="Открыть проект в Studio (админ)">
+        <Card title="Шаблоны уроков">
           <Paragraph type="secondary" style={{ marginTop: 0 }}>
-            Вставь ID проекта (UUID из журнала, ссылки ученика или БД). Откроется только просмотр, если проект не твой —
-            сохранить в облако нельзя.
+            Каталог и создание шаблонов перенесены на отдельную страницу. При создании шаблона открывается пустой
+            холст, где можно добавлять блоки: картинки, PDF, мини-разработку и вопросы.
           </Paragraph>
           <Space wrap>
-            <Input
-              style={{ minWidth: 280, maxWidth: 420 }}
-              placeholder="id проекта"
-              value={adminStudioProjectId}
-              onChange={(e) => setAdminStudioProjectId(e.target.value)}
-            />
-            <Button
-              type="primary"
-              disabled={!adminStudioProjectId.trim()}
-              onClick={() => {
-                const id = adminStudioProjectId.trim();
-                navigate(`/studio?project=${encodeURIComponent(id)}`);
-              }}
-            >
-              Открыть в Studio
-            </Button>
-            <Button
-              disabled={!adminStudioProjectId.trim()}
-              onClick={() => {
-                const id = adminStudioProjectId.trim();
-                window.open(`/studio?project=${encodeURIComponent(id)}`, "_blank", "noopener,noreferrer");
-              }}
-            >
-              В новой вкладке
+            <Button type="primary" onClick={() => navigate("/admin/templates")}>
+              Открыть шаблоны
             </Button>
           </Space>
-        </Card>
-        <Card title="Каталог уроков (шаблоны курса)">
-          <Paragraph type="secondary" style={{ marginTop: 0 }}>
-            Здесь все опубликованные шаблоны. Кнопка «Материалы и PDF» открывает редактор: краткое описание для ученика,
-            поле ссылки на PDF и JSON <Text code>lessonContent</Text> (слайды, шаги, подсказки).
-          </Paragraph>
-          <Table<LessonTemplateListItem>
-            size="small"
-            rowKey="id"
-            dataSource={templates}
-            columns={adminCatalogColumns}
-            pagination={{ pageSize: 12 }}
-            locale={{ emptyText: "Шаблонов пока нет — создай первый ниже" }}
-          />
-        </Card>
-        <Card title="Новый шаблон урока (каталог)">
-          <Paragraph type="secondary">
-            Снапшот — JSON Blockly-проекта (как в API проектов). Учителя привязывают шаблон к заданию в своём классе.
-          </Paragraph>
-          <Form layout="vertical" onFinish={(v) => void submitAdminTemplate(v)} style={{ maxWidth: 560 }}>
-            <Form.Item name="title" label="Название" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="moduleKey" label="Ключ модуля" initialValue="module_a" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item name="sortOrder" label="Порядок" initialValue={0}>
-              <InputNumber style={{ width: "100%" }} />
-            </Form.Item>
-            <Form.Item name="description" label="Описание">
-              <Input />
-            </Form.Item>
-            <Form.Item name="published" label="Опубликован" valuePropName="checked" initialValue>
-              <Switch />
-            </Form.Item>
-            <Form.Item label="starterPayload (JSON)">
-              <TextArea rows={12} value={adminStarterJson} onChange={(e) => setAdminStarterJson(e.target.value)} />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" loading={adminSubmitting}>
-              Создать шаблон
-            </Button>
-          </Form>
         </Card>
       </Space>
     ) : (

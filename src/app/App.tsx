@@ -22,6 +22,8 @@ import { ClassPage } from "@/app/ClassPage";
 import { LearningPage } from "@/app/LearningPage";
 import { LessonPlayerPage } from "@/app/LessonPlayerPage";
 import { TeacherPage } from "@/app/TeacherPage";
+import { AdminLessonTemplatesPage } from "@/app/AdminLessonTemplatesPage";
+import { AdminLessonTemplateEditorPage } from "@/app/AdminLessonTemplateEditorPage";
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
@@ -458,6 +460,22 @@ export function App() {
           element={
             <RequireUser>
               <TeacherPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/admin/templates"
+          element={
+            <RequireUser>
+              <AdminLessonTemplatesPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="/admin/templates/:templateId"
+          element={
+            <RequireUser>
+              <AdminLessonTemplateEditorPage />
             </RequireUser>
           }
         />

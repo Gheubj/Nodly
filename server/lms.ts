@@ -535,6 +535,28 @@ export function registerLmsRoutes(app: Express) {
     res.json(t);
   });
 
+  app.get("/api/admin/lesson-templates/:id/content", authRequired, adminRequired, async (req, res) => {
+    const id = String(req.params.id);
+    const t = await prisma.lessonTemplate.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        moduleKey: true,
+        sortOrder: true,
+        description: true,
+        published: true,
+        studentSummary: true,
+        lessonContent: true
+      }
+    });
+    if (!t) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json(t);
+  });
+
   app.patch(
     "/api/admin/lesson-templates/:id/content",
     authRequired,
