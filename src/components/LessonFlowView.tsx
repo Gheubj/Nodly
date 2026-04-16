@@ -100,7 +100,6 @@ export function LessonFlowView({
                 ) : (
                   <Text type="secondary">Мини-разработка инициализируется…</Text>
                 )}
-                <Input.TextArea rows={3} placeholder="Заметка ученика по мини-разработке (необязательно)" />
                 <Button
                   type={miniDevDone(block.id) ? "default" : "primary"}
                   onClick={() => onToggleMiniDevDone(block.id)}
