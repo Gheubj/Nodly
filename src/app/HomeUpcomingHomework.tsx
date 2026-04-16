@@ -102,11 +102,17 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
 
   const startOrOpen = async (row: SlotStudentAssignmentRow) => {
     try {
-      const res = await apiClient.post<{ projectId: string }>(
+      await apiClient.post<{ projectId: string }>(
         `/api/student/assignments/${row.assignmentId}/start`,
         {}
       );
-      navigate(`/studio?project=${encodeURIComponent(res.projectId)}`);
+      if (!row.lessonTemplateId) {
+        messageApi.error("У задания не указан урок. Попроси учителя привязать урок к заданию.");
+        return;
+      }
+      navigate(
+        `/lesson/${encodeURIComponent(row.lessonTemplateId)}?assignmentId=${encodeURIComponent(row.assignmentId)}`
+      );
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
     }

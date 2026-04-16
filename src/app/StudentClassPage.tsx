@@ -213,6 +213,7 @@ export function StudentClassPage() {
         kind: la.kind,
         dueAt: la.dueAt,
         maxScore: 10,
+        lessonTemplateId: null,
         submission: null
       };
     },
@@ -221,11 +222,17 @@ export function StudentClassPage() {
 
   const startOrOpen = async (row: StudentAssignmentRow) => {
     try {
-      const res = await apiClient.post<{ projectId: string; submissionId: string; status: string }>(
+      await apiClient.post<{ projectId: string; submissionId: string; status: string }>(
         `/api/student/assignments/${row.assignmentId}/start`,
         {}
       );
-      navigate(`/studio?project=${encodeURIComponent(res.projectId)}`);
+      if (!row.lessonTemplateId) {
+        messageApi.error("У задания не указан урок. Попроси учителя привязать урок к заданию.");
+        return;
+      }
+      navigate(
+        `/lesson/${encodeURIComponent(row.lessonTemplateId)}?assignmentId=${encodeURIComponent(row.assignmentId)}`
+      );
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Ошибка");
     }

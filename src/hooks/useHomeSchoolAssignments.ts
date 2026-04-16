@@ -12,6 +12,7 @@ export type HomeSchoolAssignmentRow = {
   dueAt: string | null;
   maxScore: number;
   scheduleSlotId: string | null;
+  lessonTemplateId: string | null;
   submission: {
     id: string;
     status: string;

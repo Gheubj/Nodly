@@ -19,6 +19,7 @@ export type SlotStudentAssignmentRow = {
   kind: string;
   dueAt: string | null;
   maxScore: number;
+  lessonTemplateId: string | null;
   submission: {
     id: string;
     status: string;
