@@ -1465,6 +1465,12 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
       const saved = Blockly.serialization.workspaces.save(workspaceRef.current);
       useAppStore.getState().setBlocklyState(JSON.stringify(saved));
     };
+    (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState = () => {
+      if (!workspaceRef.current) {
+        return "";
+      }
+      return JSON.stringify(Blockly.serialization.workspaces.save(workspaceRef.current));
+    };
     const boundsHandler = (event: Blockly.Events.Abstract) => {
       if (!workspaceRef.current) {
         return;
@@ -1532,6 +1538,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
       }
       workspaceRef.current?.dispose();
       workspaceRef.current = null;
+      delete (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState;
     };
   }, []);
 

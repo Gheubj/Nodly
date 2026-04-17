@@ -868,7 +868,7 @@ app.post("/api/me/sprite", authRequired, async (req: AuthenticatedRequest, res) 
 
 app.get("/api/projects", authRequired, async (req: AuthenticatedRequest, res) => {
   const projects = await prisma.project.findMany({
-    where: { userId: req.session!.sub },
+    where: { userId: req.session!.sub, lessonTemplateId: null },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

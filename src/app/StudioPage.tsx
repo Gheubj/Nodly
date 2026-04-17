@@ -375,6 +375,11 @@ export function StudioPage() {
     }
     const now = new Date().toISOString();
     const projectId = activeProject?.id ?? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const liveBlocklyState = (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState?.();
+    if (typeof liveBlocklyState === "string" && liveBlocklyState.trim()) {
+      useAppStore.getState().setBlocklyState(liveBlocklyState);
+    }
+    const snapshot = getProjectSnapshot();
     await saveProjectSmart({
       meta: {
         id: projectId,
@@ -383,7 +388,13 @@ export function StudioPage() {
         createdAt: activeProject?.createdAt ?? now,
         updatedAt: now
       },
-      snapshot: getProjectSnapshot()
+      snapshot: {
+        ...snapshot,
+        blocklyState:
+          typeof liveBlocklyState === "string" && liveBlocklyState.trim()
+            ? liveBlocklyState
+            : snapshot.blocklyState
+      }
     });
     setActiveProject({
       id: projectId,
