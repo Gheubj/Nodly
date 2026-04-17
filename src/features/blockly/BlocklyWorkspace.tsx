@@ -267,6 +267,20 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
           "Запуск сценария по клику. Несколько блоков «Старт» выполняются по очереди: выше по полю раньше, на одной линии — левее раньше."
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
+      { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
+      {
+        type: "noda_model_tabular_regression",
+        title: "Модель: регрессия",
+        group: "model_types",
+        shape: "value"
+      },
+      {
+        type: "noda_model_tabular_classification",
+        title: "Модель: классификация",
+        group: "model_types",
+        shape: "value"
+      },
+      { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
       {
         type: "noda_predict_l1",
         title: "Предсказать",
@@ -463,16 +477,6 @@ function registerBlocks() {
       this.appendValueInput("MODEL")
         .setCheck("ModelType")
         .appendField("обучить модель")
-        .appendField("модель")
-        .appendField(
-          new Blockly.FieldDropdown([
-            ["картинки (KNN)", "image_knn"],
-            ["регрессия", "tabular_regression"],
-            ["классификация", "tabular_classification"],
-            ["нейросеть", "tabular_neural"]
-          ]),
-          "MODEL_TYPE"
-        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {

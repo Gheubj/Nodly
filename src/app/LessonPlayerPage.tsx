@@ -50,11 +50,6 @@ export function LessonPlayerPage() {
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
     [flowBlocks]
   );
-  const studioBlockIds = useMemo(
-    () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "studio" }> => b.type === "studio").map((b) => b.id),
-    [flowBlocks]
-  );
-
   const persistState = useCallback(
     async (next: LessonPlayerStateV1) => {
       const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
@@ -208,21 +203,6 @@ export function LessonPlayerPage() {
     }
   };
 
-  useEffect(() => {
-    if (!bootstrap) {
-      return;
-    }
-    const missing = studioBlockIds.filter((id) => !miniDevProjectId(id));
-    if (missing.length === 0) {
-      return;
-    }
-    void (async () => {
-      for (const id of missing) {
-        await ensureMiniDevProject(id);
-      }
-    })();
-  }, [bootstrap?.title, studioBlockIds.join("|"), JSON.stringify(playerState.miniDevProjectIds ?? {})]);
-
   return (
     <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
@@ -267,10 +247,12 @@ export function LessonPlayerPage() {
                 checkpointOk={checkpointsOk}
                 miniDevDone={miniDevDone}
                 miniDevProjectId={miniDevProjectId}
+                miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
                 draftAnswers={draftAnswers}
                 onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
+                onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
                 saving={saving}
                 bareMiniStudio
                 variant="colab"

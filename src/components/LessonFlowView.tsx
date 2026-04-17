@@ -24,10 +24,12 @@ export type LessonFlowViewProps = {
   checkpointOk: (blockId: string) => boolean;
   miniDevDone: (blockId: string) => boolean;
   miniDevProjectId: (blockId: string) => string | null;
+  miniDevCreating?: (blockId: string) => boolean;
   draftAnswers: Record<string, string>;
   onDraftChange: (blockId: string, value: string) => void;
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
   onToggleMiniDevDone: (blockId: string) => void;
+  onEnsureMiniDevProject?: (blockId: string) => void;
   saving: boolean;
   bareMiniStudio?: boolean;
   variant?: "classic" | "colab";
@@ -38,10 +40,12 @@ export function LessonFlowView({
   checkpointOk,
   miniDevDone,
   miniDevProjectId,
+  miniDevCreating,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
   onToggleMiniDevDone,
+  onEnsureMiniDevProject,
   saving,
   bareMiniStudio = false,
   variant = "classic"
@@ -104,6 +108,7 @@ export function LessonFlowView({
         }
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
+          const creating = miniDevCreating?.(block.id) ?? false;
           if (bareMiniStudio) {
             return (
               <div key={block.id}>
@@ -114,7 +119,19 @@ export function LessonFlowView({
                     src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
                   />
                 ) : (
-                  <Text type="secondary">Мини-разработка инициализируется…</Text>
+                  <Space direction="vertical" size="small">
+                    <Text type="secondary">
+                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
+                    </Text>
+                    <Button
+                      type="primary"
+                      loading={creating}
+                      onClick={() => onEnsureMiniDevProject?.(block.id)}
+                      disabled={!onEnsureMiniDevProject}
+                    >
+                      Сохранить мини-разработку
+                    </Button>
+                  </Space>
                 )}
               </div>
             );
@@ -130,7 +147,19 @@ export function LessonFlowView({
                     src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
                   />
                 ) : (
-                  <Text type="secondary">Мини-разработка инициализируется…</Text>
+                  <Space direction="vertical" size="small">
+                    <Text type="secondary">
+                      Мини-разработка ещё не сохранена в проекты. Нажми кнопку, чтобы создать проект.
+                    </Text>
+                    <Button
+                      type="primary"
+                      loading={creating}
+                      onClick={() => onEnsureMiniDevProject?.(block.id)}
+                      disabled={!onEnsureMiniDevProject}
+                    >
+                      Сохранить мини-разработку
+                    </Button>
+                  </Space>
                 )}
                 <Button
                   type={miniDevDone(block.id) ? "default" : "primary"}
