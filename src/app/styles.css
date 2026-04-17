@@ -1547,7 +1547,6 @@ html[data-theme="dark"] .week-schedule-slot__diary-grade-mark {
   background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
 }
 
-/* PDF в ленте: рендер страниц в canvas (LessonPdfReader), без панели браузера */
 .lesson-flow__pdf-reader {
   position: relative;
   min-height: 100px;
@@ -1667,9 +1666,6 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   background: #0b1220;
 }
 
-/* Встроенная мини-студия (iframe): шапки приложения нет, но .app-content--workspace
-   по умолчанию вычитает --app-header-height — снизу остаётся полоса фона (#0b1220 / app-bg),
-   которая перекрывает низ палитры Blockly (например блок «Число»). */
 .studio-mini-host.app-content--workspace {
   padding: 0 !important;
   margin: 0 !important;
