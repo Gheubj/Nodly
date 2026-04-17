@@ -107,11 +107,11 @@ export function LessonPlayerPage() {
     );
   }
 
-  if (user.role !== "student") {
+  if (user.role !== "student" && user.role !== "admin") {
     return (
       <Content className="app-content">
         <Card title="Плеер урока">
-          <Paragraph>Интерактивное прохождение доступно ученикам.</Paragraph>
+          <Paragraph>Интерактивное прохождение доступно ученикам и администратору.</Paragraph>
           <Link to="/">На главную</Link>
         </Card>
       </Content>

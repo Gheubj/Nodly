@@ -99,7 +99,6 @@ export function StudentClassPage() {
   const [scheduleRows, setScheduleRows] = useState<ScheduleSlotRow[]>([]);
   const [courseScheduleLoading, setCourseScheduleLoading] = useState(false);
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => dayjs());
-  const [lessonFocusId, setLessonFocusId] = useState<string>("");
   const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
   const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork">("all");
   const [allFilterOverdue, setAllFilterOverdue] = useState<"all" | "overdue" | "not_overdue">("all");
@@ -136,7 +135,6 @@ export function StudentClassPage() {
     if (!classFocusId) {
       setCourseData(null);
       setScheduleRows([]);
-      setLessonFocusId("");
       return;
     }
     let cancelled = false;
@@ -166,17 +164,6 @@ export function StudentClassPage() {
       cancelled = true;
     };
   }, [classFocusId]);
-
-  useEffect(() => {
-    const lessons = courseData?.lessons ?? [];
-    if (lessons.length === 0) {
-      setLessonFocusId("");
-      return;
-    }
-    if (!lessonFocusId || !lessons.some((l) => l.id === lessonFocusId)) {
-      setLessonFocusId(lessons[0].id);
-    }
-  }, [courseData?.lessons, lessonFocusId]);
 
   const assignmentsForClass = useMemo(
     () => assignments.filter((a) => a.classroomId === classFocusId),
@@ -494,120 +481,6 @@ export function StudentClassPage() {
     </Spin>
   );
 
-  const activeLesson = useMemo(
-    () => (courseData?.lessons ?? []).find((l) => l.id === lessonFocusId) ?? null,
-    [courseData?.lessons, lessonFocusId]
-  );
-  const assignmentForActiveLesson = useMemo(() => {
-    if (!activeLesson) {
-      return null;
-    }
-    const candidates = assignmentsForClass.filter((a) => a.lessonTemplateId === activeLesson.id);
-    if (candidates.length === 0) {
-      return null;
-    }
-    const rank = (st: string) => {
-      if (st === "needs_revision") {
-        return 0;
-      }
-      if (st === "draft" || st === "not_started") {
-        return 1;
-      }
-      if (st === "submitted") {
-        return 2;
-      }
-      if (st === "graded") {
-        return 3;
-      }
-      return 4;
-    };
-    return [...candidates].sort((a, b) => {
-      const sa = a.submission?.status ?? "not_started";
-      const sb = b.submission?.status ?? "not_started";
-      return rank(sa) - rank(sb);
-    })[0];
-  }, [activeLesson, assignmentsForClass]);
-
-  const lessonTab = (
-    <Spin spinning={courseScheduleLoading}>
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        {courseData ? (
-          <Alert
-            type="info"
-            showIcon
-            message="Как подбираются уроки и материалы"
-            description={
-              <>
-                В классе задан {courseModuleStudentLabel(courseData.courseModule)} — в программе показываются только
-                шаблоны с ключом модуля{" "}
-                <Text code>{courseModuleToApiModuleKey(courseData.courseModule)}</Text>. Если после правок в
-                админке уроки не появились, проверь, что шаблон относится к этому модулю и опубликован.
-              </>
-            }
-          />
-        ) : null}
-        <Card size="small">
-          <Space wrap align="center">
-            <Text type="secondary">Урок:</Text>
-            <Select
-              style={{ minWidth: 320 }}
-              value={lessonFocusId || undefined}
-              onChange={setLessonFocusId}
-              options={(courseData?.lessons ?? []).map((l, idx) => ({
-                value: l.id,
-                label: `${idx + 1}. ${l.title}`
-              }))}
-            />
-          </Space>
-        </Card>
-        {(courseData?.lessons ?? []).length === 0 && courseData ? (
-          <Alert
-            type="warning"
-            showIcon
-            message="В программе класса нет уроков"
-            description="Обычно это значит, что в каталоге нет опубликованных шаблонов для модуля класса. Попроси учителя или администратора проверить модуль класса и каталог шаблонов."
-          />
-        ) : null}
-        {!activeLesson ? (
-          <Empty description="Выбери урок" />
-        ) : (
-          <Card title={activeLesson.title}>
-            {activeLesson.studentSummary ? (
-              <Paragraph style={{ marginBottom: 16 }}>{activeLesson.studentSummary}</Paragraph>
-            ) : (
-              <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-                Краткое описание урока пока не добавлено.
-              </Paragraph>
-            )}
-            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-              <Button
-                type="primary"
-                size="large"
-                onClick={() =>
-                  navigate(
-                    assignmentForActiveLesson
-                      ? `/lesson/${encodeURIComponent(activeLesson.id)}?assignmentId=${encodeURIComponent(assignmentForActiveLesson.assignmentId)}`
-                      : `/lesson/${encodeURIComponent(activeLesson.id)}`
-                  )
-                }
-              >
-                Открыть урок (интерактивно)
-              </Button>
-              {!assignmentForActiveLesson ? (
-                <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-                  Если учитель привяжет задание к этому шаблону, открой урок из задания — тогда прогресс сохранится в
-                  задании.
-                </Paragraph>
-              ) : null}
-              <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-                Сдача и статус задания остаются во вкладках «Дневник» и «Все задания».
-              </Paragraph>
-            </Space>
-          </Card>
-        )}
-      </Space>
-    </Spin>
-  );
 
   const filteredAllAssignments = useMemo(() => {
     return assignments.filter((row) => {
@@ -735,7 +608,6 @@ export function StudentClassPage() {
       <Tabs
         defaultActiveKey="diary"
         items={[
-          { key: "lesson", label: "Урок", children: lessonTab },
           { key: "course", label: "Курс", children: courseTab },
           { key: "diary", label: "Дневник", children: diaryTab },
           { key: "all", label: "Все задания", children: allAssignmentsTab },

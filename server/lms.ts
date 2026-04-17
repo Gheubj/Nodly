@@ -692,6 +692,33 @@ export function registerLmsRoutes(app: Express) {
     }
   );
 
+  app.delete(
+    "/api/admin/lesson-templates/:id",
+    authRequired,
+    adminRequired,
+    async (_req: AuthenticatedRequest, res) => {
+      const req = _req;
+      const id = String(req.params.id);
+      const exists = await prisma.lessonTemplate.findUnique({
+        where: { id },
+        select: { id: true }
+      });
+      if (!exists) {
+        res.status(404).json({ error: "Lesson not found" });
+        return;
+      }
+      try {
+        await prisma.lessonTemplate.delete({ where: { id } });
+        res.json({ ok: true });
+      } catch {
+        res.status(409).json({
+          error:
+            "Нельзя удалить урок: он уже используется в расписании, заданиях или связанном контенте. Сначала отвяжи его."
+        });
+      }
+    }
+  );
+
   app.get("/api/lesson-templates/:id/starter", async (req, res) => {
     const t = await prisma.lessonTemplate.findFirst({
       where: { id: String(req.params.id), published: true }
@@ -2118,7 +2145,7 @@ export function registerLmsRoutes(app: Express) {
   app.get(
     "/api/student/lessons/:lessonId/player-bootstrap",
     authRequired,
-    roleGuard(["student"]),
+    roleGuard(["student", "admin"]),
     async (req: AuthenticatedRequest, res) => {
       const lessonId = String(req.params.lessonId);
       const assignmentIdRaw = req.query.assignmentId;
@@ -2173,7 +2200,7 @@ export function registerLmsRoutes(app: Express) {
   app.post(
     "/api/student/lessons/:lessonId/mini-dev-project",
     authRequired,
-    roleGuard(["student"]),
+    roleGuard(["student", "admin"]),
     async (req: AuthenticatedRequest, res) => {
       const lessonId = String(req.params.lessonId);
       const assignmentIdRaw = req.query.assignmentId;
@@ -2278,7 +2305,7 @@ export function registerLmsRoutes(app: Express) {
   app.patch(
     "/api/student/lessons/:lessonId/player-progress",
     authRequired,
-    roleGuard(["student"]),
+    roleGuard(["student", "admin"]),
     async (req: AuthenticatedRequest, res) => {
       const lessonId = String(req.params.lessonId);
       const parsed = z.object({ state: z.record(z.string(), z.unknown()) }).safeParse(req.body);
