@@ -22,6 +22,14 @@ export interface LessonContentHint {
   text: string;
 }
 
+export type StudioGoalType = "add_block" | "select_dataset" | "train_model" | "run_prediction";
+
+export type StudioGoal =
+  | { id: string; title: string; type: "add_block"; blockType: string }
+  | { id: string; title: string; type: "select_dataset"; datasetKind: "image" | "tabular" }
+  | { id: string; title: string; type: "train_model" }
+  | { id: string; title: string; type: "run_prediction" };
+
 /** Блоки «ленты» урока (конструктор + плеер). Если заданы — плеер строит единый поток. */
 export type LessonContentBlock =
   | { id: string; type: "text"; body: string }
@@ -45,6 +53,8 @@ export type LessonContentBlock =
       referenceProjectId?: string | null;
       /** Для `empty`: уровень 1–3 (обязателен при пустой практике) */
       studioWorkspaceLevel?: 1 | 2 | 3;
+      /** Цели мини-разработки: отображаются ученику и проверяются автоматически. */
+      goals?: StudioGoal[];
     }
   | {
       id: string;

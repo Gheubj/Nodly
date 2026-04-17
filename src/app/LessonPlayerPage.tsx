@@ -4,11 +4,12 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { LessonFlowView } from "@/components/LessonFlowView";
-import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
+import { EMPTY_LESSON_CONTENT, type LessonContent, type LessonContentBlock, type StudioGoal } from "@/shared/types/lessonContent";
 import { expandLessonContentToBlocks } from "@/shared/lessonContentBlocks";
 import {
   normalizeCheckpointAnswer,
   parseLessonPlayerState,
+  type MiniDevTelemetry,
   type LessonPlayerStateV1
 } from "@/shared/types/lessonPlayerState";
 
@@ -23,6 +24,94 @@ type Bootstrap = {
   assignmentTitle: string | null;
   state: unknown;
 };
+
+type MiniStudioMessage = {
+  source: "nodly-mini-studio";
+  lessonId: string;
+  blockId: string;
+  projectId?: string | null;
+  event: {
+    type: "train" | "predict";
+    modelType: string;
+    datasetRef?: string;
+    inputRef?: string;
+    label?: string | null;
+  };
+};
+
+type FlattenedBlocklySummary = {
+  blockTypes: Set<string>;
+  datasetKinds: Set<"image" | "tabular">;
+};
+type StudioFlowBlock = Extract<LessonContentBlock, { type: "studio" }>;
+
+function summarizeBlocklyState(rawState: string): FlattenedBlocklySummary {
+  const summary: FlattenedBlocklySummary = { blockTypes: new Set(), datasetKinds: new Set() };
+  if (!rawState) {
+    return summary;
+  }
+  try {
+    const parsed = JSON.parse(rawState) as { blocks?: { blocks?: unknown[] } };
+    const roots = parsed?.blocks?.blocks;
+    const visit = (node: unknown) => {
+      if (!node || typeof node !== "object") {
+        return;
+      }
+      const item = node as {
+        type?: string;
+        fields?: Record<string, unknown>;
+        next?: { block?: unknown };
+        inputs?: Record<string, { block?: unknown }>;
+      };
+      if (item.type) {
+        summary.blockTypes.add(item.type);
+      }
+      const datasetRef = typeof item.fields?.DATASET_REF === "string" ? item.fields.DATASET_REF : "";
+      if (datasetRef.startsWith("image:")) {
+        summary.datasetKinds.add("image");
+      }
+      if (datasetRef.startsWith("tabular:")) {
+        summary.datasetKinds.add("tabular");
+      }
+      if (item.next?.block) {
+        visit(item.next.block);
+      }
+      if (item.inputs) {
+        for (const input of Object.values(item.inputs)) {
+          if (input?.block) {
+            visit(input.block);
+          }
+        }
+      }
+    };
+    if (Array.isArray(roots)) {
+      roots.forEach(visit);
+    }
+  } catch {
+    return summary;
+  }
+  return summary;
+}
+
+function evalGoal(
+  goal: StudioGoal,
+  summary: FlattenedBlocklySummary,
+  telemetry: MiniDevTelemetry | undefined
+): boolean {
+  if (goal.type === "add_block") {
+    return summary.blockTypes.has(goal.blockType);
+  }
+  if (goal.type === "select_dataset") {
+    return summary.datasetKinds.has(goal.datasetKind);
+  }
+  if (goal.type === "train_model") {
+    return Boolean(telemetry?.trained);
+  }
+  if (goal.type === "run_prediction") {
+    return Boolean(telemetry?.predicted);
+  }
+  return false;
+}
 
 export function LessonPlayerPage() {
   const { user } = useSessionStore();
@@ -45,6 +134,15 @@ export function LessonPlayerPage() {
   }, [bootstrap]);
 
   const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
+  const studioBlocksById = useMemo(() => {
+    const map: Record<string, StudioFlowBlock> = {};
+    for (const block of flowBlocks) {
+      if (block.type === "studio") {
+        map[block.id] = block;
+      }
+    }
+    return map;
+  }, [flowBlocks]);
 
   const checkpointBlockIds = useMemo(
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
@@ -116,6 +214,7 @@ export function LessonPlayerPage() {
   const checkpointsOk = (blockId: string) => playerState.checkpoints?.[blockId] === "ok";
   const miniDevDone = (blockId: string) => Boolean(playerState.miniDevDone?.[blockId]);
   const miniDevProjectId = (blockId: string) => playerState.miniDevProjectIds?.[blockId] ?? null;
+  const miniGoalStatus = (blockId: string, goalId: string) => Boolean(playerState.miniDevGoalStatus?.[blockId]?.[goalId]);
 
   const verifyCheckpoint = async (blockId: string, expected: string) => {
     const raw = draftAnswers[blockId] ?? "";
@@ -192,6 +291,10 @@ export function LessonPlayerPage() {
         miniDevProjectIds: {
           ...(playerState.miniDevProjectIds ?? {}),
           [blockId]: projectId
+        },
+        miniDevGoalStatus: {
+          ...(playerState.miniDevGoalStatus ?? {}),
+          [blockId]: {}
         }
       };
       await persistState(next);
@@ -202,6 +305,91 @@ export function LessonPlayerPage() {
       setAutoCreatingMini((prev) => ({ ...prev, [blockId]: false }));
     }
   };
+
+  const checkMiniGoals = useCallback(
+    async (blockId: string) => {
+      const projectId = miniDevProjectId(blockId);
+      if (!projectId) {
+        messageApi.warning("Сначала создай мини-разработку.");
+        return;
+      }
+      const block = studioBlocksById[blockId];
+      const goals = block?.goals ?? [];
+      if (goals.length === 0) {
+        messageApi.info("Для этой мини-разработки цели не заданы.");
+        return;
+      }
+      setSaving(true);
+      try {
+        const data = await apiClient.get<{ snapshot?: { blocklyState?: string } }>(
+          `/api/projects/${encodeURIComponent(projectId)}`
+        );
+        const summary = summarizeBlocklyState(String(data?.snapshot?.blocklyState ?? ""));
+        const telemetry = playerState.miniDevTelemetry?.[blockId];
+        const status = goals.reduce<Record<string, boolean>>((acc: Record<string, boolean>, goal: StudioGoal) => {
+          acc[goal.id] = evalGoal(goal, summary, telemetry);
+          return acc;
+        }, {});
+        const allDone = Object.values(status).every(Boolean);
+        const next: LessonPlayerStateV1 = {
+          ...playerState,
+          miniDevGoalStatus: {
+            ...(playerState.miniDevGoalStatus ?? {}),
+            [blockId]: status
+          },
+          miniDevDone: {
+            ...(playerState.miniDevDone ?? {}),
+            [blockId]: allDone
+          }
+        };
+        await persistState(next);
+        messageApi.success(allDone ? "Все цели выполнены!" : "Часть целей еще не выполнена.");
+      } catch (e) {
+        messageApi.error(e instanceof Error ? e.message : "Не удалось проверить цели");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [messageApi, miniDevProjectId, persistState, playerState, studioBlocksById]
+  );
+
+  useEffect(() => {
+    const handler = (evt: MessageEvent<MiniStudioMessage>) => {
+      if (evt.origin !== window.location.origin) {
+        return;
+      }
+      const payload = evt.data;
+      if (!payload || payload.source !== "nodly-mini-studio") {
+        return;
+      }
+      if (payload.lessonId !== lessonId) {
+        return;
+      }
+      const blockId = payload.blockId;
+      const prev = playerState;
+      const current = prev.miniDevTelemetry?.[blockId] ?? {};
+      const nextTelemetry = {
+        ...current,
+        lastModelType: payload.event.modelType ?? current.lastModelType ?? null,
+        lastDatasetRef: payload.event.datasetRef ?? current.lastDatasetRef ?? null,
+        lastInputRef: payload.event.inputRef ?? current.lastInputRef ?? null,
+        lastPredictionLabel: payload.event.label ?? current.lastPredictionLabel ?? null,
+        trained: current.trained || payload.event.type === "train",
+        predicted: current.predicted || payload.event.type === "predict",
+        updatedAt: new Date().toISOString()
+      };
+      const next: LessonPlayerStateV1 = {
+        ...prev,
+        miniDevTelemetry: {
+          ...(prev.miniDevTelemetry ?? {}),
+          [blockId]: nextTelemetry
+        }
+      };
+      void persistState(next);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [lessonId, persistState, playerState]);
 
   return (
     <Content className="app-content app-content--workspace lesson-player-page">
@@ -243,16 +431,19 @@ export function LessonPlayerPage() {
                 />
               ) : null}
               <LessonFlowView
+                lessonId={lessonId}
                 blocks={flowBlocks}
                 checkpointOk={checkpointsOk}
                 miniDevDone={miniDevDone}
                 miniDevProjectId={miniDevProjectId}
+                miniGoalStatus={miniGoalStatus}
                 miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
                 draftAnswers={draftAnswers}
                 onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
                 onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
                 onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
                 onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
+                onCheckMiniGoals={(id) => void checkMiniGoals(id)}
                 saving={saving}
                 bareMiniStudio
                 variant="colab"

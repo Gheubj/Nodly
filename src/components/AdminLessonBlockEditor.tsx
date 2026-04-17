@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Dropdown, Input, Select, Space, Typography, Upload, message } from "antd";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
-import type { LessonContentBlock } from "@/shared/types/lessonContent";
+import type { LessonContentBlock, StudioGoal } from "@/shared/types/lessonContent";
 import { apiClient } from "@/shared/api/client";
 import { newLessonBlockId } from "@/shared/lessonContentBlocks";
 import { useSessionStore } from "@/store/useSessionStore";
@@ -15,6 +15,22 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
   { value: "checkpoint", label: "Контрольный вопрос" }
+];
+
+const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
+  { value: "add_block", label: "Добавить блок" },
+  { value: "select_dataset", label: "Выбрать датасет" },
+  { value: "train_model", label: "Запустить обучение" },
+  { value: "run_prediction", label: "Сделать предсказание" }
+];
+
+const STUDIO_BLOCK_TYPE_OPTIONS = [
+  { value: "noda_start", label: "Старт" },
+  { value: "noda_train_model_simple", label: "Обучить модель (уровень 1)" },
+  { value: "noda_train_model", label: "Обучить модель (уровень 2+)" },
+  { value: "noda_predict_l1", label: "Предсказать (уровень 1)" },
+  { value: "noda_predict_class", label: "Предсказать (уровень 2+)" },
+  { value: "noda_save_model", label: "Сохранить модель" }
 ];
 
 function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
@@ -93,6 +109,44 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     }
     next[index] = { ...cur, ...patch } as LessonContentBlock;
     onChange(next);
+  };
+
+  const updateStudioGoal = (index: number, goalIndex: number, patch: Partial<StudioGoal>) => {
+    const block = blocks[index];
+    if (!block || block.type !== "studio") {
+      return;
+    }
+    const goals = [...(block.goals ?? [])];
+    const current = goals[goalIndex];
+    if (!current) {
+      return;
+    }
+    goals[goalIndex] = { ...current, ...patch } as StudioGoal;
+    setBlock(index, { goals } as Partial<LessonContentBlock>);
+  };
+
+  const addStudioGoal = (index: number) => {
+    const block = blocks[index];
+    if (!block || block.type !== "studio") {
+      return;
+    }
+    const goals = [...(block.goals ?? [])];
+    goals.push({
+      id: newLessonBlockId(),
+      title: "Добавить блок «Обучить модель»",
+      type: "add_block",
+      blockType: "noda_train_model_simple"
+    });
+    setBlock(index, { goals } as Partial<LessonContentBlock>);
+  };
+
+  const removeStudioGoal = (index: number, goalIndex: number) => {
+    const block = blocks[index];
+    if (!block || block.type !== "studio") {
+      return;
+    }
+    const goals = (block.goals ?? []).filter((_, i) => i !== goalIndex);
+    setBlock(index, { goals } as Partial<LessonContentBlock>);
   };
 
   const replaceBlockType = (index: number, type: LessonContentBlock["type"]) => {
@@ -325,6 +379,84 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                     { value: 3, label: "Уровень Blockly 3" }
                   ]}
                 />
+                <Card size="small" title="Цели мини-разработки">
+                  <Space direction="vertical" style={{ width: "100%" }} size="small">
+                    {(block.goals ?? []).map((goal, goalIndex) => (
+                      <Card
+                        key={goal.id}
+                        size="small"
+                        type="inner"
+                        title={`Цель ${goalIndex + 1}`}
+                        extra={
+                          <Button size="small" danger onClick={() => removeStudioGoal(index, goalIndex)}>
+                            Удалить
+                          </Button>
+                        }
+                      >
+                        <Space direction="vertical" style={{ width: "100%" }} size="small">
+                          <Input
+                            placeholder="Текст цели (что увидит ученик)"
+                            value={goal.title}
+                            onChange={(e) => updateStudioGoal(index, goalIndex, { title: e.target.value })}
+                          />
+                          <Select
+                            style={{ width: "100%" }}
+                            value={goal.type}
+                            options={STUDIO_GOAL_TYPES}
+                            onChange={(v) => {
+                              const t = v as StudioGoal["type"];
+                              if (t === "add_block") {
+                                updateStudioGoal(index, goalIndex, {
+                                  type: t,
+                                  blockType: "noda_train_model_simple"
+                                } as Partial<StudioGoal>);
+                                return;
+                              }
+                              if (t === "select_dataset") {
+                                updateStudioGoal(index, goalIndex, {
+                                  type: t,
+                                  datasetKind: "image"
+                                } as Partial<StudioGoal>);
+                                return;
+                              }
+                              updateStudioGoal(index, goalIndex, { type: t } as Partial<StudioGoal>);
+                            }}
+                          />
+                          {goal.type === "add_block" ? (
+                            <Select
+                              style={{ width: "100%" }}
+                              value={goal.blockType}
+                              options={STUDIO_BLOCK_TYPE_OPTIONS}
+                              onChange={(v) =>
+                                updateStudioGoal(index, goalIndex, { blockType: String(v) } as Partial<StudioGoal>)
+                              }
+                            />
+                          ) : null}
+                          {goal.type === "select_dataset" ? (
+                            <Select
+                              style={{ width: "100%" }}
+                              value={goal.datasetKind}
+                              options={[
+                                { value: "image", label: "Image датасет" },
+                                { value: "tabular", label: "Tabular датасет" }
+                              ]}
+                              onChange={(v) =>
+                                updateStudioGoal(
+                                  index,
+                                  goalIndex,
+                                  { datasetKind: v as "image" | "tabular" } as Partial<StudioGoal>
+                                )
+                              }
+                            />
+                          ) : null}
+                        </Space>
+                      </Card>
+                    ))}
+                    <Button type="dashed" onClick={() => addStudioGoal(index)} icon={<PlusOutlined />}>
+                      Добавить цель
+                    </Button>
+                  </Space>
+                </Card>
             </Space>
           ) : null}
           {block.type === "checkpoint" ? (

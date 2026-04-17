@@ -852,9 +852,21 @@ export type BlocklyWorkspaceProps = {
   miniStudioToolbar?: boolean;
   onOpenDataLibrary?: () => void;
   onSaveProject?: () => void;
+  onMiniStudioActivity?: (event: {
+    type: "train" | "predict";
+    modelType: string;
+    datasetRef?: string;
+    inputRef?: string;
+    label?: string | null;
+  }) => void;
 };
 
-export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveProject }: BlocklyWorkspaceProps = {}) {
+export function BlocklyWorkspace({
+  miniStudioToolbar,
+  onOpenDataLibrary,
+  onSaveProject,
+  onMiniStudioActivity
+}: BlocklyWorkspaceProps = {}) {
   const htmlTheme = useHtmlDataTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -1153,6 +1165,11 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
       if (command.type === "train") {
         const modelType = parseModelTypeRef(command.modelTypeRef);
         await trackEvent("training_started", { modelType });
+        onMiniStudioActivity?.({
+          type: "train",
+          modelType,
+          datasetRef: command.datasetRef
+        });
         state.setLastModelType(modelType);
         loadedSavedModelIdRef.current = null;
         const [kind, id] = command.datasetRef.split(":");
@@ -1278,6 +1295,12 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
             modelType,
             label: result?.title ?? null
           });
+          onMiniStudioActivity?.({
+            type: "predict",
+            modelType,
+            inputRef: command.inputRef,
+            label: result?.title ?? null
+          });
           if (!fromEvent) {
             await runEventChain("predicted");
           }
@@ -1305,6 +1328,12 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
           state.setPrediction(result);
           await trackEvent("prediction_run", {
             modelType,
+            label: result?.title ?? null
+          });
+          onMiniStudioActivity?.({
+            type: "predict",
+            modelType,
+            inputRef: command.inputRef,
             label: result?.title ?? null
           });
           if (!fromEvent) {

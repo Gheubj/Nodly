@@ -91,6 +91,8 @@ const GRADEABLE_STATUSES = ["submitted", "needs_revision", "graded"] as const;
 export function StudioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isMini = searchParams.get("mini") === "1";
+  const miniLessonId = searchParams.get("miniLessonId");
+  const miniBlockId = searchParams.get("miniBlockId");
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored =
@@ -416,6 +418,28 @@ export function StudioPage() {
     await saveProjectToCloud(currentProjectTitle || DEFAULT_PROJECT_TITLE);
   };
 
+  const handleMiniStudioActivity = (event: {
+    type: "train" | "predict";
+    modelType: string;
+    datasetRef?: string;
+    inputRef?: string;
+    label?: string | null;
+  }) => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      return;
+    }
+    window.parent?.postMessage(
+      {
+        source: "nodly-mini-studio",
+        lessonId: miniLessonId,
+        blockId: miniBlockId,
+        projectId: activeProject?.id ?? null,
+        event
+      },
+      window.location.origin
+    );
+  };
+
   const handleLoadProject = async (projectId: string) => {
     const project = await loadProjectSmart(projectId);
     if (!project) {
@@ -574,6 +598,7 @@ export function StudioPage() {
             miniStudioToolbar={isMini}
             onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
             onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
+            onMiniStudioActivity={handleMiniStudioActivity}
           />
         </div>
         <StudioStagePanel />

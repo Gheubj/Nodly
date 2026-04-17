@@ -324,6 +324,30 @@ const mediaBlockZ = z.object({
   url: blockMediaUrlZ,
   caption: z.string().max(500).optional().nullable()
 });
+const studioGoalZ = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string().min(1).max(80),
+    title: z.string().min(1).max(220),
+    type: z.literal("add_block"),
+    blockType: z.string().min(1).max(120)
+  }),
+  z.object({
+    id: z.string().min(1).max(80),
+    title: z.string().min(1).max(220),
+    type: z.literal("select_dataset"),
+    datasetKind: z.enum(["image", "tabular"])
+  }),
+  z.object({
+    id: z.string().min(1).max(80),
+    title: z.string().min(1).max(220),
+    type: z.literal("train_model")
+  }),
+  z.object({
+    id: z.string().min(1).max(80),
+    title: z.string().min(1).max(220),
+    type: z.literal("run_prediction")
+  })
+]);
 const studioBlockZ = z.object({
   id: lessonBlockIdZ,
   type: z.literal("studio"),
@@ -331,7 +355,8 @@ const studioBlockZ = z.object({
   ctaAction: z.string().max(120).optional().nullable(),
   studioPracticeKind: z.enum(["template", "project_clone", "empty"]).optional(),
   referenceProjectId: z.string().min(1).max(120).optional().nullable(),
-  studioWorkspaceLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional()
+  studioWorkspaceLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  goals: z.array(studioGoalZ).max(20).optional()
 });
 const checkpointBlockZ = z.object({
   id: lessonBlockIdZ,

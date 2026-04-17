@@ -20,32 +20,38 @@ function isStudioCta(cta: string | null | undefined): boolean {
 }
 
 export type LessonFlowViewProps = {
+  lessonId?: string;
   blocks: LessonContentBlock[];
   checkpointOk: (blockId: string) => boolean;
   miniDevDone: (blockId: string) => boolean;
   miniDevProjectId: (blockId: string) => string | null;
+  miniGoalStatus?: (blockId: string, goalId: string) => boolean;
   miniDevCreating?: (blockId: string) => boolean;
   draftAnswers: Record<string, string>;
   onDraftChange: (blockId: string, value: string) => void;
   onVerifyCheckpoint: (blockId: string, expected: string) => void;
   onToggleMiniDevDone: (blockId: string) => void;
   onEnsureMiniDevProject?: (blockId: string) => void;
+  onCheckMiniGoals?: (blockId: string) => void;
   saving: boolean;
   bareMiniStudio?: boolean;
   variant?: "classic" | "colab";
 };
 
 export function LessonFlowView({
+  lessonId,
   blocks,
   checkpointOk,
   miniDevDone,
   miniDevProjectId,
+  miniGoalStatus,
   miniDevCreating,
   draftAnswers,
   onDraftChange,
   onVerifyCheckpoint,
   onToggleMiniDevDone,
   onEnsureMiniDevProject,
+  onCheckMiniGoals,
   saving,
   bareMiniStudio = false,
   variant = "classic"
@@ -109,14 +115,50 @@ export function LessonFlowView({
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
           const creating = miniDevCreating?.(block.id) ?? false;
+          const goals = block.goals ?? [];
+          const goalsDone = goals.length > 0 && goals.every((goal) => miniGoalStatus?.(block.id, goal.id) === true);
+          const frameSrc = projectId
+            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}${
+                lessonId ? `&miniLessonId=${encodeURIComponent(lessonId)}&miniBlockId=${encodeURIComponent(block.id)}` : ""
+              }`
+            : "";
           if (bareMiniStudio) {
             return (
               <div key={block.id}>
+                <div className="lesson-flow__bot-message">
+                  <div className="lesson-flow__bot-avatar" aria-hidden>
+                    🤖
+                  </div>
+                  <div className="lesson-flow__bot-bubble">
+                    {renderMarkdown(block.instruction, "lesson-flow__markdown")}
+                  </div>
+                </div>
+                {goals.length > 0 ? (
+                  <div className="lesson-flow__goals">
+                    <Text strong>Цели мини-разработки</Text>
+                    <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                      {goals.map((goal) => (
+                        <div key={goal.id} className="lesson-flow__goal-row">
+                          <Tag color={miniGoalStatus?.(block.id, goal.id) ? "success" : "default"}>
+                            {miniGoalStatus?.(block.id, goal.id) ? "Сделано" : "Ожидается"}
+                          </Tag>
+                          <Text>{goal.title}</Text>
+                        </div>
+                      ))}
+                    </Space>
+                    <Button onClick={() => onCheckMiniGoals?.(block.id)} loading={saving} disabled={!projectId}>
+                      Проверить цели
+                    </Button>
+                    {goalsDone ? (
+                      <Text type="success">🤖 Отлично! Все цели выполнены, можно переходить дальше.</Text>
+                    ) : null}
+                  </div>
+                ) : null}
                 {projectId ? (
                   <iframe
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
-                    src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
+                    src={frameSrc}
                   />
                 ) : (
                   <Space direction="vertical" size="small">
@@ -138,13 +180,39 @@ export function LessonFlowView({
           }
           return (
             <div key={block.id} className={`lesson-flow__segment lesson-flow__studio${isColab ? " lesson-flow__segment--colab" : ""}`}>
-              <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
+              <div className="lesson-flow__bot-message">
+                <div className="lesson-flow__bot-avatar" aria-hidden>
+                  🤖
+                </div>
+                <div className="lesson-flow__bot-bubble">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
+              </div>
+              {goals.length > 0 ? (
+                <div className="lesson-flow__goals">
+                  <Text strong>Цели мини-разработки</Text>
+                  <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                    {goals.map((goal) => (
+                      <div key={goal.id} className="lesson-flow__goal-row">
+                        <Tag color={miniGoalStatus?.(block.id, goal.id) ? "success" : "default"}>
+                          {miniGoalStatus?.(block.id, goal.id) ? "Сделано" : "Ожидается"}
+                        </Tag>
+                        <Text>{goal.title}</Text>
+                      </div>
+                    ))}
+                  </Space>
+                  <Button onClick={() => onCheckMiniGoals?.(block.id)} loading={saving} disabled={!projectId}>
+                    Проверить цели
+                  </Button>
+                  {goalsDone ? (
+                    <Text type="success">🤖 Отлично! Все цели выполнены, можно переходить дальше.</Text>
+                  ) : null}
+                </div>
+              ) : null}
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
                   <iframe
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
-                    src={`/studio?mini=1&project=${encodeURIComponent(projectId)}`}
+                    src={frameSrc}
                   />
                 ) : (
                   <Space direction="vertical" size="small">
