@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { DatabaseOutlined, QuestionCircleOutlined } from "@ant-design/icons";
-import { Alert, Button, Segmented, Space, Tag, Tooltip } from "antd";
+import { DatabaseOutlined } from "@ant-design/icons";
+import { Alert, Button, Segmented, Space, Tag } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
@@ -267,20 +267,6 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
           "Запуск сценария по клику. Несколько блоков «Старт» выполняются по очереди: выше по полю раньше, на одной линии — левее раньше."
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
-      { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
-      {
-        type: "noda_model_tabular_regression",
-        title: "Модель: регрессия",
-        group: "model_types",
-        shape: "value"
-      },
-      {
-        type: "noda_model_tabular_classification",
-        title: "Модель: классификация",
-        group: "model_types",
-        shape: "value"
-      },
-      { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
       {
         type: "noda_predict_l1",
         title: "Предсказать",
@@ -477,6 +463,16 @@ function registerBlocks() {
       this.appendValueInput("MODEL")
         .setCheck("ModelType")
         .appendField("обучить модель")
+        .appendField("модель")
+        .appendField(
+          new Blockly.FieldDropdown([
+            ["картинки (KNN)", "image_knn"],
+            ["регрессия", "tabular_regression"],
+            ["классификация", "tabular_classification"],
+            ["нейросеть", "tabular_neural"]
+          ]),
+          "MODEL_TYPE"
+        )
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
@@ -818,7 +814,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
-  const { prediction, evaluation, blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
+  const { evaluation, blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
 
   const paletteLevel = effectiveToolboxLevel(workspaceLevel);
   const paletteItems = getPaletteItems(paletteLevel);
@@ -1276,14 +1272,8 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
         });
       }
       if (command.type === "show_result") {
-        if (state.prediction) {
-          state.setTraining({
-            isTraining: false,
-            message: `Результат: ${state.prediction.title} (${(state.prediction.confidence * 100).toFixed(1)}%)`
-          });
-        } else {
-          state.setTraining({ isTraining: false, message: "Результат ещё не получен" });
-        }
+        // Ничего не показываем в большой плашке сцены:
+        // результат уже доступен в состоянии prediction для условий и логики блоков.
       }
       if (command.type === "add_journal") {
         const line = command.text.trim();
@@ -1519,36 +1509,9 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
     }
   }, [blocklyState]);
 
-  const effLevel = effectiveToolboxLevel(workspaceLevel);
-  const showPredictHint = effLevel === 2;
-  const showPredictHintLevel1 = effLevel === 1;
-
   return (
     <div className="blockly-root">
       <div className="blockly-root__toolbar">
-        <Tooltip
-          title={
-            <div>
-              <div>
-                Цепочка выполняется от блока <strong>Старт</strong>. Нажми на «Старт», чтобы запустить.
-              </div>
-              {showPredictHintLevel1 ? (
-                <div style={{ marginTop: 8 }}>
-                  Уровень 1: «Предсказать» — только откуда взять вход: строка в блоке или из «Данные». Модель та,
-                  что только что обучили; сохранять в библиотеку не нужно.
-                </div>
-              ) : null}
-              {showPredictHint ? (
-                <div style={{ marginTop: 8 }}>
-                  Уровень 2: в «Предсказать» выбери модель из библиотеки; числа через запятую (как столбцы CSV)
-                  или вход из «Данные». Для картинок KNN поле таблицы не нужно.
-                </div>
-              ) : null}
-            </div>
-          }
-        >
-          <Button type="text" size="small" icon={<QuestionCircleOutlined />} aria-label="Как запускать сценарий" />
-        </Tooltip>
         <Space size={8} wrap>
           {miniStudioToolbar ? (
             <Button
@@ -1616,14 +1579,6 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary }: Block
           <div ref={containerRef} className="blockly-container" />
       </div>
       <Space direction="vertical" size={8} style={{ width: "100%", marginTop: 8, flexShrink: 0 }}>
-        {prediction ? (
-          <Alert
-            type="success"
-            showIcon
-            message={`Результат: ${prediction.title}`}
-            description={`Уверенность: ${(prediction.confidence * 100).toFixed(1)}%`}
-          />
-        ) : null}
         {evaluation ? (
           <Alert
             type="warning"

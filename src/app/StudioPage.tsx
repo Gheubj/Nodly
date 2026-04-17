@@ -570,17 +570,32 @@ export function StudioPage() {
       ) : (
         projectWorkspace
       )}
-      <Drawer
-        title="Данные проекта"
-        placement="right"
-        width={580}
-        open={dataLibraryOpen}
-        onClose={() => setDataLibraryOpen(false)}
-        destroyOnClose={false}
-        rootClassName="studio-data-drawer"
-      >
-        <DataLibrary variant="drawer" />
-      </Drawer>
+      {isMini ? (
+        <Modal
+          title="Данные проекта"
+          open={dataLibraryOpen}
+          onCancel={() => setDataLibraryOpen(false)}
+          footer={null}
+          width="min(1120px, 96vw)"
+          destroyOnClose={false}
+          centered
+          rootClassName="studio-data-modal"
+        >
+          <DataLibrary />
+        </Modal>
+      ) : (
+        <Drawer
+          title="Данные проекта"
+          placement="right"
+          width={580}
+          open={dataLibraryOpen}
+          onClose={() => setDataLibraryOpen(false)}
+          destroyOnClose={false}
+          rootClassName="studio-data-drawer"
+        >
+          <DataLibrary variant="drawer" />
+        </Drawer>
+      )}
       {!isMini ? (
         <>
       <Drawer
