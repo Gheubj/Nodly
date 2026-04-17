@@ -95,6 +95,16 @@ function parseModelTypeRef(ref: string): ModelType {
   return "image_knn";
 }
 
+/** Варианты типа модели внутри блока «Обучить модель» (отдельные блоки моделей не нужны). */
+function getTrainModelTypeDropdownOptions(): [string, string][] {
+  return [
+    ["Картинки (KNN)", "image_knn"],
+    ["Таблица: регрессия", "tabular_regression"],
+    ["Таблица: классификация", "tabular_classification"],
+    ["Таблица: нейросеть (MLP)", "tabular_neural"]
+  ];
+}
+
 function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
@@ -186,10 +196,10 @@ function findDeclaredModelTypeAbovePredict(predictBlock: Blockly.Block | null): 
   let cur: Blockly.Block | null = predictBlock.getPreviousBlock();
   while (cur) {
     if (cur.type === "noda_train_model_simple" || cur.type === "noda_train_model") {
-      const modelBlock = cur.getInputTargetBlock("MODEL");
-      const ref = modelBlock
-        ? String(modelBlock.getFieldValue("MODEL_TYPE_REF") ?? "image_knn")
-        : "image_knn";
+      const legacyModel = cur.getInputTargetBlock("MODEL");
+      const ref = legacyModel
+        ? String(legacyModel.getFieldValue("MODEL_TYPE_REF") ?? "image_knn")
+        : String(cur.getFieldValue("MODEL_TYPE") ?? "image_knn");
       return parseModelTypeRef(ref);
     }
     cur = cur.getPreviousBlock();
@@ -233,7 +243,7 @@ function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
   return level === 1 ? 1 : 2;
 }
 
-type PaletteGroupId = "events" | "data" | "model" | "predict" | "model_types";
+type PaletteGroupId = "events" | "data" | "model" | "predict";
 type PaletteGroupIdExt = PaletteGroupId | "evaluate" | "control" | "output";
 
 type PaletteItem = {
@@ -248,7 +258,6 @@ const PALETTE_GROUP_TITLES: Record<PaletteGroupIdExt, string> = {
   events: "События",
   data: "Данные",
   model: "Модель и обучение",
-  model_types: "Типы моделей",
   predict: "Предсказание",
   evaluate: "Оценка",
   control: "Управление",
@@ -267,20 +276,6 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
           "Запуск сценария по клику. Несколько блоков «Старт» выполняются по очереди: выше по полю раньше, на одной линии — левее раньше."
       },
       { type: "noda_train_model_simple", title: "Обучить модель", group: "model", shape: "stack" },
-      { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
-      {
-        type: "noda_model_tabular_regression",
-        title: "Модель: регрессия",
-        group: "model_types",
-        shape: "value"
-      },
-      {
-        type: "noda_model_tabular_classification",
-        title: "Модель: классификация",
-        group: "model_types",
-        shape: "value"
-      },
-      { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
       {
         type: "noda_predict_l1",
         title: "Предсказать",
@@ -331,20 +326,6 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         "Цепочка после «Предсказать» в основном сценарии. Несколько шляп — по очереди по положению на поле. Уровень 1: блока нет в палитре."
     },
     { type: "noda_train_model", title: "Обучить модель", group: "model", shape: "stack" },
-    { type: "noda_model_image_knn", title: "Модель: картинки (KNN)", group: "model_types", shape: "value" },
-    {
-      type: "noda_model_tabular_regression",
-      title: "Модель: регрессия",
-      group: "model_types",
-      shape: "value"
-    },
-    {
-      type: "noda_model_tabular_classification",
-      title: "Модель: классификация",
-      group: "model_types",
-      shape: "value"
-    },
-    { type: "noda_model_tabular_neural", title: "Модель: нейросеть", group: "model_types", shape: "value" },
     {
       type: "noda_show_eval",
       title: "Показать оценку модели",
@@ -451,10 +432,16 @@ function syncTrainBlockModelAndDataset(block: Blockly.Block) {
   if (block.type !== "noda_train_model_simple" && block.type !== "noda_train_model") {
     return;
   }
-  const modelRef = String(
-    block.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ?? block.getFieldValue("MODEL_TYPE") ?? "image_knn"
+  const legacyModel = block.getInputTargetBlock("MODEL");
+  const datasetRef = String(block.getFieldValue("DATASET_REF") ?? "");
+  const inferredByDataset = datasetRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
+  const modelType = parseModelTypeRef(
+    String(
+      legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
+        block.getFieldValue("MODEL_TYPE") ??
+        inferredByDataset
+    )
   );
-  const modelType = parseModelTypeRef(modelRef);
   block.setFieldValue(modelType, "MODEL_TYPE");
 
   const options = getTrainDatasetOptions(modelType).map(([, value]) => value);
@@ -489,30 +476,31 @@ function registerBlocks() {
       this.setColour(BLOCK_COLOR.events);
     }
   };
-  /** Уровень 1: только модель и датасет */
+  /** Уровень 1: тип модели — список в блоке; скрытый MODEL — только для старых проектов с отдельным блоком модели. */
   Blockly.Blocks.noda_train_model_simple = {
     init() {
-      this.appendValueInput("MODEL")
-        .setCheck("ModelType")
+      this.appendDummyInput()
         .appendField("обучить модель")
+        .appendField(new Blockly.FieldDropdown(getTrainModelTypeDropdownOptions), "MODEL_TYPE")
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
-            const modelBlock = source?.getInputTargetBlock("MODEL");
+            const legacyModel = source?.getInputTargetBlock("MODEL");
             const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
             const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
-              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? inferredByDataset)
+              String(
+                legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
+                  source?.getFieldValue("MODEL_TYPE") ??
+                  inferredByDataset
+              )
             );
             return getTrainDatasetOptions(modelType);
           }),
           "DATASET_REF"
         );
-      // Служебное поле: явно сохраняем тип модели в сериализованном блоке.
-      this.appendDummyInput("MODEL_META")
-        .appendField(new Blockly.FieldLabelSerializable("image_knn"), "MODEL_TYPE")
-        .setVisible(false);
+      this.appendValueInput("MODEL").setCheck("ModelType").setVisible(false);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
@@ -528,21 +516,25 @@ function registerBlocks() {
       });
     }
   };
-  /** Уровень 2+: сплит, эпохи, lr */
+  /** Уровень 2+: сплит, эпохи, lr; тип модели — список в блоке. */
   Blockly.Blocks.noda_train_model = {
     init() {
-      this.appendValueInput("MODEL")
-        .setCheck("ModelType")
+      this.appendDummyInput()
         .appendField("обучить модель")
+        .appendField(new Blockly.FieldDropdown(getTrainModelTypeDropdownOptions), "MODEL_TYPE")
         .appendField("данные")
         .appendField(
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
-            const modelBlock = source?.getInputTargetBlock("MODEL");
+            const legacyModel = source?.getInputTargetBlock("MODEL");
             const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
             const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
-              String(modelBlock?.getFieldValue("MODEL_TYPE_REF") ?? source?.getFieldValue("MODEL_TYPE") ?? inferredByDataset)
+              String(
+                legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
+                  source?.getFieldValue("MODEL_TYPE") ??
+                  inferredByDataset
+              )
             );
             return getTrainDatasetOptions(modelType);
           }),
@@ -560,9 +552,7 @@ function registerBlocks() {
         .appendField(new Blockly.FieldNumber(80, 5, 500, 5), "EPOCHS")
         .appendField("lr")
         .appendField(new Blockly.FieldNumber(0.02, 0.0001, 1, 0.001), "LR");
-      this.appendDummyInput("MODEL_META")
-        .appendField(new Blockly.FieldLabelSerializable("image_knn"), "MODEL_TYPE")
-        .setVisible(false);
+      this.appendValueInput("MODEL").setCheck("ModelType").setVisible(false);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
@@ -578,6 +568,7 @@ function registerBlocks() {
       });
     }
   };
+  /** Устаревшие блоки модели: только чтобы старые проекты открывались; не в палитре. */
   Blockly.Blocks.noda_model_image_knn = {
     init() {
       this.appendDummyInput()
@@ -981,8 +972,9 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
     let current = first;
     while (current) {
       if (current.type === "noda_train_model_simple") {
+        const legacyModel = current.getInputTargetBlock("MODEL");
         const modelTypeRef = String(
-          current.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ??
+          legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
             current.getFieldValue("MODEL_TYPE") ??
             "image_knn"
         );
@@ -993,8 +985,9 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
           ...DEFAULT_TRAIN_CONFIG
         });
       } else if (current.type === "noda_train_model") {
+        const legacyModel = current.getInputTargetBlock("MODEL");
         const modelTypeRef = String(
-          current.getInputTargetBlock("MODEL")?.getFieldValue("MODEL_TYPE_REF") ??
+          legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
             current.getFieldValue("MODEL_TYPE") ??
             "image_knn"
         );
@@ -1500,8 +1493,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
             need =
               t === "noda_predict_l1" ||
               t === "noda_train_model_simple" ||
-              t === "noda_train_model" ||
-              t.startsWith("noda_model_");
+              t === "noda_train_model";
           }
         }
       }
@@ -1614,7 +1606,7 @@ export function BlocklyWorkspace({ miniStudioToolbar, onOpenDataLibrary, onSaveP
       <div className="blockly-layout">
           <div className="blockly-palette">
             {(
-              ["events", "model_types", "data", "model", "predict", "evaluate", "control", "output"] as PaletteGroupIdExt[]
+              ["events", "data", "model", "predict", "evaluate", "control", "output"] as PaletteGroupIdExt[]
             )
               .map((group) => ({
                 group,
