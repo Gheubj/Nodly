@@ -13,8 +13,10 @@ import {
   trainByModelType
 } from "@/features/model/mlEngine";
 import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types/ai";
+import type { StudioGoal } from "@/shared/types/lessonContent";
 import { trackEvent } from "@/features/analytics/analytics";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
+import { MiniStudioCoachOverlay } from "@/features/blockly/MiniStudioCoachOverlay";
 
 const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
@@ -850,6 +852,13 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
 export type BlocklyWorkspaceProps = {
   /** Мини-студия в уроке: без переключателя уровней, с кнопкой «Данные» как в полной студии */
   miniStudioToolbar?: boolean;
+  /** Панель персонажа и целей поверх воркспейса (только с miniStudioToolbar). */
+  miniCoachOverlay?: {
+    goals: StudioGoal[];
+    goalStatus: Record<string, boolean>;
+    allGoalsDone: boolean;
+    instructionMarkdown: string;
+  } | null;
   onOpenDataLibrary?: () => void;
   onSaveProject?: () => void;
   onMiniStudioActivity?: (event: {
@@ -863,6 +872,7 @@ export type BlocklyWorkspaceProps = {
 
 export function BlocklyWorkspace({
   miniStudioToolbar,
+  miniCoachOverlay = null,
   onOpenDataLibrary,
   onSaveProject,
   onMiniStudioActivity
@@ -1188,7 +1198,8 @@ export function BlocklyWorkspace({
         state.setTraining({
           isTraining: true,
           progress: 0,
-          message: `Запуск обучения: ${modelType}`
+          message: `Запуск обучения: ${modelType}`,
+          coachMood: "working"
         });
         const splitSum = command.trainSplit + command.valSplit + command.testSplit;
         if (Math.abs(splitSum - 1) > 0.02) {
@@ -1210,7 +1221,12 @@ export function BlocklyWorkspace({
           }
         });
         lastEvaluationRef.current = evalResult;
-        state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено." });
+        state.setTraining({
+          isTraining: false,
+          progress: 100,
+          message: "Обучение завершено.",
+          coachMood: "success"
+        });
         await trackEvent("training_completed", {
           modelType,
           summary: evalResult.summary
@@ -1237,7 +1253,8 @@ export function BlocklyWorkspace({
         });
         state.setTraining({
           isTraining: false,
-          message: `Модель «${title}» (${modelType}) в библиотеке`
+          message: `Модель «${title}» (${modelType}) в библиотеке`,
+          coachMood: "success"
         });
       }
       if (command.type === "wait") {
@@ -1344,7 +1361,8 @@ export function BlocklyWorkspace({
       if (command.type === "show_message") {
         state.setTraining({
           isTraining: false,
-          message: command.text.trim() || "Сообщение из сценария"
+          message: command.text.trim() || "Сообщение из сценария",
+          coachMood: "talking"
         });
       }
       if (command.type === "show_result") {
@@ -1355,17 +1373,26 @@ export function BlocklyWorkspace({
         const line = command.text.trim();
         if (line) {
           journal.push(line);
-          state.setTraining({ isTraining: false, message: `Журнал: ${journal.join(" | ")}` });
+          state.setTraining({
+            isTraining: false,
+            message: `Журнал: ${journal.join(" | ")}`,
+            coachMood: "talking"
+          });
         }
       }
       if (command.type === "show_eval") {
         if (lastEvaluationRef.current) {
           state.setEvaluation(lastEvaluationRef.current);
-          state.setTraining({ isTraining: false, message: `Оценка: ${lastEvaluationRef.current.summary}` });
+          state.setTraining({
+            isTraining: false,
+            message: `Оценка: ${lastEvaluationRef.current.summary}`,
+            coachMood: "talking"
+          });
         } else {
           state.setTraining({
             isTraining: false,
-            message: "Оценка модели появится после обучения/тестирования"
+            message: "Оценка модели появится после обучения/тестирования",
+            coachMood: "talking"
           });
         }
       }
@@ -1391,7 +1418,9 @@ export function BlocklyWorkspace({
       if (startHats.length === 0) {
         state.setTraining({
           isTraining: false,
-          message: "Добавь блок «Старт» и присоединяй к нему цепочку команд."
+          isScriptRunning: false,
+          message: "Добавь блок «Старт» и присоединяй к нему цепочку команд.",
+          coachMood: "talking"
         });
         return;
       }
@@ -1401,20 +1430,26 @@ export function BlocklyWorkspace({
       if (chains.length === 0) {
         state.setTraining({
           isTraining: false,
-          message: "Подключи к «Старт» хотя бы один блок (обучение, предсказание и т.д.)."
+          isScriptRunning: false,
+          message: "Подключи к «Старт» хотя бы один блок (обучение, предсказание и т.д.).",
+          coachMood: "talking"
         });
         return;
       }
+      state.setTraining({ isScriptRunning: true, coachMood: "working" });
       for (const commands of chains) {
         await executeCommands(commands);
       }
     } catch (error) {
       useAppStore.getState().setTraining({
         isTraining: false,
-        message: error instanceof Error ? error.message : "Ошибка выполнения сценария"
+        isScriptRunning: false,
+        message: error instanceof Error ? error.message : "Ошибка выполнения сценария",
+        coachMood: "error"
       });
     } finally {
       isRunningRef.current = false;
+      useAppStore.getState().setTraining({ isScriptRunning: false });
     }
   };
 
@@ -1669,7 +1704,10 @@ export function BlocklyWorkspace({
                 </div>
               ))}
           </div>
-          <div ref={containerRef} className="blockly-container" />
+          <div className="blockly-workspace-surface">
+            <div ref={containerRef} className="blockly-container" />
+            {miniStudioToolbar && miniCoachOverlay ? <MiniStudioCoachOverlay {...miniCoachOverlay} /> : null}
+          </div>
       </div>
       <Space direction="vertical" size={8} style={{ width: "100%", marginTop: 8, flexShrink: 0 }}>
         {evaluation ? (

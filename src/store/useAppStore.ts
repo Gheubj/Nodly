@@ -9,7 +9,8 @@ import type {
   TabularDataset,
   TabularDatasetEntry,
   TabularPredictionInput,
-  TrainingState
+  TrainingState,
+  CoachMood
 } from "@/shared/types/ai";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 
@@ -79,6 +80,31 @@ const createLabelId = (title: string) =>
   title.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9а-я_]/gi, "");
 const createId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+function inferCoachMood(prev: TrainingState, next: Partial<TrainingState>, merged: TrainingState): CoachMood {
+  if (next.coachMood !== undefined) {
+    return next.coachMood;
+  }
+  if (merged.isTraining) {
+    return "working";
+  }
+  if (merged.isScriptRunning) {
+    return "working";
+  }
+  if (prev.isTraining && merged.isTraining === false) {
+    return "success";
+  }
+  if (next.isScriptRunning === false && prev.isScriptRunning && !merged.isTraining) {
+    if (prev.coachMood === "success" || prev.coachMood === "error") {
+      return prev.coachMood;
+    }
+    return "idle";
+  }
+  if (next.message !== undefined && merged.message !== prev.message) {
+    return "talking";
+  }
+  return prev.coachMood;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   activeProject: null,
   imageDatasets: [],
@@ -94,7 +120,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   training: {
     isTraining: false,
     progress: 0,
-    message: "Ожидание"
+    message: "Ожидание",
+    coachMood: "idle",
+    isScriptRunning: false
   },
   setActiveProject: (project) => set({ activeProject: project }),
   addImageDataset: (title, taskType) => {
@@ -238,12 +266,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       workspaceLevel: normalizeWorkspaceLevelFromSnapshot(snapshot.workspaceLevel),
       prediction: null,
       evaluation: null,
-      training: { isTraining: false, progress: 0, message: "Проект загружен" }
+      training: {
+        isTraining: false,
+        progress: 0,
+        message: "Проект загружен",
+        coachMood: "idle",
+        isScriptRunning: false
+      }
     }),
   setTraining: (nextState) =>
-    set((state) => ({
-      training: { ...state.training, ...nextState }
-    })),
+    set((state) => {
+      const prev = state.training;
+      const merged: TrainingState = { ...prev, ...nextState };
+      merged.coachMood = inferCoachMood(prev, nextState, merged);
+      return { training: merged };
+    }),
   setWorkspaceLevel: (level) => {
     try {
       localStorage.setItem(WORKSPACE_LEVEL_KEY, String(level));

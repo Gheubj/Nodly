@@ -102,6 +102,7 @@ export function StudioPage() {
   const [allLessonGoalsDone, setAllLessonGoalsDone] = useState(false);
   const miniTelemetryRef = useRef({ trained: false, predicted: false });
   const lastPostedGoalsJson = useRef<string>("");
+  const prevMiniAllGoalsDone = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [guestUserId] = useState(() => {
     const stored =
@@ -221,6 +222,20 @@ export function StudioPage() {
     const id = window.setInterval(tick, 1200);
     return () => window.clearInterval(id);
   }, [isMini, miniLessonId, miniBlockId, miniCoach]);
+
+  useEffect(() => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      prevMiniAllGoalsDone.current = false;
+      return;
+    }
+    if (allLessonGoalsDone && !prevMiniAllGoalsDone.current) {
+      prevMiniAllGoalsDone.current = true;
+      useAppStore.getState().setTraining({ coachMood: "success" });
+    }
+    if (!allLessonGoalsDone) {
+      prevMiniAllGoalsDone.current = false;
+    }
+  }, [isMini, miniLessonId, miniBlockId, allLessonGoalsDone]);
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -688,28 +703,25 @@ export function StudioPage() {
           </Button>
         ) : null}
       </div> : null}
-      <div
-        className={`studio-page__main${
-          isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
-        }`}
-      >
+      <div className="studio-page__main">
         <div className="studio-page__blockly">
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
+            miniCoachOverlay={
+              isMini && miniLessonId && miniBlockId
+                ? {
+                    goals: miniCoach?.goals ?? [],
+                    goalStatus: goalUiStatus,
+                    allGoalsDone: allLessonGoalsDone,
+                    instructionMarkdown: miniCoach?.instruction ?? ""
+                  }
+                : null
+            }
             onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
             onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
             onMiniStudioActivity={handleMiniStudioActivity}
           />
         </div>
-        {isMini && miniLessonId && miniBlockId ? (
-          <StudioStagePanel
-            mode="mini_coach"
-            instructionMarkdown={miniCoach?.instruction ?? ""}
-            goals={miniCoach?.goals ?? []}
-            goalStatus={goalUiStatus}
-            allGoalsDone={allLessonGoalsDone}
-          />
-        ) : null}
         {!isMini ? <StudioStagePanel /> : null}
       </div>
     </div>
