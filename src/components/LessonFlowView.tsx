@@ -11,7 +11,14 @@ const LessonPdfReader = lazy(() =>
 
 const { Paragraph, Text } = Typography;
 
-/** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
+const MINI_PREVIEW_LESSON_KEY = "_preview";
+
+function miniLessonStorageKey(lessonId: string | undefined, blockId: string): string {
+  const lid = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
+  return `nodly_mini_ctx__${lid}__${blockId}`;
+}
+
+/** Кладёт инструкцию и цели в sessionStorage (тот же ключ, что в URL iframe) + дубли для postMessage в StudioPage. */
 function MiniStudioSessionStore(props: {
   lessonId?: string;
   blockId: string;
@@ -19,12 +26,9 @@ function MiniStudioSessionStore(props: {
   goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
 }) {
   useLayoutEffect(() => {
-    if (!props.lessonId) {
-      return;
-    }
     try {
       sessionStorage.setItem(
-        `nodly_mini_ctx__${props.lessonId}__${props.blockId}`,
+        miniLessonStorageKey(props.lessonId, props.blockId),
         JSON.stringify({ instruction: props.instruction, goals: props.goals })
       );
     } catch {
@@ -32,6 +36,39 @@ function MiniStudioSessionStore(props: {
     }
   }, [props.lessonId, props.blockId, props.instruction, props.goals]);
   return null;
+}
+
+/** Отправляет контекст в iframe: sessionStorage в дочернем контексте часто не совпадает с родителем (partitioned storage). */
+function postMiniBootstrapToFrame(
+  win: Window | null | undefined,
+  payload: {
+    lessonId: string;
+    blockId: string;
+    instruction: string;
+    goals: NonNullable<Extract<LessonContentBlock, { type: "studio" }>["goals"]>;
+  }
+) {
+  if (!win) {
+    return;
+  }
+  const msg = {
+    source: "nodly-mini-bootstrap" as const,
+    lessonId: payload.lessonId,
+    blockId: payload.blockId,
+    instruction: payload.instruction,
+    goals: payload.goals
+  };
+  const origin = window.location.origin;
+  const send = () => {
+    try {
+      win.postMessage(msg, origin);
+    } catch {
+      /* ignore */
+    }
+  };
+  send();
+  window.setTimeout(send, 120);
+  window.setTimeout(send, 400);
 }
 
 function isStudioCta(cta: string | null | undefined): boolean {
@@ -134,10 +171,11 @@ export function LessonFlowView({
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
           const creating = miniDevCreating?.(block.id) ?? false;
+          const miniLessonKey = lessonId?.trim() ? lessonId.trim() : MINI_PREVIEW_LESSON_KEY;
           const frameSrc = projectId
-            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}${
-                lessonId ? `&miniLessonId=${encodeURIComponent(lessonId)}&miniBlockId=${encodeURIComponent(block.id)}` : ""
-              }`
+            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}&miniLessonId=${encodeURIComponent(
+                miniLessonKey
+              )}&miniBlockId=${encodeURIComponent(block.id)}`
             : "";
           if (bareMiniStudio) {
             return (
@@ -153,6 +191,15 @@ export function LessonFlowView({
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
+                    onLoad={(e) => {
+                      const w = (e.target as HTMLIFrameElement).contentWindow;
+                      postMiniBootstrapToFrame(w, {
+                        lessonId: miniLessonKey,
+                        blockId: block.id,
+                        instruction: block.instruction,
+                        goals: block.goals ?? []
+                      });
+                    }}
                   />
                 ) : (
                   <Space direction="vertical" size="small">
@@ -181,6 +228,15 @@ export function LessonFlowView({
                     className="lesson-flow__mini-dev-frame"
                     title={`mini-dev-${block.id}`}
                     src={frameSrc}
+                    onLoad={(e) => {
+                      const w = (e.target as HTMLIFrameElement).contentWindow;
+                      postMiniBootstrapToFrame(w, {
+                        lessonId: miniLessonKey,
+                        blockId: block.id,
+                        instruction: block.instruction,
+                        goals: block.goals ?? []
+                      });
+                    }}
                   />
                 ) : (
                   <Space direction="vertical" size="small">

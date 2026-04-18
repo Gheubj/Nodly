@@ -174,6 +174,37 @@ export function StudioPage() {
     }
   }, [isMini, miniLessonId, miniBlockId]);
 
+  /** Родительский урок шлёт контекст postMessage — иначе в iframe пустой sessionStorage (partitioned). */
+  useEffect(() => {
+    if (!isMini || !miniLessonId || !miniBlockId) {
+      return;
+    }
+    const handler = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) {
+        return;
+      }
+      const d = ev.data as {
+        source?: string;
+        lessonId?: string;
+        blockId?: string;
+        instruction?: string;
+        goals?: StudioGoal[];
+      };
+      if (!d || d.source !== "nodly-mini-bootstrap") {
+        return;
+      }
+      if (d.lessonId !== miniLessonId || d.blockId !== miniBlockId) {
+        return;
+      }
+      setMiniCoach({
+        instruction: typeof d.instruction === "string" ? d.instruction : "",
+        goals: Array.isArray(d.goals) ? d.goals : []
+      });
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isMini, miniLessonId, miniBlockId]);
+
   useEffect(() => {
     if (!isMini) {
       return;
