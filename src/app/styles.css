@@ -570,6 +570,22 @@ html[data-theme="dark"] .app-content--workspace {
   max-width: 320px;
 }
 
+.studio-stage-panel--mini .studio-stage-panel__mini-layout {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-figure-wrap {
+  flex-shrink: 0;
+}
+
+.studio-stage-panel--mini .studio-stage-panel__mini-figure {
+  display: block;
+  width: 56px;
+  height: auto;
+}
+
 .studio-stage-panel--mini .studio-stage-panel__mini-copy {
   display: flex;
   flex-direction: column;
@@ -1726,8 +1742,8 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-flow__mini-dev-frame {
   width: 100%;
-  height: min(78vh, 820px);
-  min-height: 420px;
+  height: min(58vh, 560px);
+  min-height: 380px;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border-radius: 8px;
   display: block;

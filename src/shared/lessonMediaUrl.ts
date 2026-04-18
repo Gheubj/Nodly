@@ -5,13 +5,37 @@ export function resolveLessonMediaUrl(raw: string | null | undefined): string {
   if (raw == null || raw === "") {
     return "";
   }
-  if (/^https?:\/\//i.test(raw)) {
-    return raw;
+  const s = raw.trim();
+  if (s === "") {
+    return "";
   }
-  if (raw.startsWith("/")) {
-    return `${getApiBaseUrl()}${raw}`;
+  if (/^https?:\/\//i.test(s)) {
+    return s;
   }
-  return raw;
+  if (s.startsWith("//")) {
+    if (typeof window !== "undefined" && window.location?.protocol) {
+      return `${window.location.protocol}${s}`;
+    }
+    return `https:${s}`;
+  }
+  if (s.startsWith("data:") || s.startsWith("blob:")) {
+    return s;
+  }
+  const base = getApiBaseUrl().replace(/\/$/, "");
+  if (s.startsWith("/uploads/lesson-images/") || s.startsWith("/uploads/lesson-pdfs/")) {
+    return `${base}/api${s}`;
+  }
+  if (s.startsWith("/")) {
+    return `${base}${s}`;
+  }
+  /* Без ведущего «/» браузер грузит с origin фронта (5173), а не API — частая причина «нет картинки у ученика». */
+  if (/^api\//i.test(s)) {
+    return `${base}/${s}`;
+  }
+  if (/^uploads\/lesson-(images|pdfs)\//i.test(s)) {
+    return `${base}/api/${s}`;
+  }
+  return s;
 }
 
 /** Меньше панелей у встроенного просмотрщика PDF в iframe. */
