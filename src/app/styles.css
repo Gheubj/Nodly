@@ -572,18 +572,26 @@ html[data-theme="dark"] .app-content--workspace {
 
 .studio-stage-panel--mini .studio-stage-panel__mini-layout {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-figure-wrap {
   flex-shrink: 0;
+  width: 100%;
+  line-height: 0;
+  text-align: center;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-figure {
   display: block;
-  width: 92px;
+  width: 100%;
+  max-width: 100%;
   height: auto;
+  max-height: min(52dvh, 420px);
+  object-fit: contain;
+  margin-inline: auto;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-copy {
