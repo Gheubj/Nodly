@@ -26,7 +26,7 @@ export interface NodlyProjectSnapshot {
   savedModels?: SavedModelEntry[];
   blocklyState: string;
   /** Уровень палитры Blockly (1–3), в т.ч. для мини-студии без выбора у ученика */
-  workspaceLevel?: 1 | 2 | 3;
+  workspaceLevel?: 1 | 2;
 }
 
 export interface NodlyProject {

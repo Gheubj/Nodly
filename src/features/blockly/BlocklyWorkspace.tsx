@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DatabaseOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Segmented, Space, Tag } from "antd";
+import { Button, Segmented, Space } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
 import type { WorkspaceLevel } from "@/store/useAppStore";
@@ -240,9 +240,8 @@ function getPredictL1DataSourceOptionsForBlock(predictBlock: Blockly.Block): [st
   return [manual, ...fromLib];
 }
 
-/** Уровень 3 пока как 2 — только набор блоков в палитре */
 function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
-  return level === 1 ? 1 : 2;
+  return level;
 }
 
 type PaletteGroupId = "events" | "data" | "model" | "predict";
@@ -879,7 +878,7 @@ export function BlocklyWorkspace({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const isRunningRef = useRef(false);
-  const { evaluation, blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
+  const { blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
 
   const paletteLevel = effectiveToolboxLevel(workspaceLevel);
   const paletteItems = getPaletteItems(paletteLevel);
@@ -1203,7 +1202,7 @@ export function BlocklyWorkspace({
         if (Math.abs(splitSum - 1) > 0.02) {
           throw new Error("Сумма train/val/test должна быть около 1.0");
         }
-        const evalResult = await trainByModelType({
+        const trainOutcome = await trainByModelType({
           modelType,
           imageDataset: imageDataset ?? null,
           tabularDataset,
@@ -1218,11 +1217,13 @@ export function BlocklyWorkspace({
             state.setTraining({ progress, message, coachMood: "working" });
           }
         });
-        lastEvaluationRef.current = evalResult;
+        lastEvaluationRef.current = trainOutcome.evaluation;
+        state.setTrainingRunReport(trainOutcome.report);
+        state.setEvaluation(trainOutcome.evaluation);
         state.setTraining({ isTraining: false, progress: 100, message: "Обучение завершено.", coachMood: "success" });
         await trackEvent("training_completed", {
           modelType,
-          summary: evalResult.summary
+          summary: trainOutcome.evaluation.summary
         });
         if (!fromEvent) {
           await runEventChain("trained");
@@ -1407,6 +1408,7 @@ export function BlocklyWorkspace({
       const state = useAppStore.getState();
       lastEvaluationRef.current = null;
       state.setEvaluation(null);
+      state.setTrainingRunReport(null);
       const workspace = workspaceRef.current;
       if (!workspace) {
         return;
@@ -1646,15 +1648,13 @@ export function BlocklyWorkspace({
             </>
           ) : (
             <>
-              {workspaceLevel === 3 ? <Tag color="processing">Скоро больше блоков</Tag> : null}
               <Segmented<WorkspaceLevel>
                 size="small"
                 value={workspaceLevel}
                 onChange={(v) => setWorkspaceLevel(v)}
                 options={[
                   { label: "Уровень 1", value: 1 },
-                  { label: "Уровень 2", value: 2 },
-                  { label: "Уровень 3", value: 3 }
+                  { label: "Уровень 2", value: 2 }
                 ]}
               />
             </>
@@ -1709,18 +1709,6 @@ export function BlocklyWorkspace({
             ) : null}
           </div>
       </div>
-      <Space direction="vertical" size={8} style={{ width: "100%", marginTop: 8, flexShrink: 0 }}>
-        {evaluation ? (
-          <Alert
-            type="warning"
-            showIcon
-            message="Оценка модели"
-            description={`${evaluation.summary}. ${Object.entries(evaluation.metrics)
-              .map(([key, value]) => `${key}: ${value.toFixed(4)}`)
-              .join(", ")}`}
-          />
-        ) : null}
-      </Space>
     </div>
   );
 }

@@ -9,7 +9,10 @@ import type {
   PredictionResult,
   SavedModelEntry,
   TabularDataset,
-  TrainConfig
+  TrainByModelTypeResult,
+  TrainConfig,
+  TrainingEpochLog,
+  TrainingRunReport
 } from "@/shared/types/ai";
 import {
   deleteModelLibraryRecord,
@@ -261,12 +264,26 @@ function parseTabular(dataset: TabularDataset) {
   return { x, yRaw, featureCount: x[0]?.length ?? featureCount };
 }
 
+function logNumber(logs: tf.Logs | undefined, ...keys: string[]): number | undefined {
+  if (!logs || typeof logs !== "object") {
+    return undefined;
+  }
+  const raw = logs as Record<string, unknown>;
+  for (const k of keys) {
+    const v = raw[k];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      return v;
+    }
+  }
+  return undefined;
+}
+
 async function trainTabularModel(
   modelType: ModelType,
   dataset: TabularDataset,
   config: TrainConfig,
   onProgress: (progress: number, message: string) => void
-): Promise<ModelEvaluation> {
+): Promise<{ evaluation: ModelEvaluation; report: TrainingRunReport }> {
   const { x, yRaw, featureCount } = parseTabular(dataset);
   const indices = x.map((_, index) => index);
   tf.util.shuffle(indices);
@@ -315,11 +332,19 @@ async function trainTabularModel(
       loss: "meanSquaredError",
       metrics: ["mse"]
     });
+    const regEpochHistory: TrainingEpochLog[] = [];
     await tabularModel.fit(xTrain, yTrain, {
       epochs: config.epochs,
       validationData: [xVal, yVal],
       callbacks: {
-        onEpochEnd: async (epoch) => {
+        onEpochEnd: async (epoch, logs) => {
+          regEpochHistory.push({
+            epoch: epoch + 1,
+            loss: logNumber(logs, "loss"),
+            valLoss: logNumber(logs, "val_loss"),
+            mse: logNumber(logs, "mse"),
+            valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
+          });
           onProgress(
             Math.round(((epoch + 1) / config.epochs) * 100),
             `Эпоха ${epoch + 1}/${config.epochs}`
@@ -329,28 +354,52 @@ async function trainTabularModel(
       }
     });
     const testEval = tabularModel.evaluate(xTest, yTest) as tf.Tensor | tf.Tensor[];
-    const evalTensor = Array.isArray(testEval) ? testEval[0] : testEval;
+    const evalTensors = Array.isArray(testEval) ? testEval : [testEval];
+    const evalTensor = evalTensors[0];
     const mseValue = (await evalTensor.data())[0] ?? 0;
+    for (const t of evalTensors) {
+      t.dispose();
+    }
 
     const preds = tabularModel.predict(xTest) as tf.Tensor;
     const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
     const maeValue = (await maeTensor.data())[0] ?? 0;
+    const predData = await preds.data();
+    const yTestData = await yTest.data();
+    const regressionExamples: { trueY: number; predictedY: number; absError: number }[] = [];
+    const nTest = testIdx.length;
+    for (let r = 0; r < Math.min(8, nTest); r++) {
+      const trueY = yTestData[r];
+      const predictedY = predData[r];
+      regressionExamples.push({
+        trueY,
+        predictedY,
+        absError: Math.abs(trueY - predictedY)
+      });
+    }
     preds.dispose();
     maeTensor.dispose();
     const rmseValue = Math.sqrt(mseValue);
 
     tabularMode = "regression";
     classIndexToLabel = [];
+    const summary = `Регрессия (тест): MSE ${mseValue.toFixed(4)}, MAE ${maeValue.toFixed(4)}, RMSE ${rmseValue.toFixed(4)}`;
+    const metrics = { testMSE: mseValue, testMAE: maeValue, testRMSE: rmseValue };
+    const report: TrainingRunReport = {
+      kind: "tabular_regression",
+      modelType: "tabular_regression",
+      summary,
+      metrics,
+      epochHistory: regEpochHistory,
+      regressionExamples
+    };
     xTrain.dispose();
     xVal.dispose();
     xTest.dispose();
     yTrain.dispose();
     yVal.dispose();
     yTest.dispose();
-    return {
-      summary: `Регрессия (тест): MSE ${mseValue.toFixed(4)}, MAE ${maeValue.toFixed(4)}, RMSE ${rmseValue.toFixed(4)}`,
-      metrics: { testMSE: mseValue, testMAE: maeValue, testRMSE: rmseValue }
-    };
+    return { evaluation: { summary, metrics }, report };
   }
 
   const uniqueLabels = [...new Set(yRaw)];
@@ -390,11 +439,19 @@ async function trainTabularModel(
     loss: "categoricalCrossentropy",
     metrics: ["accuracy"]
   });
+  const clsEpochHistory: TrainingEpochLog[] = [];
   await tabularModel.fit(xTrain, yTrain, {
     epochs: config.epochs,
     validationData: [xVal, yVal],
     callbacks: {
-      onEpochEnd: async (epoch) => {
+      onEpochEnd: async (epoch, logs) => {
+        clsEpochHistory.push({
+          epoch: epoch + 1,
+          loss: logNumber(logs, "loss"),
+          valLoss: logNumber(logs, "val_loss"),
+          accuracy: logNumber(logs, "accuracy"),
+          valAccuracy: logNumber(logs, "val_accuracy", "val_acc")
+        });
         onProgress(
           Math.round(((epoch + 1) / config.epochs) * 100),
           `Эпоха ${epoch + 1}/${config.epochs}`
@@ -403,9 +460,56 @@ async function trainTabularModel(
       }
     }
   });
-  const evaluation = tabularModel.evaluate(xTest, yTest) as tf.Tensor[];
-  const loss = (await evaluation[0].data())[0] ?? 0;
-  const acc = (await evaluation[1].data())[0] ?? 0;
+  const evaluationTensors = tabularModel.evaluate(xTest, yTest) as tf.Tensor[];
+  const loss = (await evaluationTensors[0].data())[0] ?? 0;
+  const acc = (await evaluationTensors[1].data())[0] ?? 0;
+  for (const t of evaluationTensors) {
+    t.dispose();
+  }
+
+  const numClasses = uniqueLabels.length;
+  const confusion: number[][] = Array.from({ length: numClasses }, () =>
+    Array.from({ length: numClasses }, () => 0)
+  );
+  const predTensor = tabularModel.predict(xTest) as tf.Tensor;
+  const predArr = await predTensor.data();
+  const yTestFlat = await yTest.data();
+  const nTestRows = testIdx.length;
+  const classificationExamples: {
+    trueLabel: string;
+    predictedLabel: string;
+    confidence: number;
+  }[] = [];
+
+  for (let r = 0; r < nTestRows; r++) {
+    let predIdx = 0;
+    let maxProb = -1;
+    for (let c = 0; c < numClasses; c++) {
+      const p = predArr[r * numClasses + c];
+      if (p > maxProb) {
+        maxProb = p;
+        predIdx = c;
+      }
+    }
+    let trueIdx = 0;
+    for (let c = 0; c < numClasses; c++) {
+      if (yTestFlat[r * numClasses + c] > 0.5) {
+        trueIdx = c;
+        break;
+      }
+    }
+    confusion[trueIdx][predIdx] += 1;
+    if (classificationExamples.length < 8) {
+      const rowIndex = testIdx[r];
+      classificationExamples.push({
+        trueLabel: uniqueLabels[yIndices[rowIndex]],
+        predictedLabel: uniqueLabels[predIdx],
+        confidence: maxProb
+      });
+    }
+  }
+
+  predTensor.dispose();
   tabularMode = "classification";
   classIndexToLabel = uniqueLabels;
   xTrain.dispose();
@@ -414,10 +518,19 @@ async function trainTabularModel(
   yTrain.dispose();
   yVal.dispose();
   yTest.dispose();
-  return {
-    summary: `Classification test accuracy: ${(acc * 100).toFixed(1)}%`,
-    metrics: { testLoss: loss, testAccuracy: acc }
+
+  const summary = `Classification test accuracy: ${(acc * 100).toFixed(1)}%`;
+  const metrics = { testLoss: loss, testAccuracy: acc };
+  const report: TrainingRunReport = {
+    kind: "tabular_classification",
+    modelType,
+    summary,
+    metrics,
+    epochHistory: clsEpochHistory,
+    confusionMatrix: { labels: [...uniqueLabels], matrix: confusion },
+    classificationExamples
   };
+  return { evaluation: { summary, metrics }, report };
 }
 
 export async function trainByModelType(args: {
@@ -426,7 +539,7 @@ export async function trainByModelType(args: {
   tabularDataset: TabularDataset | null;
   config: TrainConfig;
   onProgress: (progress: number, message: string) => void;
-}): Promise<ModelEvaluation> {
+}): Promise<TrainByModelTypeResult> {
   if (args.modelType === "image_knn") {
     const ds = args.imageDataset;
     if (!ds) {
@@ -445,9 +558,17 @@ export async function trainByModelType(args: {
       }
       await trainKnnClustering(pool, args.onProgress);
       lastTrainedModelType = "image_knn";
+      const summary = `Кластеризация: ${pool.length} изображений, группы по сходству (K-means + KNN)`;
+      const metrics = { samples: pool.length };
       return {
-        summary: `Кластеризация: ${pool.length} изображений, группы по сходству (K-means + KNN)`,
-        metrics: { samples: pool.length }
+        evaluation: { summary, metrics },
+        report: {
+          kind: "image_clustering",
+          modelType: "image_knn",
+          summary,
+          metrics,
+          epochHistory: []
+        }
       };
     }
     const hasSamples = ds.classes.some((c) => c.files.length > 0);
@@ -457,9 +578,17 @@ export async function trainByModelType(args: {
     await trainKnnModel(ds.classes, args.onProgress);
     const sampleCount = ds.classes.reduce((sum, item) => sum + item.files.length, 0);
     lastTrainedModelType = "image_knn";
+    const summary = `Image KNN обучен на ${sampleCount} изображениях`;
+    const metrics = { samples: sampleCount };
     return {
-      summary: `Image KNN обучен на ${sampleCount} изображениях`,
-      metrics: { samples: sampleCount }
+      evaluation: { summary, metrics },
+      report: {
+        kind: "image_knn",
+        modelType: "image_knn",
+        summary,
+        metrics,
+        epochHistory: []
+      }
     };
   }
   if (!args.tabularDataset) {

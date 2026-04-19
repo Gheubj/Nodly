@@ -52,7 +52,7 @@ export type LessonContentBlock =
       /** Для `project_clone`: id облачного проекта-образца (из URL /studio?project=…) */
       referenceProjectId?: string | null;
       /** Для `empty`: уровень 1–3 (обязателен при пустой практике) */
-      studioWorkspaceLevel?: 1 | 2 | 3;
+      studioWorkspaceLevel?: 1 | 2;
       /** Цели мини-разработки: отображаются ученику и проверяются автоматически. */
       goals?: StudioGoal[];
     }

@@ -77,6 +77,59 @@ export interface ModelEvaluation {
   metrics: Record<string, number>;
 }
 
+/** Одна эпоха обучения (табличные модели с fit). */
+export interface TrainingEpochLog {
+  epoch: number;
+  loss?: number;
+  valLoss?: number;
+  accuracy?: number;
+  valAccuracy?: number;
+  mse?: number;
+  valMse?: number;
+}
+
+export interface ConfusionMatrixData {
+  labels: string[];
+  /** matrix[trueIndex][predIndex] — количество примеров */
+  matrix: number[][];
+}
+
+export interface ClassificationExampleRow {
+  trueLabel: string;
+  predictedLabel: string;
+  confidence: number;
+}
+
+export interface RegressionExampleRow {
+  trueY: number;
+  predictedY: number;
+  absError: number;
+}
+
+export type TrainingRunKind =
+  | "tabular_classification"
+  | "tabular_regression"
+  | "image_knn"
+  | "image_clustering"
+  | "none";
+
+/** Расширенный отчёт для панели визуализации (не сериализуется в снимок проекта). */
+export interface TrainingRunReport {
+  kind: TrainingRunKind;
+  modelType: ModelType;
+  summary: string;
+  metrics: Record<string, number>;
+  epochHistory: TrainingEpochLog[];
+  confusionMatrix?: ConfusionMatrixData;
+  classificationExamples?: ClassificationExampleRow[];
+  regressionExamples?: RegressionExampleRow[];
+}
+
+export interface TrainByModelTypeResult {
+  evaluation: ModelEvaluation;
+  report: TrainingRunReport;
+}
+
 /** Запись в библиотеке сохранённых моделей (веса в IndexedDB, метаданные в проекте). */
 export interface SavedModelEntry {
   id: string;

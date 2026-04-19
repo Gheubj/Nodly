@@ -9,7 +9,7 @@ import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 const { Text } = Typography;
 
 export type StudioStagePanelProps = {
-  /** Мини-студия в уроке: инструкция + цели на «сцене» */
+  /** `mini_coach` — урок; иначе — полная разработка с персонажем. */
   mode?: "scratch" | "mini_coach";
   instructionMarkdown?: string;
   goals?: StudioGoal[];
@@ -29,6 +29,8 @@ export function StudioStagePanel({
   showGoalsInPanel = true
 }: StudioStagePanelProps) {
   const training = useAppStore((s) => s.training);
+  const evaluation = useAppStore((s) => s.evaluation);
+  const prediction = useAppStore((s) => s.prediction);
   const message = training.message;
   const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
 
@@ -75,9 +77,32 @@ export function StudioStagePanel({
   }
 
   return (
-    <aside className="studio-stage-panel" aria-label="Сцена">
+    <aside className="studio-stage-panel studio-stage-panel--full-coach" aria-label="Сцена">
       <Card size="small" title="Сцена" className="studio-stage-card">
-        <div className="studio-stage-panel__bubble">{message || "Нажми «Старт» в Blockly, чтобы запустить сценарий."}</div>
+        <div className="studio-stage-panel__full-layout">
+          <div className="studio-stage-panel__full-figure-wrap">
+            <img className="studio-stage-panel__full-figure" src={coachSrc} alt="" />
+          </div>
+          <div className="studio-stage-panel__full-copy">
+            <div className="studio-stage-panel__full-bubble">
+              {message || "Нажми «Старт» в Blockly, чтобы запустить сценарий."}
+            </div>
+            {evaluation ? (
+              <div className="studio-stage-panel__full-extra">
+                <Text strong>Модель: </Text>
+                <Text>{evaluation.summary}</Text>
+              </div>
+            ) : null}
+            {prediction ? (
+              <div className="studio-stage-panel__full-extra">
+                <Text strong>Предсказание: </Text>
+                <Text>
+                  {prediction.title} ({(prediction.confidence * 100).toFixed(0)}% уверенности)
+                </Text>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </Card>
     </aside>
   );

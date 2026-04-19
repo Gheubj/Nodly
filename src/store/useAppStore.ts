@@ -9,30 +9,38 @@ import type {
   TabularDataset,
   TabularDatasetEntry,
   TabularPredictionInput,
+  TrainingRunReport,
   TrainingState
 } from "@/shared/types/ai";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 
-export type WorkspaceLevel = 1 | 2 | 3;
+export type WorkspaceLevel = 1 | 2;
 
 const WORKSPACE_LEVEL_KEY = "nodly_workspace_level";
 const LEGACY_WORKSPACE_LEVEL_KEY = "noda_workspace_level";
+
+function clampWorkspaceLevel(n: number): WorkspaceLevel {
+  if (n === 1) {
+    return 1;
+  }
+  return 2;
+}
 
 function readWorkspaceLevel(): WorkspaceLevel {
   const raw =
     localStorage.getItem(WORKSPACE_LEVEL_KEY) ?? localStorage.getItem(LEGACY_WORKSPACE_LEVEL_KEY);
   if (raw === "1" || raw === "2" || raw === "3") {
-    return Number(raw) as WorkspaceLevel;
+    return clampWorkspaceLevel(Number(raw));
   }
   return 1;
 }
 
 function normalizeWorkspaceLevelFromSnapshot(value: unknown): WorkspaceLevel {
   if (value === 1 || value === 2 || value === 3) {
-    return value;
+    return clampWorkspaceLevel(value as number);
   }
   if (value === "1" || value === "2" || value === "3") {
-    return Number(value) as WorkspaceLevel;
+    return clampWorkspaceLevel(Number(value));
   }
   return 1;
 }
@@ -46,6 +54,7 @@ interface AppState {
   savedModels: SavedModelEntry[];
   prediction: PredictionResult | null;
   evaluation: ModelEvaluation | null;
+  trainingRunReport: TrainingRunReport | null;
   lastModelType: ModelType | null;
   blocklyState: string;
   workspaceLevel: WorkspaceLevel;
@@ -67,6 +76,7 @@ interface AppState {
   removeSavedModel: (id: string) => void;
   setPrediction: (result: PredictionResult | null) => void;
   setEvaluation: (value: ModelEvaluation | null) => void;
+  setTrainingRunReport: (value: TrainingRunReport | null) => void;
   setLastModelType: (modelType: ModelType | null) => void;
   setBlocklyState: (value: string) => void;
   getProjectSnapshot: () => NodlyProjectSnapshot;
@@ -88,6 +98,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   savedModels: [],
   prediction: null,
   evaluation: null,
+  trainingRunReport: null,
   lastModelType: null,
   blocklyState: "",
   workspaceLevel: readWorkspaceLevel(),
@@ -214,6 +225,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   setPrediction: (result) => set({ prediction: result }),
   setEvaluation: (value) => set({ evaluation: value }),
+  setTrainingRunReport: (value) => set({ trainingRunReport: value }),
   setLastModelType: (modelType) => set({ lastModelType: modelType }),
   setBlocklyState: (value) => set({ blocklyState: value }),
   getProjectSnapshot: () => {
@@ -239,19 +251,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       workspaceLevel: normalizeWorkspaceLevelFromSnapshot(snapshot.workspaceLevel),
       prediction: null,
       evaluation: null,
-      training: { isTraining: false, progress: 0, message: "Проект загружен", coachMood: "talking" }
+      trainingRunReport: null,
+      training: {
+        isTraining: false,
+        progress: 0,
+        message: "Проект загружен",
+        coachMood: "talking"
+      }
     }),
   setTraining: (nextState) =>
     set((state) => ({
       training: { ...state.training, ...nextState }
     })),
   setWorkspaceLevel: (level) => {
+    const safe: WorkspaceLevel = level === 1 ? 1 : 2;
     try {
-      localStorage.setItem(WORKSPACE_LEVEL_KEY, String(level));
+      localStorage.setItem(WORKSPACE_LEVEL_KEY, String(safe));
       localStorage.removeItem(LEGACY_WORKSPACE_LEVEL_KEY);
     } catch {
       /* ignore */
     }
-    set({ workspaceLevel: level });
+    set({ workspaceLevel: safe });
   }
 }));

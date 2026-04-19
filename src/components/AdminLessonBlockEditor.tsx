@@ -407,12 +407,11 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                   title={block.studioPracticeKind === "project_clone" ? "Для проекта из библиотеки уровень берется из проекта" : undefined}
                   placeholder="Уровень Blockly"
                   onChange={(v) => {
-                    setBlock(index, { studioWorkspaceLevel: v as 1 | 2 | 3 });
+                    setBlock(index, { studioWorkspaceLevel: v as 1 | 2 });
                   }}
                   options={[
                     { value: 1, label: "Уровень Blockly 1" },
-                    { value: 2, label: "Уровень Blockly 2" },
-                    { value: 3, label: "Уровень Blockly 3" }
+                    { value: 2, label: "Уровень Blockly 2" }
                   ]}
                 />
                 <Card size="small" title="Цели мини-разработки">

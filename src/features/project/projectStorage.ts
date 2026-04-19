@@ -43,7 +43,7 @@ interface StoredNodlyProject {
     tabularPredictionInputs: TabularPredictionInput[];
     savedModels?: SavedModelEntry[];
     blocklyState: string;
-    workspaceLevel?: 1 | 2 | 3;
+    workspaceLevel?: 1 | 2;
   };
 }
 
@@ -289,10 +289,11 @@ export async function decodeSnapshotFromCloud(raw: unknown): Promise<NodlyProjec
   }
   const o = raw as Record<string, unknown>;
   const wlRaw = o.workspaceLevel;
-  const workspaceLevel =
+  const rawNum =
     wlRaw === 1 || wlRaw === 2 || wlRaw === 3 ? wlRaw : wlRaw === "1" || wlRaw === "2" || wlRaw === "3"
-      ? (Number(wlRaw) as 1 | 2 | 3)
+      ? Number(wlRaw)
       : 1;
+  const workspaceLevel: 1 | 2 = rawNum === 1 ? 1 : 2;
   const tabularDatasets = Array.isArray(o.tabularDatasets)
     ? (o.tabularDatasets as TabularDatasetEntry[])
     : [];

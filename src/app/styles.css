@@ -556,6 +556,91 @@ html[data-theme="dark"] .app-content--workspace {
   align-items: stretch;
 }
 
+/* Полная студия: Blockly | сцена с коучем | визуализация */
+.studio-page__main--studio-triple {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.studio-metrics-panel {
+  flex-shrink: 0;
+  width: min(340px, 30vw);
+  min-width: 260px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.studio-metrics-card.ant-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-metrics-card .ant-card-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.studio-metrics-panel__chart-wrap {
+  width: 100%;
+}
+
+.studio-metrics-panel__confusion {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.studio-metrics-panel__cm-diag {
+  font-weight: 600;
+  color: var(--ant-color-success, #52c41a);
+}
+
+.studio-metrics-panel__cm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.studio-metrics-panel__cm-table th,
+.studio-metrics-panel__cm-table td {
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.studio-metrics-panel__cm-table th[scope="row"],
+.studio-metrics-panel__cm-corner {
+  text-align: left;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--app-surface, #fff) 88%, transparent);
+}
+
+html[data-theme="dark"] .studio-metrics-panel__cm-table th,
+html[data-theme="dark"] .studio-metrics-panel__cm-table td {
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+@media (max-width: 1100px) {
+  .studio-page__main--studio-triple {
+    flex-direction: column;
+  }
+
+  .studio-metrics-panel {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .studio-stage-panel--full-coach {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 /* Мини-урок: Blockly слева на всю ширину, сцена с целями справа */
 .studio-page__main--mini-side {
   flex-direction: row;
@@ -689,6 +774,58 @@ html[data-theme="dark"] .app-content--workspace {
   background: var(--app-surface);
   border: 1px solid var(--landing-hero-border);
   min-height: 3.5em;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-figure-wrap {
+  flex-shrink: 0;
+  width: 100%;
+  line-height: 0;
+  text-align: center;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-figure {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: min(38dvh, 320px);
+  object-fit: contain;
+  margin-inline: auto;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-bubble {
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--app-text);
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--app-surface);
+  border: 1px solid var(--landing-hero-border);
+  min-height: 3.25em;
+}
+
+.studio-stage-panel--full-coach .studio-stage-panel__full-extra {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--app-text);
+}
+
+html[data-theme="dark"] .studio-stage-panel--full-coach .studio-stage-panel__full-bubble {
+  border-color: rgba(148, 163, 184, 0.25);
 }
 
 html[data-theme="dark"] .studio-stage-panel__bubble {

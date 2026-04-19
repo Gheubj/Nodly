@@ -41,7 +41,7 @@ function lessonFlowBlocksFromContent(lessonContent: unknown): unknown[] {
 type MiniPracticeParsed =
   | { kind: "template" }
   | { kind: "project_clone"; referenceProjectId: string }
-  | { kind: "empty"; workspaceLevel: 1 | 2 | 3 };
+  | { kind: "empty"; workspaceLevel: 1 | 2 };
 
 function parseMiniStudioBlock(block: unknown): MiniPracticeParsed | null {
   if (!block || typeof block !== "object") {
@@ -57,15 +57,16 @@ function parseMiniStudioBlock(block: unknown): MiniPracticeParsed | null {
       ? b.referenceProjectId.trim()
       : null;
   const w = b.studioWorkspaceLevel;
-  const level: 1 | 2 | 3 | null =
+  const rawLevel: 1 | 2 | 3 | null =
     w === 1 || w === 2 || w === 3 ? w : w === "1" || w === "2" || w === "3" ? (Number(w) as 1 | 2 | 3) : null;
+  const level: 1 | 2 | null = rawLevel == null ? null : rawLevel === 1 ? 1 : 2;
 
   if (kindRaw === "template") {
     return { kind: "template" };
   }
   if (kindRaw === "empty") {
     if (level == null) {
-      throw new Error("Для пустой практики в блоке урока нужно выбрать уровень Blockly (1–3)");
+      throw new Error("Для пустой практики в блоке урока нужно выбрать уровень Blockly (1 или 2)");
     }
     return { kind: "empty", workspaceLevel: level };
   }
@@ -88,6 +89,8 @@ function normalizeProjectSnapshotPayload(raw: unknown): Record<string, unknown> 
   const wl = merged.workspaceLevel;
   if (wl !== 1 && wl !== 2 && wl !== 3) {
     merged.workspaceLevel = 1;
+  } else if (wl === 3) {
+    merged.workspaceLevel = 2;
   }
   return merged;
 }
@@ -355,7 +358,10 @@ const studioBlockZ = z.object({
   ctaAction: z.string().max(120).optional().nullable(),
   studioPracticeKind: z.enum(["template", "project_clone", "empty"]).optional(),
   referenceProjectId: z.string().min(1).max(120).optional().nullable(),
-  studioWorkspaceLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  studioWorkspaceLevel: z
+    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 3 ? 2 : v)),
   goals: z.array(studioGoalZ).max(20).optional()
 });
 const checkpointBlockZ = z.object({
