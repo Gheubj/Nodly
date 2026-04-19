@@ -10,6 +10,7 @@ import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCap
 const { Text } = Typography;
 
 const IDLE_HINT = "Нажми «Старт» в Blockly, чтобы запустить сценарий.";
+const SCENARIO_WORKING_HINT = "Выполняю сценарий…";
 
 function useCoachBubbleText(): string {
   const training = useAppStore((s) => s.training);
@@ -20,6 +21,9 @@ function useCoachBubbleText(): string {
   return useMemo(() => {
     if (training.isTraining) {
       return training.message?.trim() || "Выполняю…";
+    }
+    if (training.scenarioActive) {
+      return training.message?.trim() || SCENARIO_WORKING_HINT;
     }
     if (coachUserMessage?.trim()) {
       return coachUserMessage.trim();
@@ -33,6 +37,7 @@ function useCoachBubbleText(): string {
     return IDLE_HINT;
   }, [
     training.isTraining,
+    training.scenarioActive,
     training.message,
     coachUserMessage,
     evaluation,
@@ -45,11 +50,11 @@ function CoachBriefBlock() {
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
   const lines = useMemo(() => {
-    if (training.isTraining) {
+    if (training.isTraining || training.scenarioActive) {
       return [];
     }
     return buildCoachBriefLines(evaluation, prediction);
-  }, [training.isTraining, evaluation, prediction]);
+  }, [training.isTraining, training.scenarioActive, evaluation, prediction]);
   if (lines.length === 0) {
     return null;
   }
@@ -88,6 +93,7 @@ export function StudioStagePanel({
   const training = useAppStore((s) => s.training);
   const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
   const caption = useCoachBubbleText();
+  const captionIsSecondary = caption === IDLE_HINT || caption === SCENARIO_WORKING_HINT;
 
   if (mode === "mini_coach") {
     return (
@@ -122,7 +128,7 @@ export function StudioStagePanel({
                 <Text type="success">Все цели выполнены — отличная работа!</Text>
               ) : null}
               <div className="studio-stage-panel__mini-bubble">
-                {caption === IDLE_HINT ? (
+                {captionIsSecondary ? (
                   <Text type="secondary">{caption}</Text>
                 ) : (
                   <Text>{caption}</Text>
@@ -145,7 +151,7 @@ export function StudioStagePanel({
           </div>
           <div className="studio-stage-panel__full-copy">
             <div className="studio-stage-panel__full-bubble">
-              {caption === IDLE_HINT ? (
+              {captionIsSecondary ? (
                 <Text type="secondary">{caption}</Text>
               ) : (
                 <Text>{caption}</Text>

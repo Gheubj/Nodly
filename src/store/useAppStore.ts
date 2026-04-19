@@ -111,7 +111,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     isTraining: false,
     progress: 0,
     message: "Ожидание",
-    coachMood: "idle"
+    coachMood: "idle",
+    scenarioActive: false
   },
   setCoachUserMessage: (value) => set({ coachUserMessage: value }),
   setActiveProject: (project) => set({ activeProject: project }),
@@ -281,7 +282,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         isTraining: false,
         progress: 0,
         message: hasResults ? "Результаты из сохранённого проекта" : "Проект загружен",
-        coachMood: hasResults ? "success" : "talking"
+        coachMood: hasResults ? "success" : "idle",
+        scenarioActive: false
       }
     });
   },

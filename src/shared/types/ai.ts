@@ -55,13 +55,15 @@ export interface TabularPredictionInput {
   input: string;
 }
 
-export type CoachMood = "idle" | "working" | "talking" | "success" | "error";
+export type CoachMood = "idle" | "working" | "success" | "error";
 
 export interface TrainingState {
   isTraining: boolean;
   progress: number;
   message: string;
   coachMood?: CoachMood;
+  /** Идёт прогон Blockly после «Старт» — итоговый текст и метрики под пузырём только после завершения (success). */
+  scenarioActive?: boolean;
 }
 
 export interface TrainConfig {

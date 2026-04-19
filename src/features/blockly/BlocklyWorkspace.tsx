@@ -1220,7 +1220,13 @@ export function BlocklyWorkspace({
         lastEvaluationRef.current = trainOutcome.evaluation;
         state.setTrainingRunReport(trainOutcome.report);
         state.setEvaluation(trainOutcome.evaluation);
-        state.setTraining({ isTraining: false, progress: 100, message: "", coachMood: "success" });
+        const duringScenario = useAppStore.getState().training.scenarioActive;
+        state.setTraining({
+          isTraining: false,
+          progress: 100,
+          message: "",
+          coachMood: duringScenario ? "working" : "success"
+        });
         if (miniStudioToolbar) {
           queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
         }
@@ -1248,10 +1254,11 @@ export function BlocklyWorkspace({
           modelType,
           createdAt: new Date().toISOString()
         });
+        const duringSave = useAppStore.getState().training.scenarioActive;
         state.setTraining({
           isTraining: false,
           message: `Модель «${title}» (${modelType}) в библиотеке`,
-          coachMood: "success"
+          coachMood: duringSave ? "working" : "success"
         });
       }
       if (command.type === "wait") {
@@ -1305,7 +1312,12 @@ export function BlocklyWorkspace({
             tabularInput: ""
           });
           state.setPrediction(result);
-          state.setTraining({ isTraining: false, message: "", coachMood: "success" });
+          const duringPredImg = useAppStore.getState().training.scenarioActive;
+          state.setTraining({
+            isTraining: false,
+            message: "",
+            coachMood: duringPredImg ? "working" : "success"
+          });
           if (miniStudioToolbar) {
             queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
           }
@@ -1344,7 +1356,12 @@ export function BlocklyWorkspace({
             tabularInput: tabularLine
           });
           state.setPrediction(result);
-          state.setTraining({ isTraining: false, message: "", coachMood: "success" });
+          const duringPredTab = useAppStore.getState().training.scenarioActive;
+          state.setTraining({
+            isTraining: false,
+            message: "",
+            coachMood: duringPredTab ? "working" : "success"
+          });
           if (miniStudioToolbar) {
             queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
           }
@@ -1369,7 +1386,7 @@ export function BlocklyWorkspace({
         state.setTraining({
           isTraining: false,
           message: "",
-          coachMood: "talking"
+          coachMood: "working"
         });
       }
       if (command.type === "show_result") {
@@ -1380,19 +1397,15 @@ export function BlocklyWorkspace({
         const line = command.text.trim();
         if (line) {
           journal.push(line);
-          state.setTraining({ isTraining: false, message: `Журнал: ${journal.join(" | ")}`, coachMood: "talking" });
+          state.setTraining({ isTraining: false, message: `Журнал: ${journal.join(" | ")}`, coachMood: "working" });
         }
       }
       if (command.type === "show_eval") {
         if (lastEvaluationRef.current) {
           state.setEvaluation(lastEvaluationRef.current);
-          state.setTraining({ isTraining: false, message: "", coachMood: "talking" });
+          state.setTraining({ isTraining: false, message: "", coachMood: "working" });
         } else {
-          state.setTraining({
-            isTraining: false,
-            message: "Оценка модели появится после обучения/тестирования",
-            coachMood: "talking"
-          });
+          throw new Error("Оценка модели появится после обучения/тестирования");
         }
       }
     }
@@ -1420,8 +1433,9 @@ export function BlocklyWorkspace({
       if (startHats.length === 0) {
         state.setTraining({
           isTraining: false,
+          scenarioActive: false,
           message: "Добавь блок «Старт» и присоединяй к нему цепочку команд.",
-          coachMood: "talking"
+          coachMood: "error"
         });
         return;
       }
@@ -1431,22 +1445,42 @@ export function BlocklyWorkspace({
       if (chains.length === 0) {
         state.setTraining({
           isTraining: false,
+          scenarioActive: false,
           message: "Подключи к «Старт» хотя бы один блок (обучение, предсказание и т.д.).",
-          coachMood: "talking"
+          coachMood: "error"
         });
         return;
       }
+      useAppStore.getState().setTraining({
+        isTraining: false,
+        scenarioActive: true,
+        coachMood: "working",
+        message: "",
+        progress: 0
+      });
       for (const commands of chains) {
         await executeCommands(commands);
       }
+      useAppStore.getState().setTraining({
+        isTraining: false,
+        scenarioActive: false,
+        message: "",
+        coachMood: "success",
+        progress: 100
+      });
     } catch (error) {
       useAppStore.getState().setTraining({
         isTraining: false,
+        scenarioActive: false,
         message: error instanceof Error ? error.message : "Ошибка выполнения сценария",
         coachMood: "error"
       });
     } finally {
       isRunningRef.current = false;
+      const fin = useAppStore.getState();
+      if (fin.training.scenarioActive) {
+        fin.setTraining({ scenarioActive: false });
+      }
     }
   };
 
