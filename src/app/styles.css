@@ -585,15 +585,36 @@ html[data-theme="dark"] .app-content--workspace {
 .studio-page__side-tabs-inner .ant-tabs-content-holder {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+}
+
+.studio-page__side-tabs-inner .ant-tabs-content {
+  height: 100%;
+  min-height: 0;
 }
 
 .studio-page__side-tabs-inner .ant-tabs-tabpane {
   height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .studio-metrics-panel--embedded .studio-metrics-card.ant-card .ant-card-body {
   padding-top: 4px;
+}
+
+/* Одна прокрутка на вкладке: карточка не тянется на всю высоту и не режет контент */
+.studio-metrics-panel--embedded .studio-metrics-card.ant-card {
+  height: auto;
+  min-height: 0;
+}
+
+.studio-metrics-panel--embedded .studio-metrics-card .ant-card-body {
+  overflow: visible;
+  flex: none;
 }
 
 .studio-metrics-panel {
@@ -771,6 +792,17 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   width: 100%;
   min-width: 0;
   max-width: none;
+}
+
+/* Прокрутка на уровне вкладки: карточка «Сцены» не на всю высоту окна */
+.studio-page__side-tabs .studio-stage-panel .studio-stage-card.ant-card {
+  height: auto;
+  min-height: 0;
+}
+
+.studio-page__side-tabs .studio-stage-panel .studio-stage-card .ant-card-body {
+  overflow: visible;
+  flex: none;
 }
 
 .studio-stage-panel .ant-card {
