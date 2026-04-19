@@ -742,6 +742,12 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   font-size: 12px;
 }
 
+.studio-stage-panel--mini .studio-stage-panel__mini-extra {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--app-text);
+}
+
 .studio-page__blockly {
   flex: 1;
   min-width: 0;

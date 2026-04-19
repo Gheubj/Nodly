@@ -20,6 +20,7 @@ import {
   putModelLibraryRecord,
   type TabularModelLibraryPayload
 } from "@/features/model/modelLibraryMeta";
+import { flatAggregateMetrics } from "@/shared/confusionMetrics";
 
 let mobileNetModel: mobilenet.MobileNet | null = null;
 const imageClassifier = knnClassifier.create();
@@ -520,14 +521,15 @@ async function trainTabularModel(
   yTest.dispose();
 
   const summary = `Classification test accuracy: ${(acc * 100).toFixed(1)}%`;
-  const metrics = { testLoss: loss, testAccuracy: acc };
+  const cmData = { labels: [...uniqueLabels], matrix: confusion };
+  const metrics = { testLoss: loss, testAccuracy: acc, ...flatAggregateMetrics(cmData) };
   const report: TrainingRunReport = {
     kind: "tabular_classification",
     modelType,
     summary,
     metrics,
     epochHistory: clsEpochHistory,
-    confusionMatrix: { labels: [...uniqueLabels], matrix: confusion },
+    confusionMatrix: cmData,
     classificationExamples
   };
   return { evaluation: { summary, metrics }, report };

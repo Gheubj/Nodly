@@ -66,6 +66,32 @@ export function StudioStagePanel({
               {showGoalsInPanel && allGoalsDone ? (
                 <Text type="success">Все цели выполнены — отличная работа!</Text>
               ) : null}
+              {evaluation ? (
+                <div className="studio-stage-panel__mini-extra">
+                  <Text strong>Модель: </Text>
+                  <Text>{evaluation.summary}</Text>
+                </div>
+              ) : null}
+              {evaluation?.metrics?.testAccuracy != null ? (
+                <div className="studio-stage-panel__mini-extra">
+                  <Text strong>Точность (тест): </Text>
+                  <Text>{(evaluation.metrics.testAccuracy * 100).toFixed(1)}%</Text>
+                </div>
+              ) : null}
+              {evaluation?.metrics?.macroF1 != null ? (
+                <div className="studio-stage-panel__mini-extra">
+                  <Text strong>F1 (macro): </Text>
+                  <Text>{(evaluation.metrics.macroF1 * 100).toFixed(1)}%</Text>
+                </div>
+              ) : null}
+              {prediction ? (
+                <div className="studio-stage-panel__mini-extra">
+                  <Text strong>Предсказание: </Text>
+                  <Text>
+                    {prediction.title} ({(prediction.confidence * 100).toFixed(0)}% уверенности)
+                  </Text>
+                </div>
+              ) : null}
               <div className="studio-stage-panel__mini-status">
                 <Text type="secondary">{message || "Нажми «Старт» в Blockly, чтобы запустить сценарий."}</Text>
               </div>
@@ -91,6 +117,18 @@ export function StudioStagePanel({
               <div className="studio-stage-panel__full-extra">
                 <Text strong>Модель: </Text>
                 <Text>{evaluation.summary}</Text>
+              </div>
+            ) : null}
+            {evaluation?.metrics?.testAccuracy != null ? (
+              <div className="studio-stage-panel__full-extra">
+                <Text strong>Точность (тест): </Text>
+                <Text>{(evaluation.metrics.testAccuracy * 100).toFixed(1)}%</Text>
+              </div>
+            ) : null}
+            {evaluation?.metrics?.macroF1 != null ? (
+              <div className="studio-stage-panel__full-extra">
+                <Text strong>F1 (macro): </Text>
+                <Text>{(evaluation.metrics.macroF1 * 100).toFixed(1)}%</Text>
               </div>
             ) : null}
             {prediction ? (

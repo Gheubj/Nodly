@@ -13,9 +13,11 @@ import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type {
   ClassificationExampleRow,
+  ConfusionMatrixData,
   RegressionExampleRow,
   TrainingRunReport
 } from "@/shared/types/ai";
+import { metricsFromConfusionMatrix } from "@/shared/confusionMetrics";
 
 const { Text, Title } = Typography;
 
@@ -26,9 +28,32 @@ function formatMetricLabel(key: string): string {
     testMSE: "MSE (тест)",
     testMAE: "MAE (тест)",
     testRMSE: "RMSE (тест)",
-    samples: "Примеров"
+    samples: "Примеров",
+    macroPrecision: "Precision (macro)",
+    macroRecall: "Recall (macro)",
+    macroF1: "F1 (macro)",
+    weightedPrecision: "Precision (взвеш.)",
+    weightedRecall: "Recall (взвеш.)",
+    weightedF1: "F1 (взвеш.)"
   };
   return map[key] ?? key;
+}
+
+const METRIC_PERCENT_KEYS = new Set([
+  "testAccuracy",
+  "macroPrecision",
+  "macroRecall",
+  "macroF1",
+  "weightedPrecision",
+  "weightedRecall",
+  "weightedF1"
+]);
+
+function formatMetricValue(key: string, value: number): string {
+  if (METRIC_PERCENT_KEYS.has(key) && value >= 0 && value <= 1) {
+    return `${(value * 100).toFixed(1)}%`;
+  }
+  return value.toFixed(4);
 }
 
 function MetricsTable({ report }: { report: TrainingRunReport }) {
@@ -37,12 +62,7 @@ function MetricsTable({ report }: { report: TrainingRunReport }) {
       Object.entries(report.metrics).map(([key, value]) => ({
         key,
         label: formatMetricLabel(key),
-        value:
-          key === "testAccuracy" && value <= 1
-            ? `${(value * 100).toFixed(1)}%`
-            : typeof value === "number"
-              ? value.toFixed(4)
-              : String(value)
+        value: typeof value === "number" ? formatMetricValue(key, value) : String(value)
       })),
     [report.metrics]
   );
@@ -121,6 +141,50 @@ function EpochCharts({ report }: { report: TrainingRunReport }) {
         </div>
       ) : null}
     </Space>
+  );
+}
+
+function PerClassQualityTable({ cm }: { cm: ConfusionMatrixData }) {
+  const rows = useMemo(() => metricsFromConfusionMatrix(cm).perClass, [cm]);
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <div>
+      <Text strong>По классам</Text>
+      <Table
+        style={{ marginTop: 8 }}
+        size="small"
+        pagination={false}
+        rowKey={(_, i) => `pc-${i}`}
+        columns={[
+          { title: "Класс", dataIndex: "label", key: "l", ellipsis: true },
+          {
+            title: "Precision",
+            dataIndex: "precision",
+            key: "p",
+            width: 88,
+            render: (v: number) => `${(v * 100).toFixed(1)}%`
+          },
+          {
+            title: "Recall",
+            dataIndex: "recall",
+            key: "r",
+            width: 88,
+            render: (v: number) => `${(v * 100).toFixed(1)}%`
+          },
+          {
+            title: "F1",
+            dataIndex: "f1",
+            key: "f",
+            width: 72,
+            render: (v: number) => `${(v * 100).toFixed(1)}%`
+          },
+          { title: "N", dataIndex: "support", key: "s", width: 52, align: "right" as const }
+        ]}
+        dataSource={rows}
+      />
+    </div>
   );
 }
 
@@ -232,6 +296,7 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
               {report.summary}
             </Text>
             <MetricsTable report={report} />
+            {report.confusionMatrix ? <PerClassQualityTable cm={report.confusionMatrix} /> : null}
           </div>
           <div>
             <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
