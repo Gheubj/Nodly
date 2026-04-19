@@ -445,7 +445,10 @@ export function StudioPage() {
     }
   };
 
-  const saveProjectToCloud = async (titleRaw: string) => {
+  const saveProjectToCloud = async (
+    titleRaw: string,
+    opts?: { detachLessonTemplate?: boolean }
+  ) => {
     if (readOnly) {
       messageApi.warning("Режим только просмотра — сохранение в облако отключено.");
       return;
@@ -463,22 +466,25 @@ export function StudioPage() {
       useAppStore.getState().setBlocklyState(liveBlocklyState);
     }
     const snapshot = getProjectSnapshot();
-    await saveProjectSmart({
-      meta: {
-        id: projectId,
-        userId: normalizedUserId,
-        title: normalizedTitle,
-        createdAt: activeProject?.createdAt ?? now,
-        updatedAt: now
+    await saveProjectSmart(
+      {
+        meta: {
+          id: projectId,
+          userId: normalizedUserId,
+          title: normalizedTitle,
+          createdAt: activeProject?.createdAt ?? now,
+          updatedAt: now
+        },
+        snapshot: {
+          ...snapshot,
+          blocklyState:
+            typeof liveBlocklyState === "string" && liveBlocklyState.trim()
+              ? liveBlocklyState
+              : snapshot.blocklyState
+        }
       },
-      snapshot: {
-        ...snapshot,
-        blocklyState:
-          typeof liveBlocklyState === "string" && liveBlocklyState.trim()
-            ? liveBlocklyState
-            : snapshot.blocklyState
-      }
-    });
+      opts?.detachLessonTemplate ? { detachLessonTemplate: true } : undefined
+    );
     setActiveProject({
       id: projectId,
       userId: normalizedUserId,
@@ -508,7 +514,7 @@ export function StudioPage() {
       return;
     }
     try {
-      await saveProjectToCloud(t);
+      await saveProjectToCloud(t, { detachLessonTemplate: true });
       setMiniSaveToProjectsOpen(false);
     } catch (e) {
       messageApi.error(e instanceof Error ? e.message : "Не удалось сохранить в проекты");

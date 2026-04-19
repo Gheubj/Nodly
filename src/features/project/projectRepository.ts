@@ -31,15 +31,24 @@ export async function listProjects(userId: string): Promise<NodlyProjectMeta[]> 
   }));
 }
 
-export async function saveProjectSmart(project: NodlyProject) {
+export type SaveProjectSmartOptions = {
+  /** Отвязать от шаблона урока — нужно для «Сохранить в проекты» из мини-студии, иначе проект не попадает в GET /api/projects. */
+  detachLessonTemplate?: boolean;
+};
+
+export async function saveProjectSmart(project: NodlyProject, opts?: SaveProjectSmartOptions) {
   if (!canUseCloud()) {
     return saveProject(project);
   }
   const snapshot = await encodeSnapshotForCloud(project.snapshot);
-  await apiClient.put(`/api/projects/${project.meta.id}`, {
+  const body: Record<string, unknown> = {
     title: project.meta.title,
     snapshot
-  });
+  };
+  if (opts?.detachLessonTemplate) {
+    body.lessonTemplateId = null;
+  }
+  await apiClient.put(`/api/projects/${project.meta.id}`, body);
 }
 
 export async function loadProjectSmart(projectId: string): Promise<NodlyProject | null> {
