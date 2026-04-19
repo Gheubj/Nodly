@@ -119,7 +119,14 @@ export function LessonFlowView({
     <div className={`lesson-flow${isColab ? " lesson-flow--colab" : ""}`}>
       {blocks.map((block) => {
         if (block.type === "divider") {
-          return null;
+          return (
+            <div
+              key={block.id}
+              className={`lesson-flow__segment lesson-flow__segment--divider${isColab ? " lesson-flow__segment--colab" : ""}`}
+            >
+              <hr className={isColab ? "lesson-flow__divider lesson-flow__divider--colab" : "lesson-flow__divider"} />
+            </div>
+          );
         }
         if (block.type === "text") {
           return (

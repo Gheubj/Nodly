@@ -51,7 +51,7 @@ export function AdminLessonTemplateEditorPage() {
           data.lessonContent && typeof data.lessonContent === "object"
             ? (data.lessonContent as { blocks?: unknown[] })
             : EMPTY_LESSON_CONTENT;
-        setBlocks(expandLessonContentToBlocks(content as any).filter((b) => b.type !== "divider"));
+        setBlocks(expandLessonContentToBlocks(content as any));
       } catch (e) {
         if (!cancelled) {
           messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить шаблон");

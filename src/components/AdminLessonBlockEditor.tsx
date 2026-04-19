@@ -14,7 +14,8 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "text", label: "Текст" },
   { value: "media", label: "Медиа (картинка/PDF)" },
   { value: "studio", label: "Мини-разработка" },
-  { value: "checkpoint", label: "Контрольный вопрос" }
+  { value: "checkpoint", label: "Контрольный вопрос" },
+  { value: "divider", label: "Разделитель" }
 ];
 
 const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
@@ -57,8 +58,10 @@ function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
       };
     case "checkpoint":
       return { id, type: "checkpoint", question: "", expectedAnswer: "", answerMode: "text", options: [] };
-    default:
+    case "divider":
       return { id, type: "divider" };
+    default:
+      return { id, type: "text", body: "Блок" };
   }
 }
 
@@ -457,6 +460,12 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                     </Button>
                   </Space>
                 </Card>
+            </Space>
+          ) : null}
+          {block.type === "divider" ? (
+            <Space direction="vertical" style={{ width: "100%" }} size="small">
+              <Text type="secondary">Горизонтальная линия между блоками в уроке у ученика.</Text>
+              <hr className="lesson-block-editor__divider-preview" />
             </Space>
           ) : null}
           {block.type === "checkpoint" ? (

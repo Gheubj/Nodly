@@ -1768,6 +1768,10 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   padding: 16px 18px;
 }
 
+.lesson-flow__segment--divider {
+  padding: 4px 0;
+}
+
 .lesson-flow__divider {
   height: 1px;
   margin: 8px 0;
@@ -1833,6 +1837,13 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   min-height: 24px;
   font-size: 12px;
   padding-left: 10px;
+}
+
+.lesson-block-editor__divider-preview {
+  height: 1px;
+  margin: 12px 0 4px;
+  border: 0;
+  background: var(--ant-color-border, rgba(148, 163, 184, 0.55));
 }
 
 .lesson-block-editor__card.ant-card {
