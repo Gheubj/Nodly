@@ -13,6 +13,7 @@ import type {
   TrainingState
 } from "@/shared/types/ai";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
+import { decodePersistedTraining } from "@/shared/decodePersistedTraining";
 
 export type WorkspaceLevel = 1 | 2;
 
@@ -235,6 +236,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setBlocklyState: (value) => set({ blocklyState: value }),
   getProjectSnapshot: () => {
     const state = get();
+    const hasPersisted =
+      state.evaluation !== null ||
+      state.trainingRunReport !== null ||
+      state.prediction !== null;
     return {
       imageDatasets: state.imageDatasets,
       tabularDatasets: state.tabularDatasets,
@@ -242,10 +247,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       tabularPredictionInputs: state.tabularPredictionInputs,
       savedModels: state.savedModels,
       blocklyState: state.blocklyState,
-      workspaceLevel: state.workspaceLevel
+      workspaceLevel: state.workspaceLevel,
+      ...(hasPersisted
+        ? {
+            persistedTraining: {
+              evaluation: state.evaluation,
+              trainingRunReport: state.trainingRunReport,
+              prediction: state.prediction
+            }
+          }
+        : {})
     };
   },
-  loadProjectSnapshot: (snapshot) =>
+  loadProjectSnapshot: (snapshot) => {
+    const decoded = decodePersistedTraining(snapshot.persistedTraining);
+    const evaluation = decoded?.evaluation ?? null;
+    const trainingRunReport = decoded?.trainingRunReport ?? null;
+    const prediction = decoded?.prediction ?? null;
+    const hasResults = Boolean(evaluation || trainingRunReport || prediction);
     set({
       imageDatasets: snapshot.imageDatasets,
       tabularDatasets: snapshot.tabularDatasets,
@@ -254,17 +273,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       savedModels: snapshot.savedModels ?? [],
       blocklyState: snapshot.blocklyState,
       workspaceLevel: normalizeWorkspaceLevelFromSnapshot(snapshot.workspaceLevel),
-      prediction: null,
-      evaluation: null,
-      trainingRunReport: null,
+      prediction,
+      evaluation,
+      trainingRunReport,
       coachUserMessage: null,
       training: {
         isTraining: false,
         progress: 0,
-        message: "Проект загружен",
-        coachMood: "talking"
+        message: hasResults ? "Результаты из сохранённого проекта" : "Проект загружен",
+        coachMood: hasResults ? "success" : "talking"
       }
-    }),
+    });
+  },
   setTraining: (nextState) =>
     set((state) => ({
       training: { ...state.training, ...nextState }

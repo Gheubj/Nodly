@@ -1,9 +1,12 @@
 import type {
   ImageDataset,
   ImagePredictionInput,
+  ModelEvaluation,
+  PredictionResult,
   SavedModelEntry,
   TabularDatasetEntry,
-  TabularPredictionInput
+  TabularPredictionInput,
+  TrainingRunReport
 } from "@/shared/types/ai";
 
 export interface NodlyProjectMeta {
@@ -27,6 +30,15 @@ export interface NodlyProjectSnapshot {
   blocklyState: string;
   /** Уровень палитры Blockly (1–3), в т.ч. для мини-студии без выбора у ученика */
   workspaceLevel?: 1 | 2;
+  /**
+   * Сохранённые результаты последнего обучения/предсказания (перезагрузка, облако, шаринг).
+   * Не влияет на исполнение Blockly — только сцена и вкладка «Визуализация».
+   */
+  persistedTraining?: {
+    evaluation: ModelEvaluation | null;
+    trainingRunReport: TrainingRunReport | null;
+    prediction: PredictionResult | null;
+  } | null;
 }
 
 export interface NodlyProject {

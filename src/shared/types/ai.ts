@@ -113,7 +113,7 @@ export type TrainingRunKind =
   | "image_clustering"
   | "none";
 
-/** Расширенный отчёт для панели визуализации (не сериализуется в снимок проекта). */
+/** Расширенный отчёт для панели визуализации (опционально сохраняется в снимке проекта). */
 export interface TrainingRunReport {
   kind: TrainingRunKind;
   modelType: ModelType;

@@ -7,6 +7,7 @@ import type {
   TabularPredictionInput
 } from "@/shared/types/ai";
 import type { NodlyProject, NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
+import { decodePersistedTraining } from "@/shared/decodePersistedTraining";
 
 interface EncodedFile {
   name: string;
@@ -44,6 +45,7 @@ interface StoredNodlyProject {
     savedModels?: SavedModelEntry[];
     blocklyState: string;
     workspaceLevel?: 1 | 2;
+    persistedTraining?: NodlyProjectSnapshot["persistedTraining"];
   };
 }
 
@@ -228,7 +230,10 @@ export async function saveProject(project: NodlyProject) {
       tabularPredictionInputs: project.snapshot.tabularPredictionInputs,
       savedModels: project.snapshot.savedModels ?? [],
       blocklyState: project.snapshot.blocklyState,
-      workspaceLevel: project.snapshot.workspaceLevel
+      workspaceLevel: project.snapshot.workspaceLevel,
+      ...(project.snapshot.persistedTraining !== undefined && project.snapshot.persistedTraining !== null
+        ? { persistedTraining: project.snapshot.persistedTraining }
+        : {})
     }
   };
   await db.put(STORE_NAME, stored);
@@ -249,6 +254,9 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
   if (!stored) {
     return null;
   }
+  const persistedTraining = decodePersistedTraining(
+    (stored.snapshot as { persistedTraining?: unknown }).persistedTraining
+  );
   const snapshot: NodlyProjectSnapshot = {
     imageDatasets: await decodeImageDatasets(stored.snapshot.imageDatasets),
     tabularDatasets: stored.snapshot.tabularDatasets,
@@ -256,7 +264,8 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
     tabularPredictionInputs: stored.snapshot.tabularPredictionInputs,
     savedModels: stored.snapshot.savedModels ?? [],
     blocklyState: stored.snapshot.blocklyState,
-    workspaceLevel: stored.snapshot.workspaceLevel
+    workspaceLevel: stored.snapshot.workspaceLevel,
+    ...(persistedTraining !== undefined ? { persistedTraining } : {})
   };
   return { meta: stored.meta, snapshot };
 }
@@ -270,7 +279,10 @@ export async function encodeSnapshotForCloud(snapshot: NodlyProjectSnapshot): Pr
     tabularPredictionInputs: snapshot.tabularPredictionInputs,
     savedModels: snapshot.savedModels ?? [],
     blocklyState: snapshot.blocklyState,
-    workspaceLevel: snapshot.workspaceLevel ?? 1
+    workspaceLevel: snapshot.workspaceLevel ?? 1,
+    ...(snapshot.persistedTraining !== undefined && snapshot.persistedTraining !== null
+      ? { persistedTraining: snapshot.persistedTraining }
+      : {})
   };
 }
 
@@ -325,6 +337,8 @@ export async function decodeSnapshotFromCloud(raw: unknown): Promise<NodlyProjec
     }
   }
 
+  const persistedTraining = decodePersistedTraining(o.persistedTraining);
+
   return {
     imageDatasets,
     tabularDatasets,
@@ -332,7 +346,8 @@ export async function decodeSnapshotFromCloud(raw: unknown): Promise<NodlyProjec
     tabularPredictionInputs,
     savedModels,
     blocklyState,
-    workspaceLevel
+    workspaceLevel,
+    ...(persistedTraining !== undefined ? { persistedTraining } : {})
   };
 }
 

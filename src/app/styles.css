@@ -639,10 +639,14 @@ html[data-theme="dark"] .app-content--workspace {
 
 .studio-metrics-panel__chart-wrap {
   width: 100%;
-  min-width: 260px;
-  min-height: 200px;
-  overflow-x: auto;
-  overflow-y: visible;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* Recharts по умолчанию режет легенду и даёт лишнюю полосу прокрутки у блока графика */
+.studio-metrics-panel__chart-wrap .recharts-responsive-container,
+.studio-metrics-panel__chart-wrap .recharts-wrapper {
+  overflow: visible !important;
 }
 
 .studio-metrics-panel__confusion {
