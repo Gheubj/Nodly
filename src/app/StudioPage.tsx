@@ -21,8 +21,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
-import { StudioStagePanel } from "@/app/StudioStagePanel";
-import { StudioMetricsPanel } from "@/app/StudioMetricsPanel";
+import { StudioSidePanelTabs } from "@/app/StudioSidePanelTabs";
 import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
@@ -716,7 +715,7 @@ export function StudioPage() {
       <div
         className={`studio-page__main${
           isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
-        }${!isMini ? " studio-page__main--studio-triple" : ""}`}
+        }`}
       >
         <div className="studio-page__blockly">
           <BlocklyWorkspace
@@ -732,8 +731,8 @@ export function StudioPage() {
           />
         </div>
         {isMini && miniLessonId && miniBlockId ? (
-          <StudioStagePanel
-            mode="mini_coach"
+          <StudioSidePanelTabs
+            variant="mini"
             instructionMarkdown={miniCoach?.instruction ?? ""}
             goals={miniCoach?.goals ?? []}
             goalStatus={goalUiStatus}
@@ -741,8 +740,7 @@ export function StudioPage() {
             showGoalsInPanel={false}
           />
         ) : null}
-        {!isMini ? <StudioStagePanel /> : null}
-        {!isMini ? <StudioMetricsPanel /> : null}
+        {!isMini ? <StudioSidePanelTabs variant="full" /> : null}
       </div>
     </div>
   );

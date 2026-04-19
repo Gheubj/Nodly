@@ -206,16 +206,73 @@ function ExamplesTable({ report }: { report: TrainingRunReport }) {
   return null;
 }
 
-/** Правая панель: метрики последнего обучения, графики, матрица, примеры, последнее предсказание. */
-export function StudioMetricsPanel() {
+export type StudioMetricsPanelProps = {
+  /** Внутри вкладки «Визуализация» — без дублирующего заголовка карточки и фиксированной ширины колонки. */
+  embedded?: boolean;
+};
+
+/** Метрики последнего обучения, графики, матрица, примеры, последнее предсказание. */
+export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps) {
   const report = useAppStore((s) => s.trainingRunReport);
   const prediction = useAppStore((s) => s.prediction);
+
+  const emptyBody = (
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Запусти обучение или предсказание — здесь появятся метрики и графики." />
+  );
+
+  const filledBody = (
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      {report ? (
+        <>
+          <div>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+              Итог обучения
+            </Title>
+            <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+              {report.summary}
+            </Text>
+            <MetricsTable report={report} />
+          </div>
+          <div>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+              По эпохам
+            </Title>
+            <EpochCharts report={report} />
+          </div>
+          <ConfusionTable report={report} />
+          <ExamplesTable report={report} />
+        </>
+      ) : null}
+      {prediction ? (
+        <div>
+          <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+            Последнее предсказание
+          </Title>
+          <Text>
+            Класс: <strong>{prediction.title}</strong>
+          </Text>
+          <br />
+          <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+        </div>
+      ) : null}
+    </Space>
+  );
+
+  if (embedded) {
+    return (
+      <div className="studio-metrics-panel studio-metrics-panel--embedded" aria-label="Визуализация">
+        <Card size="small" className="studio-metrics-card" bordered={false}>
+          {!report && !prediction ? emptyBody : filledBody}
+        </Card>
+      </div>
+    );
+  }
 
   if (!report && !prediction) {
     return (
       <aside className="studio-metrics-panel" aria-label="Визуализация">
         <Card size="small" title="Визуализация" className="studio-metrics-card">
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Запусти обучение или предсказание — здесь появятся метрики и графики." />
+          {emptyBody}
         </Card>
       </aside>
     );
@@ -224,41 +281,7 @@ export function StudioMetricsPanel() {
   return (
     <aside className="studio-metrics-panel" aria-label="Визуализация">
       <Card size="small" title="Визуализация" className="studio-metrics-card">
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          {report ? (
-            <>
-              <div>
-                <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                  Итог обучения
-                </Title>
-                <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                  {report.summary}
-                </Text>
-                <MetricsTable report={report} />
-              </div>
-              <div>
-                <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                  По эпохам
-                </Title>
-                <EpochCharts report={report} />
-              </div>
-              <ConfusionTable report={report} />
-              <ExamplesTable report={report} />
-            </>
-          ) : null}
-          {prediction ? (
-            <div>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                Последнее предсказание
-              </Title>
-              <Text>
-                Класс: <strong>{prediction.title}</strong>
-              </Text>
-              <br />
-              <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
-            </div>
-          ) : null}
-        </Space>
+        {filledBody}
       </Card>
     </aside>
   );

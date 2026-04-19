@@ -556,17 +556,48 @@ html[data-theme="dark"] .app-content--workspace {
   align-items: stretch;
 }
 
-/* Полная студия: Blockly | сцена с коучем | визуализация */
-.studio-page__main--studio-triple {
-  flex-direction: row;
-  align-items: stretch;
+/* Правая колонка: вкладки «Сцена» | «Визуализация» (ширина как у старой одной «Сцены») */
+.studio-page__side-tabs {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.studio-page__side-tabs--full {
+  width: 280px;
+  max-width: 100%;
+}
+
+.studio-page__side-tabs-inner.ant-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-page__side-tabs-inner .ant-tabs-nav {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.studio-page__side-tabs-inner .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.studio-page__side-tabs-inner .ant-tabs-tabpane {
+  height: 100%;
+}
+
+.studio-metrics-panel--embedded .studio-metrics-card.ant-card .ant-card-body {
+  padding-top: 4px;
 }
 
 .studio-metrics-panel {
   flex-shrink: 0;
-  width: min(340px, 30vw);
-  min-width: 260px;
-  max-width: 400px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -625,17 +656,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 @media (max-width: 1100px) {
-  .studio-page__main--studio-triple {
-    flex-direction: column;
-  }
-
-  .studio-metrics-panel {
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-  }
-
-  .studio-stage-panel--full-coach {
+  .studio-page__side-tabs--full {
     width: 100%;
     max-width: none;
   }
@@ -648,7 +669,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   gap: 10px;
 }
 
-.studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
+.studio-mini-host .studio-page__main--mini-side .studio-page__side-tabs--mini {
   flex-shrink: 0;
   width: min(288px, 30vw);
   min-width: 240px;
@@ -697,7 +718,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
     flex-direction: column;
   }
 
-  .studio-mini-host .studio-page__main--mini-side .studio-stage-panel {
+  .studio-mini-host .studio-page__main--mini-side .studio-page__side-tabs--mini {
     width: 100%;
     max-width: none;
     min-width: 0;
@@ -736,6 +757,14 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Внутри вкладок колонка уже ограничена по ширине — панели на всю ширину вкладки */
+.studio-page__side-tabs .studio-stage-panel,
+.studio-page__side-tabs .studio-metrics-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .studio-stage-panel .ant-card {
