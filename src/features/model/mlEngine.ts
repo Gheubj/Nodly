@@ -407,7 +407,7 @@ async function trainTabularModel(
       throw new Error(
         `Для регрессии целевая колонка должна содержать числа. Первое нечисловое значение: «${bad.slice(0, 80)}». ` +
           `Частая причина — вторая строка файла повторяет заголовки; такие строки теперь отбрасываются при загрузке. ` +
-          `Перезагрузи CSV или проверь разделитель (запятая / точка с запятой) и выбор целевой колонки в «Данные»."
+          `Перезагрузи CSV или проверь разделитель (запятая / точка с запятой) и выбор целевой колонки в «Данные».`
       );
     }
     const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
@@ -437,7 +437,7 @@ async function trainTabularModel(
           });
           onProgress(
             Math.round(((epoch + 1) / config.epochs) * 100),
-            `Эпоха ${epoch + 1}/${config.epochs}`
+            `Эпоха ${epoch + 1} / ${config.epochs}`
           );
           await tf.nextFrame();
         }
@@ -605,7 +605,7 @@ async function trainTabularModel(
             });
             onProgress(
               Math.round(((epoch + 1) / config.epochs) * 100),
-              `Эпоха ${epoch + 1}/${config.epochs}`
+              `Эпоха ${epoch + 1} / ${config.epochs}`
             );
             await tf.nextFrame();
           }
