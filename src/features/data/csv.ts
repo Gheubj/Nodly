@@ -19,6 +19,7 @@ export async function parseCsvFile(file: File): Promise<TabularDataset> {
 
   const headers = lines[0].split(",").map((part) => part.trim());
   const rows = lines.slice(1).map((line) => line.split(",").map((part) => part.trim()));
+  const targetColumnIndex = Math.max(0, headers.length - 1);
 
-  return { headers, rows };
+  return { headers, rows, targetColumnIndex };
 }

@@ -225,15 +225,54 @@ async function predictImageByFile(
   };
 }
 
+function padTabularRow(row: string[], len: number): string[] {
+  const out = [...row];
+  while (out.length < len) {
+    out.push("");
+  }
+  return out.slice(0, len);
+}
+
+/** Число для регрессии: поддержка десятичной запятой в CSV. */
+function parseRegressionTargetCell(raw: string): number {
+  const t = raw.trim();
+  if (!t) {
+    return NaN;
+  }
+  let n = Number(t);
+  if (!Number.isNaN(n)) {
+    return n;
+  }
+  n = Number(t.replace(",", "."));
+  return n;
+}
+
 function parseTabular(dataset: TabularDataset) {
-  const rows = dataset.rows.filter((row) => row.length >= 2);
-  if (rows.length < 2) {
+  const rawRows = dataset.rows.filter((row) => row.length >= 1);
+  if (rawRows.length < 2) {
     throw new Error("Для табличных моделей нужно минимум 2 строки данных.");
   }
-  const featureCount = rows[0].length - 1;
-  const rawX = rows.map((row) => row.slice(0, featureCount).map((value) => value.trim()));
+  const headerLen = dataset.headers?.length ?? 0;
+  const maxRowLen = Math.max(...rawRows.map((r) => r.length), 1);
+  const columnCount = Math.max(headerLen, maxRowLen, 1);
+  const ti = dataset.targetColumnIndex;
+  let targetIndex = columnCount - 1;
+  if (ti !== undefined && ti !== null && Number.isInteger(ti) && ti >= 0 && ti < columnCount) {
+    targetIndex = ti;
+  }
+  const rows = rawRows.map((r) => padTabularRow(r, columnCount));
+  const featureColumnIndices: number[] = [];
+  for (let c = 0; c < columnCount; c++) {
+    if (c !== targetIndex) {
+      featureColumnIndices.push(c);
+    }
+  }
+  if (featureColumnIndices.length === 0) {
+    throw new Error("Нужна хотя бы одна колонка признаков.");
+  }
+  const rawX = rows.map((row) => featureColumnIndices.map((ci) => row[ci].trim()));
   const specs: TabularFeatureSpec[] = [];
-  for (let col = 0; col < featureCount; col++) {
+  for (let col = 0; col < featureColumnIndices.length; col++) {
     const columnValues = rawX.map((row) => row[col]);
     const numericValues = columnValues.map((value) => Number(value));
     const allNumeric = numericValues.every((value) => !Number.isNaN(value));
@@ -246,7 +285,7 @@ function parseTabular(dataset: TabularDataset) {
   }
   const encode = (rawRow: string[]) => {
     const out: number[] = [];
-    for (let col = 0; col < featureCount; col++) {
+    for (let col = 0; col < featureColumnIndices.length; col++) {
       const spec = specs[col];
       const value = rawRow[col];
       if (spec.kind === "numeric") {
@@ -265,8 +304,9 @@ function parseTabular(dataset: TabularDataset) {
   };
   const x = rawX.map((row) => encode(row));
   tabularFeatureSpecs = specs;
-  const yRaw = rows.map((row) => row[featureCount].trim());
-  return { x, yRaw, featureCount: x[0]?.length ?? featureCount };
+  const yRaw = rows.map((row) => row[targetIndex].trim());
+  const encodedFeatureDim = x[0]?.length ?? 0;
+  return { x, yRaw, featureCount: encodedFeatureDim };
 }
 
 function logNumber(logs: tf.Logs | undefined, ...keys: string[]): number | undefined {
@@ -357,9 +397,11 @@ async function trainTabularModel(
   const xTest = tf.tensor2d(testIdx.map((i) => x[i]));
 
   if (modelType === "tabular_regression") {
-    const y = yRaw.map((value) => Number(value));
+    const y = yRaw.map((value) => parseRegressionTargetCell(value));
     if (y.some((value) => Number.isNaN(value))) {
-      throw new Error("Для регрессии целевая колонка должна быть числом.");
+      throw new Error(
+        "Для регрессии целевая колонка должна содержать числа. Проверь выбранную целевую колонку в «Данные → Таблицы»."
+      );
     }
     const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
     const yVal = tf.tensor2d(valIdx.map((i) => [y[i]]));

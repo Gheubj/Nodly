@@ -38,6 +38,11 @@ export interface PredictionResult {
 export interface TabularDataset {
   headers: string[];
   rows: string[][];
+  /**
+   * Индекс целевой колонки (0-based, по полной строке CSV после разбора).
+   * Не задан — последняя колонка (как раньше).
+   */
+  targetColumnIndex?: number;
 }
 
 export interface TabularDatasetEntry {

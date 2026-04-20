@@ -70,6 +70,7 @@ interface AppState {
   addUnlabeledSamplesToImageDataset: (datasetId: string, files: File[]) => void;
   clearUnlabeledSamples: (datasetId: string) => void;
   addTabularDataset: (title: string, dataset: TabularDataset) => void;
+  setTabularDatasetTargetColumn: (datasetId: string, targetColumnIndex: number) => void;
   addImagePredictionInput: (title: string, file: File) => void;
   addTabularPredictionInput: (title: string, input: string) => void;
   removeImageDataset: (id: string) => void;
@@ -194,6 +195,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   addTabularDataset: (title, dataset) =>
     set((state) => ({
       tabularDatasets: [...state.tabularDatasets, { id: createId(), title: title.trim(), dataset }]
+    })),
+  setTabularDatasetTargetColumn: (datasetId, targetColumnIndex) =>
+    set((state) => ({
+      tabularDatasets: state.tabularDatasets.map((entry) =>
+        entry.id !== datasetId
+          ? entry
+          : {
+              ...entry,
+              dataset: { ...entry.dataset, targetColumnIndex }
+            }
+      )
     })),
   addImagePredictionInput: (title, file) =>
     set((state) => ({

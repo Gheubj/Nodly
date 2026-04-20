@@ -1686,6 +1686,16 @@ export function registerLmsRoutes(app: Express) {
         return;
       }
       const assignmentId = typeof req.query.assignmentId === "string" ? req.query.assignmentId : undefined;
+      const studentIdFilter = typeof req.query.studentId === "string" ? req.query.studentId : undefined;
+      if (studentIdFilter) {
+        const enrolled = await prisma.enrollment.findFirst({
+          where: { classroomId, studentId: studentIdFilter }
+        });
+        if (!enrolled) {
+          res.status(400).json({ error: "Ученик не в этом классе" });
+          return;
+        }
+      }
       const classworkAssignments = await prisma.assignment.findMany({
         where: { classroomId, kind: "classwork", published: true },
         select: { id: true }
@@ -1709,6 +1719,9 @@ export function registerLmsRoutes(app: Express) {
       };
       if (assignmentId) {
         where.assignmentId = assignmentId;
+      }
+      if (studentIdFilter) {
+        where.studentId = studentIdFilter;
       }
       const list = await prisma.submission.findMany({
         where,

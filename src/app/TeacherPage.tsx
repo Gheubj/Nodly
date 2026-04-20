@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -259,6 +259,7 @@ export function TeacherPage() {
   const [submissions, setSubmissions] = useState<TeacherSubmissionRow[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [filterAssignmentId, setFilterAssignmentId] = useState<string | undefined>();
+  const [filterStudentId, setFilterStudentId] = useState<string | undefined>();
   const [templates, setTemplates] = useState<LessonTemplateListItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -364,14 +365,21 @@ export function TeacherPage() {
   );
 
   const loadSubmissions = useCallback(
-    async (classroomId: string, assignmentId?: string) => {
+    async (classroomId: string, filters?: { assignmentId?: string; studentId?: string }) => {
       if (!classroomId) {
         setSubmissions([]);
         return;
       }
       setSubmissionsLoading(true);
       try {
-        const q = assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : "";
+        const params = new URLSearchParams();
+        if (filters?.assignmentId) {
+          params.set("assignmentId", filters.assignmentId);
+        }
+        if (filters?.studentId) {
+          params.set("studentId", filters.studentId);
+        }
+        const q = params.toString() ? `?${params.toString()}` : "";
         const list = await apiClient.get<TeacherSubmissionRow[]>(
           `/api/teacher/classrooms/${classroomId}/submissions${q}`
         );
@@ -451,13 +459,28 @@ export function TeacherPage() {
     }
   }, [user?.role]);
 
+  useLayoutEffect(() => {
+    setFilterAssignmentId(undefined);
+    setFilterStudentId(undefined);
+  }, [lmsClassroomId]);
+
   useEffect(() => {
     if (lmsClassroomId) {
       void loadAssignments(lmsClassroomId);
-      void loadSubmissions(lmsClassroomId, filterAssignmentId);
+      void loadSubmissions(lmsClassroomId, {
+        assignmentId: filterAssignmentId,
+        studentId: filterStudentId
+      });
       void loadGradebook(lmsClassroomId);
     }
-  }, [lmsClassroomId, filterAssignmentId, loadAssignments, loadSubmissions, loadGradebook]);
+  }, [
+    lmsClassroomId,
+    filterAssignmentId,
+    filterStudentId,
+    loadAssignments,
+    loadSubmissions,
+    loadGradebook
+  ]);
 
   useEffect(() => {
     if (lmsInnerTab === "lessonPlayer" && lmsClassroomId) {
@@ -547,13 +570,23 @@ export function TeacherPage() {
     }
   };
 
-  const handleRemoveStudent = async (classroomId: string, enrollmentId: string) => {
+  const handleRemoveStudent = async (classroomId: string, enrollmentId: string, removedStudentId?: string) => {
     try {
       await apiClient.delete(`/api/teacher/classrooms/${classroomId}/enrollments/${enrollmentId}`);
       messageApi.success("Ученик исключён из класса");
+      if (removedStudentId && filterStudentId === removedStudentId) {
+        setFilterStudentId(undefined);
+      }
       await loadDashboard();
       if (lmsClassroomId === classroomId) {
-        void loadSubmissions(lmsClassroomId, filterAssignmentId);
+        const keepStudent =
+          filterStudentId && (!removedStudentId || filterStudentId !== removedStudentId)
+            ? filterStudentId
+            : undefined;
+        void loadSubmissions(lmsClassroomId, {
+          assignmentId: filterAssignmentId,
+          studentId: keepStudent
+        });
         void loadAssignments(lmsClassroomId);
         void loadGradebook(lmsClassroomId);
       }
@@ -845,7 +878,10 @@ export function TeacherPage() {
           setEditingAssignment(null);
         }
         await loadAssignments(lmsClassroomId);
-        await loadSubmissions(lmsClassroomId, clearFilter ? undefined : filterAssignmentId ?? undefined);
+        await loadSubmissions(lmsClassroomId, {
+          ...(!clearFilter && filterAssignmentId ? { assignmentId: filterAssignmentId } : {}),
+          ...(filterStudentId ? { studentId: filterStudentId } : {})
+        });
         await loadGradebook(lmsClassroomId);
         await syncTeacherBadges();
         window.dispatchEvent(new Event("nodly-refresh-header-summary"));
@@ -858,6 +894,7 @@ export function TeacherPage() {
     [
       lmsClassroomId,
       filterAssignmentId,
+      filterStudentId,
       editingAssignment?.id,
       loadAssignments,
       loadSubmissions,
@@ -897,7 +934,10 @@ export function TeacherPage() {
       messageApi.success("Готово");
       setGradeOpen(false);
       setGradingSubmission(null);
-      await loadSubmissions(lmsClassroomId, filterAssignmentId);
+      await loadSubmissions(lmsClassroomId, {
+        assignmentId: filterAssignmentId,
+        studentId: filterStudentId
+      });
       await syncTeacherBadges();
       window.dispatchEvent(new Event("nodly-refresh-header-summary"));
     } catch (e) {
@@ -947,6 +987,17 @@ export function TeacherPage() {
     }
   };
 
+  const submissionStudentFilterOptions = useMemo(() => {
+    if (!dashboard?.classrooms.length || !lmsClassroomId) {
+      return [] as { value: string; label: string }[];
+    }
+    const c = dashboard.classrooms.find((x) => x.id === lmsClassroomId);
+    const rows = c?.students ?? [];
+    return [...rows]
+      .sort((a, b) => a.nickname.localeCompare(b.nickname, "ru"))
+      .map((s) => ({ value: s.id, label: s.nickname }));
+  }, [dashboard, lmsClassroomId]);
+
   const getStudentColumns = (classroomId: string): ColumnsType<DashboardStudent> => [
     { title: "Ник", dataIndex: "nickname", key: "nickname" },
     { title: "Email", dataIndex: "email", key: "email" },
@@ -964,7 +1015,7 @@ export function TeacherPage() {
         <Popconfirm
           title="Исключить ученика из класса?"
           description="Сдачи по заданиям этого класса будут удалены."
-          onConfirm={() => void handleRemoveStudent(classroomId, row.enrollmentId)}
+          onConfirm={() => void handleRemoveStudent(classroomId, row.enrollmentId, row.id)}
           okText="Исключить"
           cancelText="Отмена"
         >
@@ -1262,7 +1313,7 @@ export function TeacherPage() {
                     />
                   </Card>
                   <Card title="Сдачи">
-                    <Space style={{ marginBottom: 12 }} wrap>
+                    <Space style={{ marginBottom: 12 }} wrap align="center">
                       <Text type="secondary">Фильтр по заданию:</Text>
                       <Select
                         allowClear
@@ -1271,6 +1322,17 @@ export function TeacherPage() {
                         value={filterAssignmentId}
                         onChange={(v) => setFilterAssignmentId(v)}
                         options={assignments.map((a) => ({ value: a.id, label: a.title }))}
+                      />
+                      <Text type="secondary">Фильтр по ученику:</Text>
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="Все"
+                        style={{ minWidth: 200 }}
+                        value={filterStudentId}
+                        onChange={(v) => setFilterStudentId(v)}
+                        options={submissionStudentFilterOptions}
                       />
                     </Space>
                     <Table<TeacherSubmissionRow>

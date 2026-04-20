@@ -28,7 +28,13 @@ import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
 import { extractImageFilesFromZip } from "@/features/data/zipImages";
 import { removeStoredModelFiles } from "@/features/model/mlEngine";
-import type { SavedModelEntry } from "@/shared/types/ai";
+import type { SavedModelEntry, TabularDataset } from "@/shared/types/ai";
+
+function tabularColumnCount(ds: TabularDataset): number {
+  const headerLen = ds.headers?.length ?? 0;
+  const maxRow = ds.rows.length > 0 ? Math.max(...ds.rows.map((r) => r.length)) : 0;
+  return Math.max(headerLen, maxRow, 1);
+}
 
 const MODEL_TYPE_LABEL: Record<SavedModelEntry["modelType"], string> = {
   image_knn: "Картинки (KNN)",
@@ -79,6 +85,7 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
     addUnlabeledSamplesToImageDataset,
     clearUnlabeledSamples,
     addTabularDataset,
+    setTabularDatasetTargetColumn,
     addImagePredictionInput,
     addTabularPredictionInput,
     removeImageDataset,
@@ -357,7 +364,10 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
             label: "Таблицы (CSV)",
             children: (
               <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                <Paragraph>Признаки в колонках, целевое значение — в последней колонке.</Paragraph>
+                <Paragraph>
+                  CSV с заголовком: все колонки кроме выбранной ниже цели считаются признаками. Целевую колонку
+                  (число для регрессии, метка класса для классификации) выбери для каждого набора.
+                </Paragraph>
                 <Space.Compact style={{ width: "100%" }}>
                   <Input
                     value={csvDatasetName}
@@ -421,8 +431,28 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                     <Text strong>{dataset.title}</Text>
                     <br />
                     <Text type="secondary">
-                      Строк: {dataset.dataset.rows.length}, колонок: {dataset.dataset.headers.length}
+                      Строк: {dataset.dataset.rows.length}, колонок: {tabularColumnCount(dataset.dataset)}
                     </Text>
+                    <div style={{ marginTop: 8 }}>
+                      <Text type="secondary" style={{ marginRight: 8 }}>
+                        Целевая колонка:
+                      </Text>
+                      <Select
+                        style={{ minWidth: 280 }}
+                        value={
+                          dataset.dataset.targetColumnIndex ??
+                          Math.max(0, tabularColumnCount(dataset.dataset) - 1)
+                        }
+                        onChange={(v) => setTabularDatasetTargetColumn(dataset.id, v)}
+                        options={Array.from({ length: tabularColumnCount(dataset.dataset) }, (_, i) => {
+                          const name = dataset.dataset.headers[i]?.trim();
+                          return {
+                            value: i,
+                            label: name ? `${i}: ${name}` : `Колонка ${i}`
+                          };
+                        })}
+                      />
+                    </div>
                   </Card>
                 ))}
                 {csvError ? <Alert type="error" showIcon message={csvError} /> : null}
