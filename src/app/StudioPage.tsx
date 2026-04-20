@@ -866,48 +866,49 @@ export function StudioPage() {
     teacherReview &&
     (GRADEABLE_STATUSES as readonly string[]).includes(teacherReview.status);
 
+  const submissionBanner =
+    !readOnly && submissionCtx ? (
+      <Alert
+        type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
+        showIcon
+        message={
+          <span>
+            Задание: <strong>{submissionCtx.assignmentTitle}</strong> ({submissionCtx.classroomTitle})
+          </span>
+        }
+        description={
+          <Space direction="vertical" size="small" style={{ width: "100%" }}>
+            {teacherMessageForStudent ? (
+              <div>
+                <Text strong>Сообщение учителя:</Text>
+                <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{teacherMessageForStudent}</Paragraph>
+              </div>
+            ) : null}
+            {(submissionCtx.status === "graded" || submissionCtx.status === "auto_checked") && submissionCtx.score != null ? (
+              <Text>
+                Оценка: {submissionCtx.score} / {submissionCtx.maxScore}
+              </Text>
+            ) : null}
+            {submissionCtx.status === "pending_teacher_review" && submissionCtx.autoScore != null ? (
+              <Text>
+                Предварительный балл (авто): {submissionCtx.autoScore} / {submissionCtx.maxScore}
+              </Text>
+            ) : null}
+            {submissionCtx.canSubmit ? (
+              <Button type="primary" loading={submittingAssignment} onClick={() => void handleSubmitFromStudio()}>
+                Сохранить в облако и сдать учителю
+              </Button>
+            ) : submissionCtx.status === "submitted" || submissionCtx.status === "pending_teacher_review" ? (
+              <Text type="secondary">Работа сдана, жди проверки.</Text>
+            ) : null}
+          </Space>
+        }
+      />
+    ) : null;
+
   const projectWorkspace = (
     <div className="studio-page">
-      {!isMini ? <div className="studio-page__chrome">
-        {!readOnly && submissionCtx ? (
-          <Alert
-            type={submissionCtx.status === "needs_revision" ? "warning" : "info"}
-            showIcon
-            message={
-              <span>
-                Задание: <strong>{submissionCtx.assignmentTitle}</strong> ({submissionCtx.classroomTitle})
-              </span>
-            }
-            description={
-              <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                {teacherMessageForStudent ? (
-                  <div>
-                    <Text strong>Сообщение учителя:</Text>
-                    <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{teacherMessageForStudent}</Paragraph>
-                  </div>
-                ) : null}
-                {(submissionCtx.status === "graded" || submissionCtx.status === "auto_checked") && submissionCtx.score != null ? (
-                  <Text>
-                    Оценка: {submissionCtx.score} / {submissionCtx.maxScore}
-                  </Text>
-                ) : null}
-                {submissionCtx.status === "pending_teacher_review" && submissionCtx.autoScore != null ? (
-                  <Text>
-                    Предварительный балл (авто): {submissionCtx.autoScore} / {submissionCtx.maxScore}
-                  </Text>
-                ) : null}
-                {submissionCtx.canSubmit ? (
-                  <Button type="primary" loading={submittingAssignment} onClick={() => void handleSubmitFromStudio()}>
-                    Сохранить в облако и сдать учителю
-                  </Button>
-                ) : submissionCtx.status === "submitted" || submissionCtx.status === "pending_teacher_review" ? (
-                  <Text type="secondary">Работа сдана, жди проверки.</Text>
-                ) : null}
-              </Space>
-            }
-          />
-        ) : null}
-      </div> : null}
+      {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
       {!isMini ? <div className="studio-page__toolbar">
         <span className="studio-page__toolbar-title" title={currentProjectTitle}>
           {currentProjectTitle}
