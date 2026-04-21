@@ -65,6 +65,7 @@ type BlockCommand =
   | {
       type: "compare_models";
       datasetRef: string;
+      modelCount: number;
       modelARef: string;
       modelBRef: string;
       modelCRef: string;
@@ -77,6 +78,7 @@ type BlockCommand =
   | {
       type: "compare_saved_models";
       datasetRef: string;
+      modelCount: number;
       modelAId: string;
       modelBId: string;
       modelCId: string;
@@ -217,7 +219,12 @@ function getSavedModelBlocklyOptions(): [string, string][] {
 function getSavedTabularModelBlocklyOptions(): [string, string][] {
   const models = useAppStore
     .getState()
-    .savedModels.filter((m) => m.modelType !== "image_knn");
+    .savedModels.filter(
+      (m) =>
+        m.modelType !== "image_knn" &&
+        m.modelType !== "tabular_svm" &&
+        m.modelType !== "tabular_random_forest"
+    );
   if (models.length === 0) {
     return [["нет сохранённых табличных моделей", "__none__"]];
   }
@@ -225,6 +232,16 @@ function getSavedTabularModelBlocklyOptions(): [string, string][] {
     ...models.map((m) => [`${m.title} (${m.modelType})`, m.id] as [string, string]),
     ["—", "__none__"]
   ];
+}
+
+function refreshCompareOptionalModelRow(block: Blockly.Block, countField: string, rowInputName: string) {
+  const count = Number(block.getFieldValue(countField) ?? 3);
+  const showThird = count >= 3;
+  block.getInput(rowInputName)?.setVisible(showThird);
+  const svg = block as Blockly.BlockSvg;
+  if (svg.rendered) {
+    svg.render();
+  }
 }
 
 function getSavedModelEntryById(id: string): SavedModelEntry | null {
@@ -683,10 +700,15 @@ function registerBlocks() {
           "DATASET_REF"
         );
       this.appendDummyInput()
+        .appendField("кол-во")
+        .appendField(new Blockly.FieldDropdown([["2", "2"], ["3", "3"]]), "MODEL_COUNT")
+        .appendField("моделей");
+      this.appendDummyInput()
         .appendField("A")
         .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_A")
         .appendField("B")
-        .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_B")
+        .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_B");
+      this.appendDummyInput("MODEL_C_ROW")
         .appendField("C")
         .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_C");
       this.appendDummyInput()
@@ -704,6 +726,16 @@ function registerBlocks() {
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
+      refreshCompareOptionalModelRow(this, "MODEL_COUNT", "MODEL_C_ROW");
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (e.type !== Blockly.Events.BLOCK_CHANGE || (e as Blockly.Events.BlockChange).blockId !== this.id) {
+          return;
+        }
+        const ce = e as Blockly.Events.BlockChange;
+        if (ce.element === "field" && ce.name === "MODEL_COUNT") {
+          refreshCompareOptionalModelRow(this, "MODEL_COUNT", "MODEL_C_ROW");
+        }
+      });
     }
   };
   Blockly.Blocks.noda_compare_saved_models = {
@@ -716,15 +748,30 @@ function registerBlocks() {
           "DATASET_REF"
         );
       this.appendDummyInput()
+        .appendField("кол-во")
+        .appendField(new Blockly.FieldDropdown([["2", "2"], ["3", "3"]]), "MODEL_COUNT")
+        .appendField("моделей");
+      this.appendDummyInput()
         .appendField("A")
         .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_A_ID")
         .appendField("B")
-        .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_B_ID")
+        .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_B_ID");
+      this.appendDummyInput("MODEL_C_ROW")
         .appendField("C")
         .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_C_ID");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.model);
+      refreshCompareOptionalModelRow(this, "MODEL_COUNT", "MODEL_C_ROW");
+      this.setOnChange(function (this: Blockly.Block, e: Blockly.Events.Abstract) {
+        if (e.type !== Blockly.Events.BLOCK_CHANGE || (e as Blockly.Events.BlockChange).blockId !== this.id) {
+          return;
+        }
+        const ce = e as Blockly.Events.BlockChange;
+        if (ce.element === "field" && ce.name === "MODEL_COUNT") {
+          refreshCompareOptionalModelRow(this, "MODEL_COUNT", "MODEL_C_ROW");
+        }
+      });
     }
   };
   /** Устаревшие блоки модели: только чтобы старые проекты открывались; не в палитре. */
@@ -1177,6 +1224,7 @@ export function BlocklyWorkspace({
         commands.push({
           type: "compare_models",
           datasetRef: current.getFieldValue("DATASET_REF"),
+          modelCount: Math.max(2, Math.min(3, Number(current.getFieldValue("MODEL_COUNT")) || 3)),
           modelARef: String(current.getFieldValue("MODEL_A") ?? "__none__"),
           modelBRef: String(current.getFieldValue("MODEL_B") ?? "__none__"),
           modelCRef: String(current.getFieldValue("MODEL_C") ?? "__none__"),
@@ -1190,6 +1238,7 @@ export function BlocklyWorkspace({
         commands.push({
           type: "compare_saved_models",
           datasetRef: current.getFieldValue("DATASET_REF"),
+          modelCount: Math.max(2, Math.min(3, Number(current.getFieldValue("MODEL_COUNT")) || 3)),
           modelAId: String(current.getFieldValue("MODEL_A_ID") ?? "__none__"),
           modelBId: String(current.getFieldValue("MODEL_B_ID") ?? "__none__"),
           modelCId: String(current.getFieldValue("MODEL_C_ID") ?? "__none__")
@@ -1559,11 +1608,11 @@ export function BlocklyWorkspace({
         if (!tabularDataset) {
           throw new Error("Датасет для сравнения не найден.");
         }
-        const modelTypes = uniqueModelTypesForComparison([
-          command.modelARef,
-          command.modelBRef,
-          command.modelCRef
-        ]);
+        const modelRefs = [command.modelARef, command.modelBRef];
+        if (command.modelCount >= 3) {
+          modelRefs.push(command.modelCRef);
+        }
+        const modelTypes = uniqueModelTypesForComparison(modelRefs);
         if (modelTypes.length < 2) {
           throw new Error("Выбери минимум 2 разные модели для сравнения.");
         }
@@ -1636,7 +1685,9 @@ export function BlocklyWorkspace({
             summary: r.summary,
             primaryMetricKey: r.primaryMetricKey,
             primaryMetricValue: r.primaryMetricValue,
-            universalScore: r.universalScore
+            universalScore: r.universalScore,
+            metrics: r.evaluation.metrics,
+            epochHistory: r.report.epochHistory
           })),
           bestModelType: best?.modelType ?? null,
           generatedAt: new Date().toISOString()
@@ -1664,11 +1715,11 @@ export function BlocklyWorkspace({
         continue;
       }
       if (command.type === "compare_saved_models") {
-        const entries = uniqueSavedModelEntriesForComparison([
-          command.modelAId,
-          command.modelBId,
-          command.modelCId
-        ]);
+        const modelIds = [command.modelAId, command.modelBId];
+        if (command.modelCount >= 3) {
+          modelIds.push(command.modelCId);
+        }
+        const entries = uniqueSavedModelEntriesForComparison(modelIds);
         if (entries.length < 2) {
           throw new Error("Выбери минимум 2 сохранённые табличные модели для сравнения.");
         }
@@ -1689,18 +1740,26 @@ export function BlocklyWorkspace({
           evaluation: ModelEvaluation;
           report: TrainingRunReport;
         }> = [];
+        const failed: string[] = [];
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i]!;
-          const outcome = await evaluateLoadedSavedModelOnDataset(entry, command.datasetRef, (progress, message) => {
-            const base = (i / entries.length) * 100;
-            const portion = progress / entries.length;
-            state.setTraining({
-              progress: Math.min(100, Math.round(base + portion)),
-              message,
-              coachMood: "working"
+          try {
+            const outcome = await evaluateLoadedSavedModelOnDataset(entry, command.datasetRef, (progress, message) => {
+              const base = (i / entries.length) * 100;
+              const portion = progress / entries.length;
+              state.setTraining({
+                progress: Math.min(100, Math.round(base + portion)),
+                message,
+                coachMood: "working"
+              });
             });
-          });
-          compareRows.push(outcome);
+            compareRows.push(outcome);
+          } catch {
+            failed.push(entry.title);
+          }
+        }
+        if (compareRows.length < 2) {
+          throw new Error("Не удалось сравнить минимум 2 сохранённые модели. Проверь, что это tabular TF-модели.");
         }
         compareRows.sort((a, b) => b.universalScore - a.universalScore);
         const best = compareRows[0];
@@ -1712,7 +1771,9 @@ export function BlocklyWorkspace({
             summary: r.summary,
             primaryMetricKey: r.primaryMetricKey,
             primaryMetricValue: r.primaryMetricValue,
-            universalScore: r.universalScore
+            universalScore: r.universalScore,
+            metrics: r.evaluation.metrics,
+            epochHistory: r.report.epochHistory
           })),
           bestModelType: best?.modelType ?? null,
           generatedAt: new Date().toISOString()
@@ -1729,7 +1790,9 @@ export function BlocklyWorkspace({
           isTraining: false,
           progress: 100,
           message: best
-            ? `Сравнение сохранённых моделей готово. Лучшая: ${best.modelType} (${(best.universalScore * 100).toFixed(1)}%)`
+            ? `Сравнение сохранённых моделей готово. Лучшая: ${best.modelType} (${(best.universalScore * 100).toFixed(1)}%)${
+                failed.length ? `. Не удалось загрузить: ${failed.join(", ")}` : ""
+              }`
             : "Сравнение сохранённых моделей готово",
           coachMood: duringCompare ? "working" : "success"
         });

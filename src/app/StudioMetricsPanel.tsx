@@ -289,6 +289,32 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
         : row.primaryMetricValue.toFixed(4),
     scorePct: Number((row.universalScore * 100).toFixed(1))
   }));
+  const maxEpoch = rows.reduce((m, r) => Math.max(m, r.epochHistory?.length ?? 0), 0);
+  const overlayRows = Array.from({ length: maxEpoch }, (_, i) => {
+    const epoch = i + 1;
+    const row: Record<string, number> = { epoch };
+    for (const r of rows) {
+      const e = r.epochHistory?.[i];
+      if (!e) {
+        continue;
+      }
+      if (typeof e.loss === "number") {
+        row[`${r.modelType}_loss`] = e.loss;
+      }
+      if (typeof e.valLoss === "number") {
+        row[`${r.modelType}_valLoss`] = e.valLoss;
+      }
+      if (typeof e.accuracy === "number") {
+        row[`${r.modelType}_acc`] = e.accuracy;
+      }
+      if (typeof e.valAccuracy === "number") {
+        row[`${r.modelType}_valAcc`] = e.valAccuracy;
+      }
+    }
+    return row;
+  });
+  const hasLossOverlay = rows.some((r) => (r.epochHistory?.length ?? 0) > 0);
+  const hasAccOverlay = rows.some((r) => r.epochHistory?.some((e) => e.accuracy != null || e.valAccuracy != null));
   if (!rows.length) {
     return null;
   }
@@ -315,16 +341,72 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {hasLossOverlay ? (
+        <div className="studio-metrics-panel__chart-wrap">
+          <Text strong>Сравнение loss (наложение)</Text>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={overlayRows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
+              <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} width={40} />
+              <Tooltip />
+              <Legend />
+              {rows.map((r, idx) => (
+                <Line
+                  key={`${r.modelType}-loss`}
+                  type="monotone"
+                  dataKey={`${r.modelType}_loss`}
+                  name={`${r.modelType} train`}
+                  dot={false}
+                  strokeWidth={2}
+                  stroke={["#1677ff", "#52c41a", "#fa8c16"][idx % 3]}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : null}
+      {hasAccOverlay ? (
+        <div className="studio-metrics-panel__chart-wrap">
+          <Text strong>Сравнение accuracy (наложение)</Text>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={overlayRows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
+              <XAxis dataKey="epoch" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} width={40} />
+              <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]} />
+              <Legend />
+              {rows.map((r, idx) => (
+                <Line
+                  key={`${r.modelType}-acc`}
+                  type="monotone"
+                  dataKey={`${r.modelType}_acc`}
+                  name={`${r.modelType} train`}
+                  dot={false}
+                  strokeWidth={2}
+                  stroke={["#722ed1", "#13c2c2", "#eb2f96"][idx % 3]}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : null}
       <Table
         size="small"
         pagination={false}
         rowKey={(r) => `${r.modelType}-${r.primaryMetricKey}`}
+        scroll={{ x: 680 }}
         columns={[
-          { title: "Модель", dataIndex: "modelType", key: "m" },
-          { title: "Тип", dataIndex: "kind", key: "k" },
-          { title: "Главная метрика", dataIndex: "primaryMetricKey", key: "pk" },
-          { title: "Значение", dataIndex: "primaryValueFmt", key: "pv" },
-          { title: "Universal score", dataIndex: "scorePct", key: "s", render: (v: number) => `${v.toFixed(1)}%` }
+          { title: "Модель", dataIndex: "modelType", key: "m", width: 200, ellipsis: true },
+          { title: "Главная", dataIndex: "primaryMetricKey", key: "pk", width: 120 },
+          { title: "Значение", dataIndex: "primaryValueFmt", key: "pv", width: 120 },
+          {
+            title: "Score",
+            dataIndex: "scorePct",
+            key: "s",
+            width: 120,
+            render: (v: number) => `${v.toFixed(1)}%`
+          }
         ]}
         dataSource={rows}
       />
@@ -351,9 +433,9 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
 
   const filledBody = (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      {comparison ? <ComparisonPanel comparison={comparison} /> : null}
       {report ? (
         <>
-          {comparison ? <ComparisonPanel comparison={comparison} /> : null}
           <div>
             <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
               По эпохам
@@ -395,13 +477,13 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
     return (
       <div className="studio-metrics-panel studio-metrics-panel--embedded" aria-label="Визуализация">
         <Card size="small" className="studio-metrics-card" bordered={false}>
-          {!report && !prediction ? emptyBody : filledBody}
+          {!report && !prediction && !comparison ? emptyBody : filledBody}
         </Card>
       </div>
     );
   }
 
-  if (!report && !prediction) {
+  if (!report && !prediction && !comparison) {
     return (
       <aside className="studio-metrics-panel" aria-label="Визуализация">
         <Card size="small" title="Визуализация" className="studio-metrics-card">

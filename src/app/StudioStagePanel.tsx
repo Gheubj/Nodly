@@ -17,6 +17,7 @@ function useCoachBubbleText(): string {
   const coachUserMessage = useAppStore((s) => s.coachUserMessage);
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
+  const comparison = useAppStore((s) => s.modelComparisonReport);
 
   return useMemo(() => {
     if (training.isTraining) {
@@ -28,7 +29,7 @@ function useCoachBubbleText(): string {
     if (coachUserMessage?.trim()) {
       return coachUserMessage.trim();
     }
-    if (evaluation || prediction) {
+    if (evaluation || prediction || comparison) {
       return COACH_AUTO_RESULTS_LEAD;
     }
     if (training.message?.trim()) {
@@ -41,7 +42,8 @@ function useCoachBubbleText(): string {
     training.message,
     coachUserMessage,
     evaluation,
-    prediction
+    prediction,
+    comparison
   ]);
 }
 
@@ -49,12 +51,13 @@ function CoachBriefBlock() {
   const training = useAppStore((s) => s.training);
   const evaluation = useAppStore((s) => s.evaluation);
   const prediction = useAppStore((s) => s.prediction);
+  const comparison = useAppStore((s) => s.modelComparisonReport);
   const lines = useMemo(() => {
     if (training.isTraining || training.scenarioActive) {
       return [];
     }
-    return buildCoachBriefLines(evaluation, prediction);
-  }, [training.isTraining, training.scenarioActive, evaluation, prediction]);
+    return buildCoachBriefLines(evaluation, prediction, comparison);
+  }, [training.isTraining, training.scenarioActive, evaluation, prediction, comparison]);
   if (lines.length === 0) {
     return null;
   }

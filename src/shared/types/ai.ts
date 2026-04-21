@@ -146,6 +146,8 @@ export interface ModelComparisonRow {
   primaryMetricKey: string;
   primaryMetricValue: number;
   universalScore: number;
+  metrics?: Record<string, number>;
+  epochHistory?: TrainingEpochLog[];
 }
 
 export interface ModelComparisonReport {

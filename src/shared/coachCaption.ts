@@ -1,4 +1,4 @@
-import type { ModelEvaluation, PredictionResult } from "@/shared/types/ai";
+import type { ModelComparisonReport, ModelEvaluation, PredictionResult } from "@/shared/types/ai";
 
 /** Короткая реплика персонажа, если нет блока «показать сообщение». */
 export const COACH_AUTO_RESULTS_LEAD = "Вот результаты:";
@@ -8,9 +8,25 @@ export type CoachBriefLine = { key: string; label: string; value: string };
 /** Краткие строки под пузырём (без дублирования длинного summary, если уже есть точность). */
 export function buildCoachBriefLines(
   evaluation: ModelEvaluation | null,
-  prediction: PredictionResult | null
+  prediction: PredictionResult | null,
+  comparison: ModelComparisonReport | null
 ): CoachBriefLine[] {
   const out: CoachBriefLine[] = [];
+  if (comparison?.rows?.length) {
+    out.push({
+      key: "cmp_count",
+      label: "Сравнение",
+      value: `${comparison.rows.length} моделей`
+    });
+    const best = comparison.rows[0];
+    if (best) {
+      out.push({
+        key: "cmp_best",
+        label: "Лучшая",
+        value: `${best.modelType} (${(best.universalScore * 100).toFixed(1)}%)`
+      });
+    }
+  }
   if (evaluation?.metrics?.testAccuracy != null) {
     out.push({
       key: "acc",
