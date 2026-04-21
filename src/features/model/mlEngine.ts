@@ -20,6 +20,7 @@ import {
   deleteModelLibraryRecord,
   getModelLibraryRecord,
   putModelLibraryRecord,
+  type KnnModelLibraryPayload,
   type TabularModelLibraryPayload
 } from "@/features/model/modelLibraryMeta";
 import { stripLeadingDuplicateHeaderRows } from "@/features/data/csv";
@@ -53,6 +54,37 @@ let imageKnnExtraLabels: Record<string, string> = {};
 let lastTrainedModelType: ModelType | null = null;
 
 const TABULAR_IDB_URL = (id: string) => `indexeddb://noda_tabular_${id}`;
+
+type SharedModelBundleV1 = {
+  version: 1;
+  title: string;
+  createdAt: string;
+  modelType: ModelType;
+  record: TabularModelLibraryPayload | KnnModelLibraryPayload;
+  tfArtifacts?: {
+    modelTopology: unknown;
+    weightSpecs: tf.io.WeightsManifestEntry[];
+    weightDataBase64: string;
+  };
+};
+
+function toBase64(bytes: Uint8Array): string {
+  let out = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    out += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(out);
+}
+
+function fromBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    out[i] = bin.charCodeAt(i);
+  }
+  return out;
+}
 
 function pickClusterCount(sampleCount: number): number {
   return Math.min(sampleCount, Math.min(8, Math.max(2, Math.round(Math.sqrt(sampleCount / 2)))));
@@ -1409,6 +1441,127 @@ export async function removeStoredModelFiles(entry: SavedModelEntry): Promise<vo
   } catch {
     /* ignore */
   }
+}
+
+export async function exportSavedModelBundle(entry: SavedModelEntry): Promise<{
+  filename: string;
+  content: string;
+}> {
+  const rec = await getModelLibraryRecord(entry.id);
+  if (!rec) {
+    throw new Error("Сохранённая модель не найдена в браузере.");
+  }
+  const bundle: SharedModelBundleV1 = {
+    version: 1,
+    title: entry.title,
+    createdAt: entry.createdAt,
+    modelType: entry.modelType,
+    record:
+      rec.kind === "tabular"
+        ? {
+            kind: "tabular",
+            modelType: rec.modelType,
+            tabularMode: rec.tabularMode,
+            classIndexToLabel: rec.classIndexToLabel,
+            tabularFeatureSpecs: rec.tabularFeatureSpecs,
+            ...(rec.tabularNorm ? { tabularNorm: rec.tabularNorm } : {})
+          }
+        : { kind: "knn", extraLabels: rec.extraLabels, dataset: rec.dataset }
+  };
+  if (rec.kind === "tabular") {
+    const m = await tf.loadLayersModel(TABULAR_IDB_URL(entry.id));
+    let artifacts: tf.io.ModelArtifacts | null = null;
+    await m.save(
+      tf.io.withSaveHandler(async (a) => {
+        artifacts = a;
+        return { modelArtifactsInfo: tf.io.getModelArtifactsInfoForJSON(a) };
+      })
+    );
+    m.dispose();
+    if (!artifacts?.modelTopology || !artifacts.weightSpecs || !artifacts.weightData) {
+      throw new Error("Не удалось экспортировать веса табличной модели.");
+    }
+    bundle.tfArtifacts = {
+      modelTopology: artifacts.modelTopology,
+      weightSpecs: artifacts.weightSpecs,
+      weightDataBase64: toBase64(new Uint8Array(artifacts.weightData))
+    };
+    bundle.record = {
+      kind: "tabular",
+      modelType: rec.modelType,
+      tabularMode: rec.tabularMode,
+      classIndexToLabel: rec.classIndexToLabel,
+      tabularFeatureSpecs: rec.tabularFeatureSpecs,
+      ...(rec.tabularNorm ? { tabularNorm: rec.tabularNorm } : {})
+    };
+  }
+  const safeTitle = entry.title.trim().replace(/[^\wа-яА-Я-]+/g, "_").replace(/_+/g, "_") || "model";
+  return {
+    filename: `${safeTitle}.nodmodel.json`,
+    content: JSON.stringify(bundle)
+  };
+}
+
+export async function importSavedModelBundle(
+  fileContent: string,
+  titleOverride?: string
+): Promise<SavedModelEntry> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fileContent);
+  } catch {
+    throw new Error("Файл модели повреждён: невалидный JSON.");
+  }
+  const b = raw as Partial<SharedModelBundleV1>;
+  if (b?.version !== 1 || typeof b.modelType !== "string" || !b.record || typeof b.title !== "string") {
+    throw new Error("Неизвестный формат файла модели.");
+  }
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const createdAt = new Date().toISOString();
+  if ((b.record as { kind?: string }).kind === "tabular") {
+    const rec = b.record as TabularModelLibraryPayload;
+    if (!b.tfArtifacts?.modelTopology || !Array.isArray(b.tfArtifacts.weightSpecs) || typeof b.tfArtifacts.weightDataBase64 !== "string") {
+      throw new Error("Файл табличной модели неполный (нет весов).");
+    }
+    const weightData = fromBase64(b.tfArtifacts.weightDataBase64).buffer;
+    const model = await tf.loadLayersModel(
+      tf.io.fromMemory({
+        modelTopology: b.tfArtifacts.modelTopology,
+        weightSpecs: b.tfArtifacts.weightSpecs,
+        weightData
+      } as tf.io.ModelArtifacts)
+    );
+    await model.save(TABULAR_IDB_URL(id));
+    model.dispose();
+    await putModelLibraryRecord({
+      id,
+      kind: "tabular",
+      modelType: rec.modelType,
+      tabularMode: rec.tabularMode,
+      classIndexToLabel: rec.classIndexToLabel,
+      tabularFeatureSpecs: rec.tabularFeatureSpecs,
+      ...(rec.tabularNorm ? { tabularNorm: rec.tabularNorm } : {})
+    });
+    return {
+      id,
+      title: titleOverride?.trim() || b.title,
+      modelType: rec.modelType,
+      createdAt
+    };
+  }
+  const knnRec = b.record as { kind: "knn"; extraLabels: Record<string, string>; dataset: Record<string, { shape: number[]; data: number[] }> };
+  await putModelLibraryRecord({
+    id,
+    kind: "knn",
+    extraLabels: knnRec.extraLabels,
+    dataset: knnRec.dataset
+  });
+  return {
+    id,
+    title: titleOverride?.trim() || b.title,
+    modelType: "image_knn",
+    createdAt
+  };
 }
 
 function parsePredictionFeatures(input: string) {

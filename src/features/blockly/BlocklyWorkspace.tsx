@@ -139,7 +139,6 @@ function parseModelTypeRef(ref: string, fallback: ModelType = "image_knn"): Mode
 function getTrainModelTypeDropdownOptions(level: 1 | 2): [string, string][] {
   if (level === 1) {
     return [
-      ["Картинки (KNN)", "image_knn"],
       ["Таблица: регрессия", "tabular_regression"],
       ["Таблица: классификация", "tabular_classification"],
       ["Таблица: нейросеть (MLP)", "tabular_neural"]

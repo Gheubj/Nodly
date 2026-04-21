@@ -699,6 +699,11 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   gap: 10px;
 }
 
+.studio-mini-host .studio-page__main--mini-side.studio-page__main--mini-compact .studio-page__blockly {
+  flex: 0 1 62vw;
+  max-width: 980px;
+}
+
 .studio-mini-host .studio-page__main--mini-side .studio-page__side-tabs--mini {
   flex-shrink: 0;
   width: min(380px, 42vw);
@@ -779,6 +784,19 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.studio-page__blockly:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--app-bg);
+  padding: 6px;
+}
+
+.studio-page__blockly:fullscreen .blockly-root,
+.studio-page__blockly:fullscreen .blockly-layout,
+.studio-page__blockly:fullscreen .blockly-workspace-surface {
+  height: 100%;
 }
 
 .studio-stage-panel {

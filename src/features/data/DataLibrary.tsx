@@ -27,7 +27,11 @@ import type { UploadProps } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { parseCsvFile } from "@/features/data/csv";
 import { extractImageFilesFromZip, extractLabeledImageFilesFromZip } from "@/features/data/zipImages";
-import { removeStoredModelFiles } from "@/features/model/mlEngine";
+import {
+  exportSavedModelBundle,
+  importSavedModelBundle,
+  removeStoredModelFiles
+} from "@/features/model/mlEngine";
 import type { SavedModelEntry, TabularDataset } from "@/shared/types/ai";
 
 function tabularColumnCount(ds: TabularDataset): number {
@@ -79,6 +83,7 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const {
+    workspaceLevel,
     imageDatasets,
     tabularDatasets,
     imagePredictionInputs,
@@ -97,8 +102,10 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
     removeImagePredictionInput,
     removeTabularPredictionInput,
     savedModels,
+    addSavedModel,
     removeSavedModel
   } = useAppStore();
+  const allowImages = workspaceLevel === 2;
 
   const filteredImageDatasets = useMemo(
     () => imageDatasets.filter((ds) => ds.title.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -130,12 +137,17 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
         showIcon
         className={variant === "drawer" ? "data-library__alert--compact" : undefined}
         message={variant === "drawer" ? "Данные" : "Как собрать данные"}
-        description="Классификация: набор → классы → фото или ZIP. Кластеризация: один набор → фото/ZIP. Форматы: JPG, PNG, WEBP, GIF (до 10 МБ)."
+        description={
+          allowImages
+            ? "Классификация: набор → классы → фото или ZIP. Кластеризация: один набор → фото/ZIP. Форматы: JPG, PNG, WEBP, GIF (до 10 МБ)."
+            : "На уровне 1 доступны только табличные задания (CSV). Работа с изображениями открывается на уровне 2."
+        }
       />
       <Collapse
         defaultActiveKey={["images", "tabular"]}
         items={[
-          {
+          ...(allowImages
+            ? [{
             key: "images",
             label: "Картинки (классификация и кластеризация)",
             children: (
@@ -419,7 +431,8 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                 ))}
               </Space>
             )
-          },
+          }]
+            : []),
           {
             key: "tabular",
             label: "Таблицы (CSV)",
@@ -541,6 +554,22 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
     message.success("Модель удалена из библиотеки");
   };
 
+  const handleExportSavedModel = async (entry: SavedModelEntry) => {
+    try {
+      const payload = await exportSavedModelBundle(entry);
+      const blob = new Blob([payload.content], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = payload.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success("Модель экспортирована в файл");
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Не удалось экспортировать модель");
+    }
+  };
+
   const predictTabContent = (
     <Space direction="vertical" size={12} style={{ width: "100%" }}>
       <Paragraph>
@@ -548,9 +577,10 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
         только в блоке). Для картинок — только вход из библиотеки.
       </Paragraph>
       <Collapse
-        defaultActiveKey={["img", "tab"]}
+        defaultActiveKey={allowImages ? ["img", "tab"] : ["tab"]}
         items={[
-          {
+          ...(allowImages
+            ? [{
             key: "img",
             label: "Картинка для проверки",
             children: (
@@ -587,7 +617,8 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                 ))}
               </Space>
             )
-          },
+          }]
+            : []),
           {
             key: "tab",
             label: "Числа для таблицы (табличный вход)",
@@ -643,6 +674,31 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
         Сохраняются блоком «Сохранить модель в библиотеку» после обучения. Веса лежат в IndexedDB этого браузера; в проект
         попадает только список имён — на другом устройстве загрузка не подтянет файлы, пока модель не сохранена там же.
       </Paragraph>
+      <Alert
+        type="info"
+        showIcon
+        message="Обмен моделями"
+        description="Экспортируй модель в .nodmodel.json и загружай этот файл на другом устройстве через кнопку «Импорт модели»."
+      />
+      <Upload
+        accept=".json,.nodmodel"
+        showUploadList={false}
+        beforeUpload={(file) => {
+          void (async () => {
+            try {
+              const text = await file.text();
+              const imported = await importSavedModelBundle(text);
+              addSavedModel(imported);
+              message.success(`Модель импортирована: ${imported.title}`);
+            } catch (e) {
+              message.error(e instanceof Error ? e.message : "Не удалось импортировать модель");
+            }
+          })();
+          return false;
+        }}
+      >
+        <Button icon={<UploadOutlined />}>Импорт модели</Button>
+      </Upload>
       {savedModels.length === 0 ? (
         <Text type="secondary">Пока нет сохранённых моделей</Text>
       ) : null}
@@ -651,9 +707,14 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
           key={m.id}
           size="small"
           extra={
-            <Button danger size="small" icon={<DeleteOutlined />} onClick={() => void handleRemoveSavedModel(m)}>
-              Удалить
-            </Button>
+            <Space>
+              <Button size="small" icon={<DownloadOutlined />} onClick={() => void handleExportSavedModel(m)}>
+                Экспорт
+              </Button>
+              <Button danger size="small" icon={<DeleteOutlined />} onClick={() => void handleRemoveSavedModel(m)}>
+                Удалить
+              </Button>
+            </Space>
           }
         >
           <Text strong>{m.title}</Text>

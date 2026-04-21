@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { DatabaseOutlined, FormOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, FormOutlined, FullscreenExitOutlined, FullscreenOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
@@ -206,6 +206,12 @@ export function StudioPage() {
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [miniSaveToProjectsOpen, setMiniSaveToProjectsOpen] = useState(false);
   const [miniSaveToProjectsTitle, setMiniSaveToProjectsTitle] = useState("");
+  const [renameProjectOpen, setRenameProjectOpen] = useState(false);
+  const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
+  const [renameProjectTitle, setRenameProjectTitle] = useState("");
+  const [renamingProject, setRenamingProject] = useState(false);
+  const [miniPresentation, setMiniPresentation] = useState(false);
+  const miniBlocklyWrapRef = useRef<HTMLDivElement | null>(null);
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
@@ -808,9 +814,76 @@ export function StudioPage() {
     tabularPredictionInputs
   ]);
 
+  useEffect(() => {
+    const onFs = () => {
+      setMiniPresentation(document.fullscreenElement === miniBlocklyWrapRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const toggleMiniPresentation = async () => {
+    if (!isMini) {
+      return;
+    }
+    const node = miniBlocklyWrapRef.current;
+    if (!node) {
+      return;
+    }
+    try {
+      if (document.fullscreenElement === node) {
+        await document.exitFullscreen();
+      } else {
+        await node.requestFullscreen();
+      }
+    } catch {
+      messageApi.error("Не удалось включить режим презентации");
+    }
+  };
+
   const handleSave = async () => {
     await saveProjectToCloud(saveTitle);
     setSaveOpen(false);
+  };
+
+  const openRenameProjectModal = (projectId: string, currentTitle: string) => {
+    setRenameProjectId(projectId);
+    setRenameProjectTitle(currentTitle);
+    setRenameProjectOpen(true);
+  };
+
+  const submitRenameProject = async () => {
+    if (!renameProjectId) {
+      return;
+    }
+    const nextTitle = renameProjectTitle.trim();
+    if (!nextTitle) {
+      messageApi.error("Название проекта не может быть пустым");
+      return;
+    }
+    setRenamingProject(true);
+    try {
+      const loaded = await loadProjectSmart(renameProjectId);
+      if (!loaded) {
+        throw new Error("Проект не найден");
+      }
+      const now = new Date().toISOString();
+      await saveProjectSmart({
+        meta: { ...loaded.meta, title: nextTitle, updatedAt: now },
+        snapshot: loaded.snapshot
+      });
+      if (activeProject?.id === renameProjectId) {
+        setActiveProject({ ...activeProject, title: nextTitle, updatedAt: now });
+        setSaveTitle(nextTitle);
+      }
+      await refreshProjects(resolvedUserId);
+      setRenameProjectOpen(false);
+      messageApi.success("Название проекта обновлено");
+    } catch (e) {
+      messageApi.error(e instanceof Error ? e.message : "Не удалось переименовать проект");
+    } finally {
+      setRenamingProject(false);
+    }
   };
 
   const handleMiniSaveToProjects = () => {
@@ -988,6 +1061,15 @@ export function StudioPage() {
         <span className="studio-page__toolbar-title" title={currentProjectTitle}>
           {currentProjectTitle}
         </span>
+        {!readOnly && activeProject ? (
+          <Button
+            size="small"
+            icon={<FormOutlined />}
+            onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+          >
+            Переименовать
+          </Button>
+        ) : null}
         <Button
           type="primary"
           size="small"
@@ -1038,9 +1120,9 @@ export function StudioPage() {
       <div
         className={`studio-page__main${
           isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
-        }`}
+        }${isMini && !miniPresentation ? " studio-page__main--mini-compact" : ""}`}
       >
-        <div className="studio-page__blockly">
+        <div ref={miniBlocklyWrapRef} className="studio-page__blockly">
           <BlocklyWorkspace
             miniStudioToolbar={isMini}
             miniCoachGoals={
@@ -1151,6 +1233,13 @@ export function StudioPage() {
                 <Button key="load" type="link" onClick={() => void handleLoadProject(item.id)}>
                   Загрузить
                 </Button>,
+                <Button
+                  key="rename"
+                  type="link"
+                  onClick={() => openRenameProjectModal(item.id, item.title)}
+                >
+                  Переименовать
+                </Button>,
                 <Popconfirm
                   key="delete"
                   title="Удалить проект?"
@@ -1205,6 +1294,21 @@ export function StudioPage() {
         <Space direction="vertical" style={{ width: "100%" }}>
           <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} placeholder="Название проекта" />
         </Space>
+      </Modal>
+      <Modal
+        open={renameProjectOpen}
+        title="Переименовать проект"
+        okText="Сохранить"
+        confirmLoading={renamingProject}
+        onOk={() => void submitRenameProject()}
+        onCancel={() => setRenameProjectOpen(false)}
+      >
+        <Input
+          value={renameProjectTitle}
+          onChange={(e) => setRenameProjectTitle(e.target.value)}
+          placeholder="Новое название проекта"
+          maxLength={120}
+        />
       </Modal>
         </>
       ) : null}
@@ -1296,6 +1400,13 @@ export function StudioPage() {
           icon={<FormOutlined />}
           tooltip="Проверка работы"
           onClick={() => setTeacherReviewModalOpen(true)}
+        />
+      ) : null}
+      {isMini ? (
+        <FloatButton
+          icon={miniPresentation ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+          tooltip={miniPresentation ? "Выйти из презентации" : "Режим презентации"}
+          onClick={() => void toggleMiniPresentation()}
         />
       ) : null}
     </Content>
