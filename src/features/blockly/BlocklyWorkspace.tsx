@@ -85,6 +85,19 @@ function isImageModel(modelType: ModelType) {
   return modelType === "image_knn";
 }
 
+/** Старые проекты могли иметь невидимый блок модели в MODEL — он не должен перетирать выбор из списка. */
+function getLegacyModelTypeBlock(block: Blockly.Block): Blockly.Block | null {
+  const inp = block.getInput("MODEL");
+  if (!inp) {
+    return null;
+  }
+  const vis = (inp as { isVisible?: () => boolean }).isVisible?.();
+  if (vis === false) {
+    return null;
+  }
+  return block.getInputTargetBlock("MODEL");
+}
+
 function parseModelTypeRef(ref: string): ModelType {
   if (
     ref === "image_knn" ||
@@ -213,7 +226,7 @@ function findDeclaredModelTypeAbovePredict(predictBlock: Blockly.Block | null): 
   let cur: Blockly.Block | null = predictBlock.getPreviousBlock();
   while (cur) {
     if (cur.type === "noda_train_model_simple" || cur.type === "noda_train_model") {
-      const legacyModel = cur.getInputTargetBlock("MODEL");
+      const legacyModel = getLegacyModelTypeBlock(cur);
       const ref = legacyModel
         ? String(legacyModel.getFieldValue("MODEL_TYPE_REF") ?? "image_knn")
         : String(cur.getFieldValue("MODEL_TYPE") ?? "image_knn");
@@ -448,7 +461,7 @@ function syncTrainBlockModelAndDataset(block: Blockly.Block) {
   if (block.type !== "noda_train_model_simple" && block.type !== "noda_train_model") {
     return;
   }
-  const legacyModel = block.getInputTargetBlock("MODEL");
+  const legacyModel = getLegacyModelTypeBlock(block);
   const datasetRef = String(block.getFieldValue("DATASET_REF") ?? "");
   const inferredByDataset = datasetRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
   const modelType = parseModelTypeRef(
@@ -507,7 +520,7 @@ function registerBlocks() {
         .appendField(
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
-            const legacyModel = source?.getInputTargetBlock("MODEL");
+            const legacyModel = source ? getLegacyModelTypeBlock(source) : null;
             const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
             const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
@@ -552,7 +565,7 @@ function registerBlocks() {
         .appendField(
           new Blockly.FieldDropdown(function () {
             const source = this.getSourceBlock();
-            const legacyModel = source?.getInputTargetBlock("MODEL");
+            const legacyModel = source ? getLegacyModelTypeBlock(source) : null;
             const currentRef = String(source?.getFieldValue("DATASET_REF") ?? "");
             const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
             const modelType = parseModelTypeRef(
@@ -1016,7 +1029,7 @@ export function BlocklyWorkspace({
     let current = first;
     while (current) {
       if (current.type === "noda_train_model_simple") {
-        const legacyModel = current.getInputTargetBlock("MODEL");
+        const legacyModel = getLegacyModelTypeBlock(current);
         const modelTypeRef = String(
           legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
             current.getFieldValue("MODEL_TYPE") ??
@@ -1029,7 +1042,7 @@ export function BlocklyWorkspace({
           ...DEFAULT_TRAIN_CONFIG
         });
       } else if (current.type === "noda_train_model") {
-        const legacyModel = current.getInputTargetBlock("MODEL");
+        const legacyModel = getLegacyModelTypeBlock(current);
         const modelTypeRef = String(
           legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
             current.getFieldValue("MODEL_TYPE") ??

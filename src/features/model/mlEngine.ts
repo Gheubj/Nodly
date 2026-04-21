@@ -809,13 +809,26 @@ async function trainTabularModel(
     tabularRfModel = rf;
     tabularMode = "classification";
   } else {
+    const tabularSmallN = total < 512;
+    const tfTabularEpochs = tabularSmallN ? Math.min(config.epochs, 120) : config.epochs;
     const buildTfClassifier = (kind: "linear" | "neural") => {
+      let seed = 42;
+      const glorot = () => tf.initializers.glorotNormal({ seed: seed++ });
       if (kind === "neural") {
         return tf.sequential({
           layers: [
-            tf.layers.dense({ inputShape: [featureCount], units: 16, activation: "relu" }),
-            tf.layers.dense({ units: 8, activation: "relu" }),
-            tf.layers.dense({ units: uniqueLabels.length, activation: "softmax" })
+            tf.layers.dense({
+              inputShape: [featureCount],
+              units: 16,
+              activation: "relu",
+              kernelInitializer: glorot()
+            }),
+            tf.layers.dense({ units: 8, activation: "relu", kernelInitializer: glorot() }),
+            tf.layers.dense({
+              units: uniqueLabels.length,
+              activation: "softmax",
+              kernelInitializer: glorot()
+            })
           ]
         });
       }
@@ -824,7 +837,8 @@ async function trainTabularModel(
           tf.layers.dense({
             inputShape: [featureCount],
             units: uniqueLabels.length,
-            activation: "softmax"
+            activation: "softmax",
+            kernelInitializer: glorot()
           })
         ]
       });
@@ -832,7 +846,7 @@ async function trainTabularModel(
     const runTfTrain = async (kind: "linear" | "neural") => {
       const m = buildTfClassifier(kind);
       const epochs: TrainingEpochLog[] = [];
-      const lr = Math.min(config.learningRate, 0.002);
+      const lr = Math.min(config.learningRate, tabularSmallN ? 0.0008 : 0.002);
       m.compile({
         optimizer: tf.train.adam(lr),
         loss: "categoricalCrossentropy",
@@ -841,7 +855,7 @@ async function trainTabularModel(
       // sampleWeight в tfjs LayersModel.fit не поддерживается (ошибка в рантайме).
       // Баланс классов дают стратифицированный сплит, нормализация признаков и кап LR.
       await m.fit(xTrain, yTrain, {
-        epochs: config.epochs,
+        epochs: tfTabularEpochs,
         validationData: [xVal, yVal],
         callbacks: {
           onEpochEnd: async (epoch, logs) => {
@@ -853,8 +867,8 @@ async function trainTabularModel(
               valAccuracy: logNumber(logs, "val_accuracy", "val_acc")
             });
             onProgress(
-              Math.round(((epoch + 1) / config.epochs) * 100),
-              `Эпоха ${epoch + 1} / ${config.epochs}`
+              Math.round(((epoch + 1) / tfTabularEpochs) * 100),
+              `Эпоха ${epoch + 1} / ${tfTabularEpochs}`
             );
             await tf.nextFrame();
           }
