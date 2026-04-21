@@ -3,7 +3,7 @@ import type { ModelType } from "@/shared/types/ai";
 
 export type TabularFeatureSpecPersist =
   | { kind: "numeric" }
-  | { kind: "categorical"; categories: string[] };
+  | { kind: "categorical"; categories: string[]; categoricalEncoding?: "onehot" | "ordinal" };
 
 export type TabularModelLibraryPayload = {
   kind: "tabular";

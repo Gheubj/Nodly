@@ -32,9 +32,11 @@ let tabularMode: "regression" | "classification" | null = null;
 let tabularSvmModel: any | null = null;
 let tabularRfModel: RandomForestClassifier | null = null;
 let classIndexToLabel: string[] = [];
+export type TabularCategoricalEncoding = "onehot" | "ordinal";
+
 export type TabularFeatureSpec =
   | { kind: "numeric" }
-  | { kind: "categorical"; categories: string[] };
+  | { kind: "categorical"; categories: string[]; categoricalEncoding: TabularCategoricalEncoding };
 let tabularFeatureSpecs: TabularFeatureSpec[] = [];
 /** Подписи для KNN по картинкам (в т.ч. кластеры cluster_0 … после обучения без учителя) */
 let imageKnnExtraLabels: Record<string, string> = {};
@@ -247,7 +249,11 @@ function parseRegressionTargetCell(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-function parseTabular(dataset: TabularDataset) {
+/** По умолчанию ordinal: компактные признаки для всех табличных моделей (деревья, SVM, TF). */
+function parseTabular(
+  dataset: TabularDataset,
+  categoricalEncoding: TabularCategoricalEncoding = "ordinal"
+) {
   const rowsAfterHeaderStrip = stripLeadingDuplicateHeaderRows(dataset.headers ?? [], dataset.rows);
   const rawRows = rowsAfterHeaderStrip.filter((row) => row.length >= 1);
   if (rawRows.length < 2) {
@@ -283,8 +289,12 @@ function parseTabular(dataset: TabularDataset) {
     if (allNumeric) {
       specs.push({ kind: "numeric" });
     } else {
-      const categories = [...new Set(columnValues)];
-      specs.push({ kind: "categorical", categories });
+      const unique = [...new Set(columnValues)];
+      const categories =
+        categoricalEncoding === "ordinal"
+          ? unique.sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+          : unique;
+      specs.push({ kind: "categorical", categories, categoricalEncoding });
     }
   }
   const encode = (rawRow: string[]) => {
@@ -298,6 +308,9 @@ function parseTabular(dataset: TabularDataset) {
           throw new Error("Числовой признак содержит нечисловое значение.");
         }
         out.push(num);
+      } else if (spec.categoricalEncoding === "ordinal") {
+        const j = spec.categories.indexOf(value);
+        out.push(j < 0 ? 0 : j);
       } else {
         for (const category of spec.categories) {
           out.push(value === category ? 1 : 0);
@@ -866,7 +879,13 @@ export async function persistCurrentModelToLibrary(modelId: string): Promise<{ m
       tabularMode,
       classIndexToLabel: [...classIndexToLabel],
       tabularFeatureSpecs: tabularFeatureSpecs.map((s) =>
-        s.kind === "numeric" ? { kind: "numeric" } : { kind: "categorical", categories: [...s.categories] }
+        s.kind === "numeric"
+          ? { kind: "numeric" }
+          : {
+              kind: "categorical",
+              categories: [...s.categories],
+              categoricalEncoding: s.categoricalEncoding
+            }
       )
     };
     await putModelLibraryRecord({ id: modelId, ...payload });
@@ -902,7 +921,13 @@ export async function loadModelFromLibraryEntry(entry: SavedModelEntry): Promise
     tabularMode = rec.tabularMode;
     classIndexToLabel = [...rec.classIndexToLabel];
     tabularFeatureSpecs = rec.tabularFeatureSpecs.map((s) =>
-      s.kind === "numeric" ? { kind: "numeric" } : { kind: "categorical", categories: [...s.categories] }
+      s.kind === "numeric"
+        ? { kind: "numeric" }
+        : {
+            kind: "categorical",
+            categories: [...s.categories],
+            categoricalEncoding: s.categoricalEncoding ?? "onehot"
+          }
     );
     lastTrainedModelType = entry.modelType;
     return;
@@ -958,6 +983,9 @@ function parsePredictionFeatures(input: string) {
         throw new Error(`Признак #${i + 1} должен быть числом.`);
       }
       out.push(num);
+    } else if (spec.categoricalEncoding === "ordinal") {
+      const j = spec.categories.indexOf(value);
+      out.push(j < 0 ? 0 : j);
     } else {
       for (const category of spec.categories) {
         out.push(value === category ? 1 : 0);
