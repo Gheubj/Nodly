@@ -8,6 +8,10 @@ import type {
 } from "@/shared/types/ai";
 import type { NodlyProject, NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import { decodePersistedTraining } from "@/shared/decodePersistedTraining";
+import {
+  compactTabularDatasetEntries,
+  materializeTabularDatasetEntries
+} from "@/features/project/tabularSnapshotCodec";
 
 interface EncodedFile {
   name: string;
@@ -225,7 +229,7 @@ export async function saveProject(project: NodlyProject) {
     meta: project.meta,
     snapshot: {
       imageDatasets: await encodeImageDatasets(project.snapshot.imageDatasets),
-      tabularDatasets: project.snapshot.tabularDatasets,
+      tabularDatasets: await compactTabularDatasetEntries(project.snapshot.tabularDatasets),
       imagePredictionInputs: await encodeImageInputs(project.snapshot.imagePredictionInputs),
       tabularPredictionInputs: project.snapshot.tabularPredictionInputs,
       savedModels: project.snapshot.savedModels ?? [],
@@ -259,7 +263,7 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
   );
   const snapshot: NodlyProjectSnapshot = {
     imageDatasets: await decodeImageDatasets(stored.snapshot.imageDatasets),
-    tabularDatasets: stored.snapshot.tabularDatasets,
+    tabularDatasets: await materializeTabularDatasetEntries(stored.snapshot.tabularDatasets),
     imagePredictionInputs: await decodeImageInputs(stored.snapshot.imagePredictionInputs),
     tabularPredictionInputs: stored.snapshot.tabularPredictionInputs,
     savedModels: stored.snapshot.savedModels ?? [],
@@ -274,7 +278,7 @@ export async function loadProject(projectId: string): Promise<NodlyProject | nul
 export async function encodeSnapshotForCloud(snapshot: NodlyProjectSnapshot): Promise<Record<string, unknown>> {
   return {
     imageDatasets: await encodeImageDatasets(snapshot.imageDatasets),
-    tabularDatasets: snapshot.tabularDatasets,
+    tabularDatasets: await compactTabularDatasetEntries(snapshot.tabularDatasets),
     imagePredictionInputs: await encodeImageInputs(snapshot.imagePredictionInputs),
     tabularPredictionInputs: snapshot.tabularPredictionInputs,
     savedModels: snapshot.savedModels ?? [],
@@ -341,7 +345,7 @@ export async function decodeSnapshotFromCloud(raw: unknown): Promise<NodlyProjec
 
   return {
     imageDatasets,
-    tabularDatasets,
+    tabularDatasets: await materializeTabularDatasetEntries(tabularDatasets),
     imagePredictionInputs,
     tabularPredictionInputs,
     savedModels,

@@ -385,11 +385,59 @@ function stratifiedTrainValTestIndices(
   return { trainIdx, valIdx, testIdx };
 }
 
+/** SVM в JS не тянет десятки тысяч точек (ядро ~ O(n²)); RF — сотни деревьев по полной выборке. */
+const TABULAR_SVM_MAX_TRAIN = 5000;
+const TABULAR_RF_MAX_TRAIN = 18000;
+
+function subsampleTrainGlobalIndicesStratified(
+  trainGlobalIdx: number[],
+  yByGlobalIndex: number[],
+  maxCount: number
+): number[] {
+  if (trainGlobalIdx.length <= maxCount) {
+    return trainGlobalIdx;
+  }
+  const classIds = [...new Set(trainGlobalIdx.map((i) => yByGlobalIndex[i]!))].sort((a, b) => a - b);
+  const pools = classIds.map((c) => {
+    const q: number[] = [];
+    for (const gi of trainGlobalIdx) {
+      if (yByGlobalIndex[gi] === c) {
+        q.push(gi);
+      }
+    }
+    tf.util.shuffle(q);
+    return q;
+  });
+  const out: number[] = [];
+  let k = 0;
+  while (out.length < maxCount) {
+    let advanced = false;
+    for (let t = 0; t < pools.length; t++) {
+      const idx = (k + t) % pools.length;
+      if (pools[idx].length > 0) {
+        out.push(pools[idx].shift()!);
+        advanced = true;
+        k = (idx + 1) % pools.length;
+        break;
+      }
+    }
+    if (!advanced) {
+      break;
+    }
+  }
+  return out;
+}
+
 /** По умолчанию ordinal: компактные признаки для всех табличных моделей (деревья, SVM, TF). */
 function parseTabular(
   dataset: TabularDataset,
   categoricalEncoding: TabularCategoricalEncoding = "ordinal"
 ) {
+  if (dataset.rows.length === 0 && dataset.rowsGzipBase64) {
+    throw new Error(
+      "Таблица в сжатом виде: перезагрузите проект или CSV — после загрузки проекта строки должны распаковаться автоматически."
+    );
+  }
   const rowsAfterHeaderStrip = stripLeadingDuplicateHeaderRows(dataset.headers ?? [], dataset.rows);
   const rawRows = rowsAfterHeaderStrip.filter((row) => row.length >= 1);
   if (rawRows.length < 2) {
@@ -768,9 +816,20 @@ async function trainTabularModel(
       kernel: "rbf",
       kernelOptions: { sigma: Math.max(0.1, 1 / Math.max(1, featureCount)) }
     });
+    let trainIdxSvm = trainIdx;
+    if (trainIdx.length > TABULAR_SVM_MAX_TRAIN) {
+      trainIdxSvm = subsampleTrainGlobalIndicesStratified(trainIdx, yIndices, TABULAR_SVM_MAX_TRAIN);
+      onProgress(
+        8,
+        `SVM: обучение на ${trainIdxSvm.length} из ${trainIdx.length} строк train (лимит для браузера)`
+      );
+    }
     onProgress(15, "SVM: обучение...");
-    const yTrainBinary = yTrainIdx.map((v) => (v === 0 ? -1 : 1));
-    svm.train(trainIdx.map((i) => x[i]), yTrainBinary);
+    const yTrainBinary = trainIdxSvm.map((i) => (yIndices[i] === 0 ? -1 : 1));
+    svm.train(
+      trainIdxSvm.map((i) => x[i]!),
+      yTrainBinary
+    );
     const preds = svm.predict(testIdx.map((i) => x[i])) as number[];
     predictedIdx = preds.map((v) => (Number(v) >= 0 ? 1 : 0));
     confidences = predictedIdx.map(() => 1);
@@ -783,9 +842,19 @@ async function trainTabularModel(
     tabularSvmModel = svm;
     tabularMode = "classification";
   } else if (modelType === "tabular_random_forest") {
+    let trainIdxRf = trainIdx;
+    if (trainIdx.length > TABULAR_RF_MAX_TRAIN) {
+      trainIdxRf = subsampleTrainGlobalIndicesStratified(trainIdx, yIndices, TABULAR_RF_MAX_TRAIN);
+      onProgress(
+        8,
+        `Random Forest: обучение на ${trainIdxRf.length} из ${trainIdx.length} строк train (лимит для браузера)`
+      );
+    }
+    const nEstimators =
+      trainIdxRf.length > 14000 ? 36 : trainIdxRf.length > 8000 ? 48 : trainIdxRf.length > 4000 ? 64 : 100;
     onProgress(15, "Random Forest: обучение...");
     const rf = new RandomForestClassifier({
-      nEstimators: 100,
+      nEstimators,
       maxFeatures: Math.max(
         2,
         Math.min(featureCount, Math.max(4, Math.round(featureCount ** 0.55)))
@@ -796,7 +865,10 @@ async function trainTabularModel(
       // корень часто не режется вообще → лист = мода = всегда доминирующий класс.
       treeOptions: { gainThreshold: 0, minNumSamples: 2 }
     });
-    rf.train(trainIdx.map((i) => x[i]), yTrainIdx);
+    rf.train(
+      trainIdxRf.map((i) => x[i]!),
+      trainIdxRf.map((i) => yIndices[i]!)
+    );
     const preds = rf.predict(testIdx.map((i) => x[i]));
     predictedIdx = preds.map((v) => Math.max(0, Math.min(uniqueLabels.length - 1, Math.round(Number(v) || 0))));
     confidences = predictedIdx.map(() => 1);

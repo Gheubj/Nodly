@@ -437,7 +437,9 @@ export function DataLibrary({ variant = "default" }: { variant?: "default" | "dr
                     <Text strong>{dataset.title}</Text>
                     <br />
                     <Text type="secondary">
-                      Строк: {dataset.dataset.rows.length}, колонок: {tabularColumnCount(dataset.dataset)}
+                      Строк:{" "}
+                      {dataset.dataset.tabularStoredRowCount ?? dataset.dataset.rows.length}, колонок:{" "}
+                      {tabularColumnCount(dataset.dataset)}
                     </Text>
                     <div style={{ marginTop: 8 }}>
                       <Text strong style={{ marginRight: 8 }}>

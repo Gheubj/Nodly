@@ -43,6 +43,10 @@ export interface TabularDataset {
    * Не задан — последняя колонка (как раньше).
    */
   targetColumnIndex?: number;
+  /** Сжатые строки (gzip+base64) при сохранении больших таблиц; тогда `rows` пустой до распаковки. */
+  rowsGzipBase64?: string;
+  /** Число строк до сжатия — для UI, пока `rows` не распакованы. */
+  tabularStoredRowCount?: number;
 }
 
 export interface TabularDatasetEntry {
