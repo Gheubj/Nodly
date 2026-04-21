@@ -704,8 +704,10 @@ async function trainTabularModel(
     tabularModel = tf.sequential({
       layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
     });
+    // Пилот: в блоках был LR 0.02; дефолт сменили на 0.001 для табличной классификации — для одного Dense+MSE этого мало.
+    const regressionLr = config.learningRate < 0.004 ? 0.02 : config.learningRate;
     tabularModel.compile({
-      optimizer: tf.train.adam(config.learningRate),
+      optimizer: tf.train.adam(regressionLr),
       loss: "meanSquaredError",
       metrics: ["mse"]
     });
