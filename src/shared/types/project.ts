@@ -1,6 +1,7 @@
 import type {
   ImageDataset,
   ImagePredictionInput,
+  ModelComparisonReport,
   ModelEvaluation,
   PredictionResult,
   SavedModelEntry,
@@ -38,6 +39,7 @@ export interface NodlyProjectSnapshot {
     evaluation: ModelEvaluation | null;
     trainingRunReport: TrainingRunReport | null;
     prediction: PredictionResult | null;
+    modelComparisonReport?: ModelComparisonReport | null;
   } | null;
 }
 

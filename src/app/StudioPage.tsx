@@ -228,7 +228,8 @@ export function StudioPage() {
     workspaceLevel,
     evaluation,
     trainingRunReport,
-    prediction
+    prediction,
+    modelComparisonReport
   } = useAppStore();
   const { user } = useSessionStore();
   const resolvedUserId = user?.id ?? guestUserId;
@@ -454,7 +455,8 @@ export function StudioPage() {
     workspaceLevel,
     evaluation,
     trainingRunReport,
-    prediction
+    prediction,
+    modelComparisonReport
   ]);
 
   useEffect(() => {
@@ -798,6 +800,7 @@ export function StudioPage() {
     evaluation,
     trainingRunReport,
     prediction,
+    modelComparisonReport,
     imageDatasets,
     tabularDatasets,
     savedModels,

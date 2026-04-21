@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   ImageDataset,
   ImagePredictionInput,
+  ModelComparisonReport,
   ModelType,
   ModelEvaluation,
   PredictionResult,
@@ -56,6 +57,7 @@ interface AppState {
   prediction: PredictionResult | null;
   evaluation: ModelEvaluation | null;
   trainingRunReport: TrainingRunReport | null;
+  modelComparisonReport: ModelComparisonReport | null;
   lastModelType: ModelType | null;
   blocklyState: string;
   workspaceLevel: WorkspaceLevel;
@@ -82,6 +84,7 @@ interface AppState {
   setPrediction: (result: PredictionResult | null) => void;
   setEvaluation: (value: ModelEvaluation | null) => void;
   setTrainingRunReport: (value: TrainingRunReport | null) => void;
+  setModelComparisonReport: (value: ModelComparisonReport | null) => void;
   setLastModelType: (modelType: ModelType | null) => void;
   setBlocklyState: (value: string) => void;
   getProjectSnapshot: () => NodlyProjectSnapshot;
@@ -104,6 +107,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   prediction: null,
   evaluation: null,
   trainingRunReport: null,
+  modelComparisonReport: null,
   lastModelType: null,
   blocklyState: "",
   workspaceLevel: readWorkspaceLevel(),
@@ -257,6 +261,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPrediction: (result) => set({ prediction: result }),
   setEvaluation: (value) => set({ evaluation: value }),
   setTrainingRunReport: (value) => set({ trainingRunReport: value }),
+  setModelComparisonReport: (value) => set({ modelComparisonReport: value }),
   setLastModelType: (modelType) => set({ lastModelType: modelType }),
   setBlocklyState: (value) => set({ blocklyState: value }),
   getProjectSnapshot: () => {
@@ -264,7 +269,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const hasPersisted =
       state.evaluation !== null ||
       state.trainingRunReport !== null ||
-      state.prediction !== null;
+      state.prediction !== null ||
+      state.modelComparisonReport !== null;
     return {
       imageDatasets: state.imageDatasets,
       tabularDatasets: state.tabularDatasets,
@@ -278,7 +284,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             persistedTraining: {
               evaluation: state.evaluation,
               trainingRunReport: state.trainingRunReport,
-              prediction: state.prediction
+              prediction: state.prediction,
+              modelComparisonReport: state.modelComparisonReport
             }
           }
         : {})
@@ -289,7 +296,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const evaluation = decoded?.evaluation ?? null;
     const trainingRunReport = decoded?.trainingRunReport ?? null;
     const prediction = decoded?.prediction ?? null;
-    const hasResults = Boolean(evaluation || trainingRunReport || prediction);
+    const modelComparisonReport = decoded?.modelComparisonReport ?? null;
+    const hasResults = Boolean(evaluation || trainingRunReport || prediction || modelComparisonReport);
     set({
       imageDatasets: snapshot.imageDatasets,
       tabularDatasets: snapshot.tabularDatasets,
@@ -301,6 +309,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       prediction,
       evaluation,
       trainingRunReport,
+      modelComparisonReport,
       coachUserMessage: null,
       training: {
         isTraining: false,

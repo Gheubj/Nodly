@@ -139,6 +139,22 @@ export interface TrainingRunReport {
   regressionExamples?: RegressionExampleRow[];
 }
 
+export interface ModelComparisonRow {
+  modelType: ModelType;
+  kind: TrainingRunKind;
+  summary: string;
+  primaryMetricKey: string;
+  primaryMetricValue: number;
+  universalScore: number;
+}
+
+export interface ModelComparisonReport {
+  datasetRef: string;
+  rows: ModelComparisonRow[];
+  bestModelType: ModelType | null;
+  generatedAt: string;
+}
+
 export interface TrainByModelTypeResult {
   evaluation: ModelEvaluation;
   report: TrainingRunReport;

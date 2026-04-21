@@ -1,4 +1,9 @@
-import type { ModelEvaluation, PredictionResult, TrainingRunReport } from "@/shared/types/ai";
+import type {
+  ModelComparisonReport,
+  ModelEvaluation,
+  PredictionResult,
+  TrainingRunReport
+} from "@/shared/types/ai";
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return Boolean(x && typeof x === "object" && !Array.isArray(x));
@@ -10,6 +15,7 @@ export function decodePersistedTraining(raw: unknown):
       evaluation: ModelEvaluation | null;
       trainingRunReport: TrainingRunReport | null;
       prediction: PredictionResult | null;
+      modelComparisonReport: ModelComparisonReport | null;
     }
   | undefined {
   if (raw === undefined || raw === null) {
@@ -21,6 +27,7 @@ export function decodePersistedTraining(raw: unknown):
   const evaluationRaw = raw.evaluation;
   const reportRaw = raw.trainingRunReport;
   const predictionRaw = raw.prediction;
+  const comparisonRaw = raw.modelComparisonReport;
 
   const evaluation =
     evaluationRaw === null || evaluationRaw === undefined
@@ -51,16 +58,28 @@ export function decodePersistedTraining(raw: unknown):
         ? (predictionRaw as unknown as PredictionResult)
         : null;
 
+  const modelComparisonReport =
+    comparisonRaw === null || comparisonRaw === undefined
+      ? null
+      : isRecord(comparisonRaw) &&
+          typeof comparisonRaw.datasetRef === "string" &&
+          Array.isArray(comparisonRaw.rows) &&
+          typeof comparisonRaw.generatedAt === "string"
+        ? (comparisonRaw as unknown as ModelComparisonReport)
+        : null;
+
   if (
     evaluation === null &&
     trainingRunReport === null &&
     prediction === null &&
+    modelComparisonReport === null &&
     evaluationRaw === undefined &&
     reportRaw === undefined &&
-    predictionRaw === undefined
+    predictionRaw === undefined &&
+    comparisonRaw === undefined
   ) {
     return undefined;
   }
 
-  return { evaluation, trainingRunReport, prediction };
+  return { evaluation, trainingRunReport, prediction, modelComparisonReport };
 }

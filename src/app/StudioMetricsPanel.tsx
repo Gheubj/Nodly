@@ -1,5 +1,7 @@
 import { Card, Empty, Space, Table, Typography } from "antd";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -14,6 +16,7 @@ import { useAppStore } from "@/store/useAppStore";
 import type {
   ClassificationExampleRow,
   ConfusionMatrixData,
+  ModelComparisonReport,
   RegressionExampleRow,
   TrainingRunReport
 } from "@/shared/types/ai";
@@ -277,6 +280,58 @@ function ExamplesTable({ report }: { report: TrainingRunReport }) {
   return null;
 }
 
+function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) {
+  const rows = comparison.rows.map((row) => ({
+    ...row,
+    primaryValueFmt:
+      row.primaryMetricKey === "testAccuracy"
+        ? `${(row.primaryMetricValue * 100).toFixed(1)}%`
+        : row.primaryMetricValue.toFixed(4),
+    scorePct: Number((row.universalScore * 100).toFixed(1))
+  }));
+  if (!rows.length) {
+    return null;
+  }
+  return (
+    <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <div>
+        <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+          Сравнение моделей
+        </Title>
+        <Text type="secondary">
+          Универсальный score: для классификации это Accuracy, для регрессии — нормализованный показатель качества
+          (для 0/1 целей близок к 1−MAE).
+        </Text>
+      </div>
+      <div className="studio-metrics-panel__chart-wrap">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
+            <XAxis dataKey="modelType" tick={{ fontSize: 11 }} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} width={40} />
+            <Tooltip formatter={(v: number | string) => [typeof v === "number" ? `${v.toFixed(1)}%` : v, "score"]} />
+            <Legend />
+            <Bar dataKey="scorePct" name="universal score, %" fill="#1677ff" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <Table
+        size="small"
+        pagination={false}
+        rowKey={(r) => `${r.modelType}-${r.primaryMetricKey}`}
+        columns={[
+          { title: "Модель", dataIndex: "modelType", key: "m" },
+          { title: "Тип", dataIndex: "kind", key: "k" },
+          { title: "Главная метрика", dataIndex: "primaryMetricKey", key: "pk" },
+          { title: "Значение", dataIndex: "primaryValueFmt", key: "pv" },
+          { title: "Universal score", dataIndex: "scorePct", key: "s", render: (v: number) => `${v.toFixed(1)}%` }
+        ]}
+        dataSource={rows}
+      />
+    </Space>
+  );
+}
+
 export type StudioMetricsPanelProps = {
   /** Внутри вкладки «Визуализация» — без дублирующего заголовка карточки и фиксированной ширины колонки. */
   embedded?: boolean;
@@ -286,6 +341,7 @@ export type StudioMetricsPanelProps = {
 export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps) {
   const report = useAppStore((s) => s.trainingRunReport);
   const prediction = useAppStore((s) => s.prediction);
+  const comparison = useAppStore((s) => s.modelComparisonReport);
   const predictionIsRegression =
     prediction?.labelId === "regression_output" || report?.kind === "tabular_regression";
 
@@ -297,6 +353,7 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       {report ? (
         <>
+          {comparison ? <ComparisonPanel comparison={comparison} /> : null}
           <div>
             <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
               По эпохам

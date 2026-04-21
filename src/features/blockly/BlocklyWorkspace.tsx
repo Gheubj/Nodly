@@ -12,11 +12,12 @@ import {
   predictByModelType,
   trainByModelType
 } from "@/features/model/mlEngine";
-import type { ModelEvaluation, ModelType, SavedModelEntry } from "@/shared/types/ai";
+import type { ModelEvaluation, ModelType, SavedModelEntry, TrainingRunReport } from "@/shared/types/ai";
 import { trackEvent } from "@/features/analytics/analytics";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import { MiniWorkspaceGoalsOverlay } from "@/features/blockly/MiniWorkspaceGoalsOverlay";
+import { stripLeadingDuplicateHeaderRows } from "@/features/data/csv";
 
 const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   name: "nodly_dark",
@@ -60,6 +61,25 @@ type BlockCommand =
       testSplit: number;
       epochs: number;
       learningRate: number;
+    }
+  | {
+      type: "compare_models";
+      datasetRef: string;
+      modelARef: string;
+      modelBRef: string;
+      modelCRef: string;
+      trainSplit: number;
+      valSplit: number;
+      testSplit: number;
+      epochs: number;
+      learningRate: number;
+    }
+  | {
+      type: "compare_saved_models";
+      datasetRef: string;
+      modelAId: string;
+      modelBId: string;
+      modelCId: string;
     }
   | { type: "predict"; savedModelId: string; inputRef: string; inlineTabular: string }
   | { type: "save_model"; title: string }
@@ -134,6 +154,18 @@ function getTrainModelTypeDropdownOptions(level: 1 | 2): [string, string][] {
   ];
 }
 
+function getCompareModelTypeDropdownOptions(): [string, string][] {
+  return [
+    ["Таблица: регрессия", "tabular_regression"],
+    ["Таблица: классификация", "tabular_classification"],
+    ["Таблица: нейросеть (MLP)", "tabular_neural"],
+    ["Таблица: SVM", "tabular_svm"],
+    ["Таблица: Random Forest", "tabular_random_forest"],
+    ["Таблица: Оркестр моделей", "tabular_orchestrator"],
+    ["—", "__none__"]
+  ];
+}
+
 function getTrainDatasetOptions(modelType: ModelType) {
   const state = useAppStore.getState();
   const merged = isImageModel(modelType)
@@ -180,6 +212,19 @@ function getSavedModelBlocklyOptions(): [string, string][] {
     return [sessionOpt];
   }
   return [sessionOpt, ...models.map((m) => [`${m.title} (${m.modelType})`, m.id] as [string, string])];
+}
+
+function getSavedTabularModelBlocklyOptions(): [string, string][] {
+  const models = useAppStore
+    .getState()
+    .savedModels.filter((m) => m.modelType !== "image_knn");
+  if (models.length === 0) {
+    return [["нет сохранённых табличных моделей", "__none__"]];
+  }
+  return [
+    ...models.map((m) => [`${m.title} (${m.modelType})`, m.id] as [string, string]),
+    ["—", "__none__"]
+  ];
 }
 
 function getSavedModelEntryById(id: string): SavedModelEntry | null {
@@ -364,6 +409,22 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
       shape: "stack",
       description:
         "Показывает метрики последнего обучения (после «Обучить модель»). Для регрессии: MSE, MAE, RMSE, R², MedAE, max |ошибка|, sMAPE; для классификации: точность и loss."
+    },
+    {
+      type: "noda_compare_models",
+      title: "Сравнить модели",
+      group: "model",
+      shape: "stack",
+      description:
+        "Запускает несколько табличных моделей на одном датасете и показывает сравнение в «Визуализации»."
+    },
+    {
+      type: "noda_compare_saved_models",
+      title: "Сравнить сохранённые модели",
+      group: "model",
+      shape: "stack",
+      description:
+        "Сравнивает уже обученные и сохранённые табличные модели на выбранном датасете (без переобучения)."
     },
     {
       type: "noda_save_model",
@@ -610,6 +671,60 @@ function registerBlocks() {
           syncTrainBlockModelAndDataset(this);
         }
       });
+    }
+  };
+  Blockly.Blocks.noda_compare_models = {
+    init() {
+      this.appendDummyInput()
+        .appendField("сравнить модели")
+        .appendField("данные")
+        .appendField(
+          new Blockly.FieldDropdown(() => getTrainDatasetOptions("tabular_regression")),
+          "DATASET_REF"
+        );
+      this.appendDummyInput()
+        .appendField("A")
+        .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_A")
+        .appendField("B")
+        .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_B")
+        .appendField("C")
+        .appendField(new Blockly.FieldDropdown(getCompareModelTypeDropdownOptions), "MODEL_C");
+      this.appendDummyInput()
+        .appendField("train")
+        .appendField(new Blockly.FieldNumber(0.7, 0.1, 0.9, 0.05), "TRAIN_SPLIT")
+        .appendField("val")
+        .appendField(new Blockly.FieldNumber(0.15, 0.05, 0.4, 0.05), "VAL_SPLIT")
+        .appendField("test")
+        .appendField(new Blockly.FieldNumber(0.15, 0.05, 0.4, 0.05), "TEST_SPLIT");
+      this.appendDummyInput()
+        .appendField("epochs")
+        .appendField(new Blockly.FieldNumber(80, 5, 500, 5), "EPOCHS")
+        .appendField("lr")
+        .appendField(new Blockly.FieldNumber(0.001, 0.0001, 1, 0.001), "LR");
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(BLOCK_COLOR.model);
+    }
+  };
+  Blockly.Blocks.noda_compare_saved_models = {
+    init() {
+      this.appendDummyInput()
+        .appendField("сравнить сохранённые модели")
+        .appendField("данные")
+        .appendField(
+          new Blockly.FieldDropdown(() => getTrainDatasetOptions("tabular_regression")),
+          "DATASET_REF"
+        );
+      this.appendDummyInput()
+        .appendField("A")
+        .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_A_ID")
+        .appendField("B")
+        .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_B_ID")
+        .appendField("C")
+        .appendField(new Blockly.FieldDropdown(getSavedTabularModelBlocklyOptions), "MODEL_C_ID");
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(BLOCK_COLOR.model);
     }
   };
   /** Устаревшие блоки модели: только чтобы старые проекты открывались; не в палитре. */
@@ -1058,6 +1173,27 @@ export function BlocklyWorkspace({
           epochs: Number(current.getFieldValue("EPOCHS")) || 80,
           learningRate: Number(current.getFieldValue("LR")) || 0.001
         });
+      } else if (current.type === "noda_compare_models") {
+        commands.push({
+          type: "compare_models",
+          datasetRef: current.getFieldValue("DATASET_REF"),
+          modelARef: String(current.getFieldValue("MODEL_A") ?? "__none__"),
+          modelBRef: String(current.getFieldValue("MODEL_B") ?? "__none__"),
+          modelCRef: String(current.getFieldValue("MODEL_C") ?? "__none__"),
+          trainSplit: Number(current.getFieldValue("TRAIN_SPLIT")) || 0.7,
+          valSplit: Number(current.getFieldValue("VAL_SPLIT")) || 0.15,
+          testSplit: Number(current.getFieldValue("TEST_SPLIT")) || 0.15,
+          epochs: Number(current.getFieldValue("EPOCHS")) || 80,
+          learningRate: Number(current.getFieldValue("LR")) || 0.001
+        });
+      } else if (current.type === "noda_compare_saved_models") {
+        commands.push({
+          type: "compare_saved_models",
+          datasetRef: current.getFieldValue("DATASET_REF"),
+          modelAId: String(current.getFieldValue("MODEL_A_ID") ?? "__none__"),
+          modelBId: String(current.getFieldValue("MODEL_B_ID") ?? "__none__"),
+          modelCId: String(current.getFieldValue("MODEL_C_ID") ?? "__none__")
+        });
       } else if (current.type === "noda_save_model") {
         commands.push({
           type: "save_model",
@@ -1193,6 +1329,215 @@ export function BlocklyWorkspace({
     return false;
   };
 
+  const uniqueModelTypesForComparison = (refs: string[]): ModelType[] => {
+    const out: ModelType[] = [];
+    for (const ref of refs) {
+      if (!ref || ref === "__none__") {
+        continue;
+      }
+      const mt = parseModelTypeRef(ref, "tabular_regression");
+      if (mt === "image_knn") {
+        continue;
+      }
+      if (!out.includes(mt)) {
+        out.push(mt);
+      }
+    }
+    return out;
+  };
+
+  const uniqueSavedModelEntriesForComparison = (ids: string[]): SavedModelEntry[] => {
+    const map = new Map<string, SavedModelEntry>();
+    const saved = useAppStore.getState().savedModels;
+    for (const id of ids) {
+      if (!id || id === "__none__") {
+        continue;
+      }
+      const entry = saved.find((m) => m.id === id);
+      if (!entry || entry.modelType === "image_knn") {
+        continue;
+      }
+      map.set(entry.id, entry);
+    }
+    return [...map.values()];
+  };
+
+  const universalScoreFromMetrics = (modelType: ModelType, metrics: Record<string, number>): number => {
+    if (modelType !== "tabular_regression") {
+      const acc = metrics.testAccuracy;
+      return Number.isFinite(acc) ? Math.max(0, Math.min(1, acc)) : 0;
+    }
+    const mae = metrics.testMAE;
+    if (Number.isFinite(mae) && mae >= 0 && mae <= 1.2) {
+      return Math.max(0, Math.min(1, 1 - mae));
+    }
+    const r2 = metrics.testR2;
+    if (Number.isFinite(r2)) {
+      return Math.max(0, Math.min(1, (r2 + 1) / 2));
+    }
+    const rmse = metrics.testRMSE;
+    if (Number.isFinite(rmse)) {
+      return 1 / (1 + Math.max(0, rmse));
+    }
+    return 0;
+  };
+
+  const parseRegressionTarget = (raw: string): number => {
+    const t = raw.trim().replace(/\s/g, "").replace(",", ".");
+    const n = Number(t);
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const evaluateLoadedSavedModelOnDataset = async (
+    entry: SavedModelEntry,
+    datasetRef: string,
+    onProgress: (progress: number, message: string) => void
+  ): Promise<{
+    modelType: ModelType;
+    kind: "tabular_classification" | "tabular_regression";
+    summary: string;
+    primaryMetricKey: string;
+    primaryMetricValue: number;
+    universalScore: number;
+    evaluation: ModelEvaluation;
+    report: TrainingRunReport;
+  }> => {
+    const state = useAppStore.getState();
+    const dsId = datasetRef.startsWith("tabular:") ? datasetRef.slice("tabular:".length) : "";
+    const ds = state.tabularDatasets.find((d) => d.id === dsId)?.dataset;
+    if (!ds) {
+      throw new Error("Датасет для сравнения сохранённых моделей не найден.");
+    }
+    const rows = stripLeadingDuplicateHeaderRows(ds.headers ?? [], ds.rows);
+    if (rows.length < 2) {
+      throw new Error("Для сравнения нужно минимум 2 строки в табличном датасете.");
+    }
+    const colCount = Math.max(ds.headers?.length ?? 0, ...rows.map((r) => r.length), 1);
+    const targetIndex = Math.min(
+      colCount - 1,
+      Math.max(0, Number.isFinite(Number(ds.targetColumnIndex)) ? Math.trunc(Number(ds.targetColumnIndex)) : colCount - 1)
+    );
+    const padded = rows.map((r) => {
+      const out = [...r];
+      while (out.length < colCount) {
+        out.push("");
+      }
+      return out.slice(0, colCount);
+    });
+    await loadModelFromLibraryEntry(entry);
+    const yTrueRaw = padded.map((r) => r[targetIndex]!.trim());
+    const xRows = padded.map((r) => r.filter((_, i) => i !== targetIndex).join(","));
+    const preds: Array<string | number> = [];
+    for (let i = 0; i < xRows.length; i++) {
+      const pred = await predictByModelType({
+        modelType: entry.modelType,
+        predictionFile: null,
+        labelsMap: {},
+        tabularInput: xRows[i]!
+      });
+      if (!pred) {
+        throw new Error("Не удалось получить предсказание сохранённой модели.");
+      }
+      if (entry.modelType === "tabular_regression") {
+        const v = Number(String(pred.title).replace(/^Прогноз:\s*/i, "").replace(",", "."));
+        preds.push(Number.isFinite(v) ? v : NaN);
+      } else {
+        preds.push(pred.labelId);
+      }
+      if (i % 10 === 0 || i === xRows.length - 1) {
+        onProgress(Math.round(((i + 1) / xRows.length) * 100), `Оценка ${entry.title}: ${i + 1}/${xRows.length}`);
+      }
+    }
+    if (entry.modelType === "tabular_regression") {
+      const yTrue = yTrueRaw.map(parseRegressionTarget);
+      const yPred = preds.map((v) => Number(v));
+      const valid: Array<{ yt: number; yp: number }> = [];
+      for (let i = 0; i < yTrue.length; i++) {
+        if (Number.isFinite(yTrue[i]!) && Number.isFinite(yPred[i]!)) {
+          valid.push({ yt: yTrue[i]!, yp: yPred[i]! });
+        }
+      }
+      if (valid.length < 1) {
+        throw new Error(`Сравнение ${entry.title}: целевая колонка нечисловая для регрессии.`);
+      }
+      const n = valid.length;
+      const mse = valid.reduce((s, r) => s + (r.yt - r.yp) ** 2, 0) / n;
+      const mae = valid.reduce((s, r) => s + Math.abs(r.yt - r.yp), 0) / n;
+      const rmse = Math.sqrt(mse);
+      const mean = valid.reduce((s, r) => s + r.yt, 0) / n;
+      const sst = valid.reduce((s, r) => s + (r.yt - mean) ** 2, 0);
+      const sse = valid.reduce((s, r) => s + (r.yt - r.yp) ** 2, 0);
+      const r2 = sst > 1e-12 ? 1 - sse / sst : 0;
+      const metrics = { testMSE: mse, testMAE: mae, testRMSE: rmse, testR2: r2 };
+      const summary = `Сохранённая модель: RMSE ${rmse.toFixed(4)}, MAE ${mae.toFixed(4)}, R² ${r2.toFixed(4)}`;
+      const report: TrainingRunReport = {
+        kind: "tabular_regression",
+        modelType: entry.modelType,
+        summary,
+        metrics,
+        epochHistory: [],
+        regressionExamples: valid.slice(0, 8).map((r) => ({
+          trueY: r.yt,
+          predictedY: r.yp,
+          absError: Math.abs(r.yt - r.yp)
+        }))
+      };
+      return {
+        modelType: entry.modelType,
+        kind: "tabular_regression",
+        summary,
+        primaryMetricKey: "testRMSE",
+        primaryMetricValue: rmse,
+        universalScore: universalScoreFromMetrics(entry.modelType, metrics),
+        evaluation: { summary, metrics },
+        report
+      };
+    }
+    const n = Math.min(yTrueRaw.length, preds.length);
+    let correct = 0;
+    const confusion = new Map<string, Map<string, number>>();
+    const examples: Array<{ trueLabel: string; predictedLabel: string; confidence: number }> = [];
+    for (let i = 0; i < n; i++) {
+      const yt = yTrueRaw[i]!;
+      const yp = String(preds[i] ?? "");
+      if (yt === yp) {
+        correct += 1;
+      }
+      if (!confusion.has(yt)) {
+        confusion.set(yt, new Map<string, number>());
+      }
+      const row = confusion.get(yt)!;
+      row.set(yp, (row.get(yp) ?? 0) + 1);
+      if (examples.length < 8) {
+        examples.push({ trueLabel: yt, predictedLabel: yp, confidence: Number(yt === yp) });
+      }
+    }
+    const labels = [...new Set([...yTrueRaw, ...preds.map((p) => String(p ?? ""))])];
+    const matrix = labels.map((t) => labels.map((p) => confusion.get(t)?.get(p) ?? 0));
+    const acc = n > 0 ? correct / n : 0;
+    const metrics = { testAccuracy: acc, testLoss: 1 - acc };
+    const summary = `Сохранённая модель: accuracy ${(acc * 100).toFixed(1)}%`;
+    const report: TrainingRunReport = {
+      kind: "tabular_classification",
+      modelType: entry.modelType,
+      summary,
+      metrics,
+      epochHistory: [],
+      confusionMatrix: { labels, matrix },
+      classificationExamples: examples
+    };
+    return {
+      modelType: entry.modelType,
+      kind: "tabular_classification",
+      summary,
+      primaryMetricKey: "testAccuracy",
+      primaryMetricValue: acc,
+      universalScore: universalScoreFromMetrics(entry.modelType, metrics),
+      evaluation: { summary, metrics },
+      report
+    };
+  };
+
   const executeCommands = async (commands: BlockCommand[], options?: { fromEvent?: boolean }) => {
     const fromEvent = options?.fromEvent ?? false;
     const state = useAppStore.getState();
@@ -1203,6 +1548,194 @@ export function BlocklyWorkspace({
       if (command.type === "if") {
         const pass = Boolean(resolveExpr(command.condition));
         await executeCommands(pass ? command.thenCommands : command.elseCommands, { fromEvent: true });
+        continue;
+      }
+      if (command.type === "compare_models") {
+        const [kind, id] = command.datasetRef.split(":");
+        if (kind !== "tabular") {
+          throw new Error("Для сравнения моделей выбери tabular dataset.");
+        }
+        const tabularDataset = state.tabularDatasets.find((item) => item.id === id)?.dataset ?? null;
+        if (!tabularDataset) {
+          throw new Error("Датасет для сравнения не найден.");
+        }
+        const modelTypes = uniqueModelTypesForComparison([
+          command.modelARef,
+          command.modelBRef,
+          command.modelCRef
+        ]);
+        if (modelTypes.length < 2) {
+          throw new Error("Выбери минимум 2 разные модели для сравнения.");
+        }
+        state.setModelComparisonReport(null);
+        state.setTraining({
+          isTraining: true,
+          progress: 0,
+          message: `Сравнение моделей: 0/${modelTypes.length}`,
+          coachMood: "working"
+        });
+        const compareRows: Array<{
+          modelType: ModelType;
+          kind: "tabular_classification" | "tabular_regression";
+          summary: string;
+          primaryMetricKey: string;
+          primaryMetricValue: number;
+          universalScore: number;
+          evaluation: ModelEvaluation;
+          report: TrainingRunReport;
+        }> = [];
+        for (let i = 0; i < modelTypes.length; i++) {
+          const modelType = modelTypes[i]!;
+          state.setTraining({
+            progress: Math.round((i / modelTypes.length) * 100),
+            message: `Сравнение: ${modelType} (${i + 1}/${modelTypes.length})`,
+            coachMood: "working"
+          });
+          const outcome = await trainByModelType({
+            modelType,
+            imageDataset: null,
+            tabularDataset,
+            config: {
+              trainSplit: command.trainSplit,
+              valSplit: command.valSplit,
+              testSplit: command.testSplit,
+              epochs: command.epochs,
+              learningRate: command.learningRate
+            },
+            onProgress: (progress, message) => {
+              const base = (i / modelTypes.length) * 100;
+              const portion = progress / modelTypes.length;
+              state.setTraining({
+                progress: Math.min(100, Math.round(base + portion)),
+                message: `Сравнение: ${message}`,
+                coachMood: "working"
+              });
+            }
+          });
+          const primaryMetricKey = modelType === "tabular_regression" ? "testRMSE" : "testAccuracy";
+          const primaryMetricValue = Number(outcome.evaluation.metrics[primaryMetricKey] ?? 0);
+          const universalScore = universalScoreFromMetrics(modelType, outcome.evaluation.metrics);
+          compareRows.push({
+            modelType,
+            kind: modelType === "tabular_regression" ? "tabular_regression" : "tabular_classification",
+            summary: outcome.evaluation.summary,
+            primaryMetricKey,
+            primaryMetricValue,
+            universalScore,
+            evaluation: outcome.evaluation,
+            report: outcome.report
+          });
+        }
+        compareRows.sort((a, b) => b.universalScore - a.universalScore);
+        const best = compareRows[0];
+        const comparisonReport = {
+          datasetRef: command.datasetRef,
+          rows: compareRows.map((r) => ({
+            modelType: r.modelType,
+            kind: r.kind,
+            summary: r.summary,
+            primaryMetricKey: r.primaryMetricKey,
+            primaryMetricValue: r.primaryMetricValue,
+            universalScore: r.universalScore
+          })),
+          bestModelType: best?.modelType ?? null,
+          generatedAt: new Date().toISOString()
+        };
+        state.setModelComparisonReport(comparisonReport);
+        if (best) {
+          state.setEvaluation(best.evaluation);
+          state.setTrainingRunReport(best.report);
+          state.setLastModelType(best.modelType);
+          lastEvaluationRef.current = best.evaluation;
+        }
+        state.setPrediction(null);
+        const duringCompare = useAppStore.getState().training.scenarioActive;
+        state.setTraining({
+          isTraining: false,
+          progress: 100,
+          message: best
+            ? `Сравнение готово. Лучшая модель: ${best.modelType} (score ${(best.universalScore * 100).toFixed(1)}%)`
+            : "Сравнение готово",
+          coachMood: duringCompare ? "working" : "success"
+        });
+        if (!fromEvent) {
+          await runEventChain("trained");
+        }
+        continue;
+      }
+      if (command.type === "compare_saved_models") {
+        const entries = uniqueSavedModelEntriesForComparison([
+          command.modelAId,
+          command.modelBId,
+          command.modelCId
+        ]);
+        if (entries.length < 2) {
+          throw new Error("Выбери минимум 2 сохранённые табличные модели для сравнения.");
+        }
+        state.setModelComparisonReport(null);
+        state.setTraining({
+          isTraining: true,
+          progress: 0,
+          message: `Сравнение сохранённых моделей: 0/${entries.length}`,
+          coachMood: "working"
+        });
+        const compareRows: Array<{
+          modelType: ModelType;
+          kind: "tabular_classification" | "tabular_regression";
+          summary: string;
+          primaryMetricKey: string;
+          primaryMetricValue: number;
+          universalScore: number;
+          evaluation: ModelEvaluation;
+          report: TrainingRunReport;
+        }> = [];
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i]!;
+          const outcome = await evaluateLoadedSavedModelOnDataset(entry, command.datasetRef, (progress, message) => {
+            const base = (i / entries.length) * 100;
+            const portion = progress / entries.length;
+            state.setTraining({
+              progress: Math.min(100, Math.round(base + portion)),
+              message,
+              coachMood: "working"
+            });
+          });
+          compareRows.push(outcome);
+        }
+        compareRows.sort((a, b) => b.universalScore - a.universalScore);
+        const best = compareRows[0];
+        state.setModelComparisonReport({
+          datasetRef: command.datasetRef,
+          rows: compareRows.map((r) => ({
+            modelType: r.modelType,
+            kind: r.kind,
+            summary: r.summary,
+            primaryMetricKey: r.primaryMetricKey,
+            primaryMetricValue: r.primaryMetricValue,
+            universalScore: r.universalScore
+          })),
+          bestModelType: best?.modelType ?? null,
+          generatedAt: new Date().toISOString()
+        });
+        if (best) {
+          state.setEvaluation(best.evaluation);
+          state.setTrainingRunReport(best.report);
+          state.setLastModelType(best.modelType);
+          lastEvaluationRef.current = best.evaluation;
+        }
+        state.setPrediction(null);
+        const duringCompare = useAppStore.getState().training.scenarioActive;
+        state.setTraining({
+          isTraining: false,
+          progress: 100,
+          message: best
+            ? `Сравнение сохранённых моделей готово. Лучшая: ${best.modelType} (${(best.universalScore * 100).toFixed(1)}%)`
+            : "Сравнение сохранённых моделей готово",
+          coachMood: duringCompare ? "working" : "success"
+        });
+        if (!fromEvent) {
+          await runEventChain("trained");
+        }
         continue;
       }
       if (command.type === "train") {
@@ -1217,6 +1750,7 @@ export function BlocklyWorkspace({
           datasetRef: command.datasetRef
         });
         state.setLastModelType(modelType);
+        state.setModelComparisonReport(null);
         loadedSavedModelIdRef.current = null;
         const [kind, id] = command.datasetRef.split(":");
         const imageDataset =
