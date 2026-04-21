@@ -28,10 +28,13 @@ export function buildCoachBriefLines(
     });
   }
   if (prediction) {
+    const isRegressionPrediction = prediction.labelId === "regression_output";
     out.push({
       key: "pred",
       label: "Предсказание",
-      value: `${prediction.title} (${(prediction.confidence * 100).toFixed(0)}% уверенности)`
+      value: isRegressionPrediction
+        ? prediction.title
+        : `${prediction.title} (${(prediction.confidence * 100).toFixed(0)}% уверенности)`
     });
   }
   return out;

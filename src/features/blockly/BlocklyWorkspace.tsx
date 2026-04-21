@@ -98,7 +98,7 @@ function getLegacyModelTypeBlock(block: Blockly.Block): Blockly.Block | null {
   return block.getInputTargetBlock("MODEL");
 }
 
-function parseModelTypeRef(ref: string): ModelType {
+function parseModelTypeRef(ref: string, fallback: ModelType = "image_knn"): ModelType {
   if (
     ref === "image_knn" ||
     ref === "tabular_regression" ||
@@ -110,7 +110,7 @@ function parseModelTypeRef(ref: string): ModelType {
   ) {
     return ref;
   }
-  return "image_knn";
+  return fallback;
 }
 
 /** Варианты типа модели внутри блока «Обучить модель» (отдельные блоки моделей не нужны). */
@@ -128,8 +128,8 @@ function getTrainModelTypeDropdownOptions(level: 1 | 2): [string, string][] {
     ["Таблица: регрессия", "tabular_regression"],
     ["Таблица: классификация", "tabular_classification"],
     ["Таблица: нейросеть (MLP)", "tabular_neural"],
-    ["Таблица: SVM", "tabular_svm"],
-    ["Таблица: Random Forest", "tabular_random_forest"],
+    ["Таблица: SVM (без сохранения в библиотеку)", "tabular_svm"],
+    ["Таблица: Random Forest (без сохранения в библиотеку)", "tabular_random_forest"],
     ["Таблица: Оркестр моделей", "tabular_orchestrator"]
   ];
 }
@@ -227,10 +227,12 @@ function findDeclaredModelTypeAbovePredict(predictBlock: Blockly.Block | null): 
   while (cur) {
     if (cur.type === "noda_train_model_simple" || cur.type === "noda_train_model") {
       const legacyModel = getLegacyModelTypeBlock(cur);
+      const currentRef = String(cur.getFieldValue("DATASET_REF") ?? "");
+      const inferredByDataset = currentRef.startsWith("tabular:") ? "tabular_regression" : "image_knn";
       const ref = legacyModel
         ? String(legacyModel.getFieldValue("MODEL_TYPE_REF") ?? "image_knn")
         : String(cur.getFieldValue("MODEL_TYPE") ?? "image_knn");
-      return parseModelTypeRef(ref);
+      return parseModelTypeRef(ref, inferredByDataset as ModelType);
     }
     cur = cur.getPreviousBlock();
   }
@@ -469,7 +471,8 @@ function syncTrainBlockModelAndDataset(block: Blockly.Block) {
       legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
         block.getFieldValue("MODEL_TYPE") ??
         inferredByDataset
-    )
+    ),
+    inferredByDataset as ModelType
   );
   block.setFieldValue(modelType, "MODEL_TYPE");
 
@@ -528,7 +531,8 @@ function registerBlocks() {
                 legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
                   source?.getFieldValue("MODEL_TYPE") ??
                   inferredByDataset
-              )
+              ),
+              inferredByDataset as ModelType
             );
             return getTrainDatasetOptions(modelType);
           }),
@@ -573,7 +577,8 @@ function registerBlocks() {
                 legacyModel?.getFieldValue("MODEL_TYPE_REF") ??
                   source?.getFieldValue("MODEL_TYPE") ??
                   inferredByDataset
-              )
+              ),
+              inferredByDataset as ModelType
             );
             return getTrainDatasetOptions(modelType);
           }),
@@ -954,15 +959,10 @@ export function BlocklyWorkspace({
 
   const clampBlocksToViewport = (workspace: Blockly.WorkspaceSvg) => {
     const blocks = workspace.getAllBlocks(false);
-    const DELETE_X = 0;
     const MIN_X = 16;
     const MIN_Y = -Infinity;
     for (const block of blocks) {
       const xy = block.getRelativeToSurfaceXY();
-      if (xy.x < DELETE_X) {
-        block.dispose(false);
-        continue;
-      }
       let dx = 0;
       let dy = 0;
       if (xy.x < MIN_X) {
@@ -1066,8 +1066,7 @@ export function BlocklyWorkspace({
       } else if (current.type === "noda_predict_class") {
         const savedModelId = String(current.getFieldValue("SAVED_MODEL_ID") ?? "");
         if (!savedModelId || savedModelId === "__none__") {
-          current = current.getNextBlock();
-          continue;
+          throw new Error("В блоке «Предсказать» выбери модель из списка.");
         }
         commands.push({
           type: "predict",
@@ -1080,8 +1079,7 @@ export function BlocklyWorkspace({
       } else if (current.type === "noda_predict_l1") {
         const inputRef = String(current.getFieldValue("INPUT_REF") ?? "none");
         if (inputRef === "none") {
-          current = current.getNextBlock();
-          continue;
+          throw new Error("В блоке «Предсказать» выбери источник входных данных.");
         }
         commands.push({
           type: "predict",
@@ -1208,7 +1206,10 @@ export function BlocklyWorkspace({
         continue;
       }
       if (command.type === "train") {
-        const modelType = parseModelTypeRef(command.modelTypeRef);
+        const fallbackType: ModelType = command.datasetRef.startsWith("tabular:")
+          ? "tabular_regression"
+          : "image_knn";
+        const modelType = parseModelTypeRef(command.modelTypeRef, fallbackType);
         await trackEvent("training_started", { modelType });
         onMiniStudioActivity?.({
           type: "train",
@@ -1279,6 +1280,12 @@ export function BlocklyWorkspace({
       if (command.type === "save_model") {
         if (effectiveToolboxLevel(useAppStore.getState().workspaceLevel) === 1) {
           throw new Error("Сохранение модели в библиотеку доступно с уровня 2. Переключи уровень или убери блок «сохранить модель».");
+        }
+        const lastType = getLastTrainedModelType();
+        if (lastType === "tabular_svm" || lastType === "tabular_random_forest") {
+          throw new Error(
+            "Сохранение SVM/Random Forest пока не поддерживается. Выбери tabular_classification / tabular_neural / tabular_regression."
+          );
         }
         if (!canPersistCurrentModel()) {
           throw new Error("Нечего сохранить: сначала обучи модель (или загрузи сохранённую).");
@@ -1439,8 +1446,9 @@ export function BlocklyWorkspace({
         }
       }
       if (command.type === "show_eval") {
-        if (lastEvaluationRef.current) {
-          state.setEvaluation(lastEvaluationRef.current);
+        const evalToShow = lastEvaluationRef.current ?? useAppStore.getState().evaluation;
+        if (evalToShow) {
+          state.setEvaluation(evalToShow);
           state.setTraining({ isTraining: false, message: "", coachMood: "working" });
         } else {
           throw new Error("Оценка модели появится после обучения/тестирования");
@@ -1456,11 +1464,8 @@ export function BlocklyWorkspace({
     isRunningRef.current = true;
     try {
       const state = useAppStore.getState();
-      lastEvaluationRef.current = null;
-      state.setEvaluation(null);
-      state.setTrainingRunReport(null);
+      lastEvaluationRef.current = state.evaluation;
       state.setCoachUserMessage(null);
-      state.setPrediction(null);
       const workspace = workspaceRef.current;
       if (!workspace) {
         return;

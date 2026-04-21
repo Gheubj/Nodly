@@ -21,7 +21,7 @@ export function stripLeadingDuplicateHeaderRows(headers: string[], rows: string[
   return rest;
 }
 
-/** Разбор строки с учётом кавычек и выбором разделителя, дающим больше всего колонок. */
+/** Разбор строки с учётом кавычек/экранирования. */
 function splitDelimitedLine(line: string, delimiter: string): string[] {
   const parts: string[] = [];
   let cur = "";
@@ -29,6 +29,11 @@ function splitDelimitedLine(line: string, delimiter: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const c = line[i]!;
     if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i += 1;
+        continue;
+      }
       inQuotes = !inQuotes;
       continue;
     }
@@ -41,6 +46,49 @@ function splitDelimitedLine(line: string, delimiter: string): string[] {
   }
   parts.push(cur.trim());
   return parts;
+}
+
+/** Полноценный парсинг всего CSV, включая переносы строк внутри кавычек. */
+function parseDelimitedText(text: string, delimiter: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (c === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        cur += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (!inQuotes && c === delimiter) {
+      row.push(cur.trim());
+      cur = "";
+      continue;
+    }
+    if (!inQuotes && (c === "\n" || c === "\r")) {
+      row.push(cur.trim());
+      cur = "";
+      if (!(row.length === 1 && row[0] === "")) {
+        rows.push(row);
+      }
+      row = [];
+      if (c === "\r" && text[i + 1] === "\n") {
+        i += 1;
+      }
+      continue;
+    }
+    cur += c;
+  }
+  row.push(cur.trim());
+  if (!(row.length === 1 && row[0] === "")) {
+    rows.push(row);
+  }
+  return rows;
 }
 
 /** Выбираем один разделитель на весь файл, чтобы колонки не "плавали" между строками. */
@@ -73,21 +121,23 @@ export async function parseCsvFile(file: File): Promise<TabularDataset> {
   if (text.charCodeAt(0) === 0xfeff) {
     text = text.slice(1);
   }
-  const lines = text
+  const previewLines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-
-  if (lines.length < 2) {
+  if (previewLines.length < 2) {
     throw new Error("CSV должен содержать заголовок и минимум одну строку данных.");
   }
-  if (lines.length > 50000) {
+  const delimiter = pickCsvDelimiter(previewLines);
+  const parsedRows = parseDelimitedText(text, delimiter);
+  if (parsedRows.length < 2) {
+    throw new Error("CSV должен содержать заголовок и минимум одну строку данных.");
+  }
+  if (parsedRows.length > 50001) {
     throw new Error("Слишком много строк (макс 50,000).");
   }
-
-  const delimiter = pickCsvDelimiter(lines);
-  const headers = splitDelimitedLine(lines[0], delimiter);
-  const rowsRaw = lines.slice(1).map((line) => splitDelimitedLine(line, delimiter));
+  const headers = parsedRows[0]!;
+  const rowsRaw = parsedRows.slice(1);
   const rows = stripLeadingDuplicateHeaderRows(headers, rowsRaw);
   if (rows.length < 1) {
     throw new Error("После заголовка не осталось строк данных (возможно, все строки совпадали с заголовком).");

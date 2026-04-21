@@ -99,6 +99,10 @@ function kMeansAssign(flat: Float32Array, n: number, dim: number, k: number): nu
     }
     for (let ci = 0; ci < k; ci++) {
       if (counts[ci] === 0) {
+        const reseedIdx = (ci + iter) % n;
+        for (let j = 0; j < dim; j++) {
+          centroids[ci * dim + j] = flat[reseedIdx * dim + j];
+        }
         continue;
       }
       for (let j = 0; j < dim; j++) {
@@ -275,14 +279,15 @@ function computeTrainValTestCounts(
   total: number,
   trainSplit: number,
   valSplit: number,
-  _testSplit: number
+  testSplit: number
 ): { trainCount: number; valCount: number; testCount: number } {
-  let trainCount = Math.max(1, Math.floor(total * trainSplit));
-  let valCount = Math.max(1, Math.floor(total * valSplit));
-  let testCount = total - trainCount - valCount;
-  if (testCount < 1) {
-    testCount = 1;
-  }
+  const sum = Math.max(1e-9, trainSplit + valSplit + testSplit);
+  const t = trainSplit / sum;
+  const v = valSplit / sum;
+  const s = testSplit / sum;
+  let trainCount = Math.max(1, Math.floor(total * t));
+  let valCount = Math.max(1, Math.floor(total * v));
+  let testCount = Math.max(1, Math.floor(total * s));
   while (trainCount + valCount + testCount > total) {
     if (trainCount >= valCount && trainCount >= testCount && trainCount > 1) {
       trainCount -= 1;
@@ -292,6 +297,15 @@ function computeTrainValTestCounts(
       testCount -= 1;
     } else {
       break;
+    }
+  }
+  while (trainCount + valCount + testCount < total) {
+    if (trainCount <= valCount && trainCount <= testCount) {
+      trainCount += 1;
+    } else if (valCount <= testCount) {
+      valCount += 1;
+    } else {
+      testCount += 1;
     }
   }
   return { trainCount, valCount, testCount };
@@ -390,9 +404,30 @@ function stratifiedTrainValTestIndices(
   takeRoundRobin(trainIdx, trainNeed);
   takeRoundRobin(valIdx, valNeed);
   takeRoundRobin(testIdx, testNeed);
+  const targetWithMostNeed = () => {
+    const needs: Array<{ key: "train" | "val" | "test"; need: number; have: number }> = [
+      { key: "train", need: trainNeed, have: trainIdx.length },
+      { key: "val", need: valNeed, have: valIdx.length },
+      { key: "test", need: testNeed, have: testIdx.length }
+    ];
+    needs.sort((a, b) => {
+      const ar = a.need > 0 ? a.have / a.need : Infinity;
+      const br = b.need > 0 ? b.have / b.need : Infinity;
+      return ar - br;
+    });
+    return needs[0]!.key;
+  };
   for (const q of queues) {
     while (q.length > 0) {
-      testIdx.push(q.shift()!);
+      const idx = q.shift()!;
+      const target = targetWithMostNeed();
+      if (target === "train") {
+        trainIdx.push(idx);
+      } else if (target === "val") {
+        valIdx.push(idx);
+      } else {
+        testIdx.push(idx);
+      }
     }
   }
   return { trainIdx, valIdx, testIdx };
@@ -441,11 +476,15 @@ function subsampleTrainGlobalIndicesStratified(
   return out;
 }
 
-/** По умолчанию ordinal: компактные признаки для всех табличных моделей (деревья, SVM, TF). */
-function parseTabular(
-  dataset: TabularDataset,
-  categoricalEncoding: TabularCategoricalEncoding = "ordinal"
-) {
+function svmScoreToClassIndex(score: unknown): number {
+  return Number(score) >= 0 ? 1 : 0;
+}
+
+function extractTabularRaw(dataset: TabularDataset): {
+  rawX: string[][];
+  yRaw: string[];
+  featureColumnIndices: number[];
+} {
   if (dataset.rows.length === 0 && dataset.rowsGzipBase64) {
     throw new Error(
       "Таблица в сжатом виде: перезагрузите проект или CSV — после загрузки проекта строки должны распаковаться автоматически."
@@ -478,9 +517,22 @@ function parseTabular(
     throw new Error("Нужна хотя бы одна колонка признаков.");
   }
   const rawX = rows.map((row) => featureColumnIndices.map((ci) => row[ci].trim()));
+  const yRaw = rows.map((row) => row[targetIndex].trim());
+  return { rawX, yRaw, featureColumnIndices };
+}
+
+/** fit только по train-индексам, чтобы не было утечки теста/валидации в кодировщики. */
+function buildTabularFeatureSpecs(
+  rawX: string[][],
+  fitRowIndices: number[],
+  categoricalEncoding: TabularCategoricalEncoding
+): TabularFeatureSpec[] {
   const specs: TabularFeatureSpec[] = [];
-  for (let col = 0; col < featureColumnIndices.length; col++) {
-    const columnValues = rawX.map((row) => row[col]);
+  const fitIdx =
+    fitRowIndices.length > 0 ? fitRowIndices : rawX.map((_, i) => i);
+  const featureCount = rawX[0]?.length ?? 0;
+  for (let col = 0; col < featureCount; col++) {
+    const columnValues = fitIdx.map((ri) => rawX[ri]![col]);
     const numericValues = columnValues.map((value) => parseNumericFeatureCell(value));
     const finiteNumericValues = numericValues.filter((value) => !Number.isNaN(value));
     const numericRatio = finiteNumericValues.length / Math.max(1, numericValues.length);
@@ -499,8 +551,8 @@ function parseTabular(
       // редкие категории порождают шумные разреженные признаки.
       const maxUnique =
         categoricalEncoding === "onehot"
-          ? Math.min(140, Math.max(20, Math.floor(rawRows.length / 5)))
-          : Math.min(80, Math.max(12, Math.floor(rawRows.length / 6)));
+          ? Math.min(140, Math.max(20, Math.floor(fitIdx.length / 5)))
+          : Math.min(80, Math.max(12, Math.floor(fitIdx.length / 6)));
       let categories: string[];
       let rareBucketTop: string[] | undefined;
       if (unique.length > maxUnique) {
@@ -534,9 +586,13 @@ function parseTabular(
       specs.push({ kind: "categorical", categories, categoricalEncoding, rareBucketTop });
     }
   }
+  return specs;
+}
+
+function encodeTabularFeatures(rawX: string[][], specs: TabularFeatureSpec[]): number[][] {
   const encode = (rawRow: string[]) => {
     const out: number[] = [];
-    for (let col = 0; col < featureColumnIndices.length; col++) {
+    for (let col = 0; col < specs.length; col++) {
       const spec = specs[col];
       const value = rawRow[col];
       if (spec.kind === "numeric") {
@@ -561,11 +617,7 @@ function parseTabular(
     }
     return out;
   };
-  const x = rawX.map((row) => encode(row));
-  tabularFeatureSpecs = specs;
-  const yRaw = rows.map((row) => row[targetIndex].trim());
-  const encodedFeatureDim = x[0]?.length ?? 0;
-  return { x, yRaw, featureCount: encodedFeatureDim };
+  return rawX.map((row) => encode(row));
 }
 
 /** Порядок классов для one-hot/softmax: сначала числовые метки (в т.ч. «3%», «3,5%») по величине, иначе localeCompare. */
@@ -692,8 +744,8 @@ async function trainTabularModel(
 ): Promise<{ evaluation: ModelEvaluation; report: TrainingRunReport }> {
   const categoricalEncoding: TabularCategoricalEncoding =
     modelType === "tabular_regression" ? "onehot" : "ordinal";
-  const { x, yRaw, featureCount } = parseTabular(dataset, categoricalEncoding);
-  const total = x.length;
+  const { rawX, yRaw } = extractTabularRaw(dataset);
+  const total = rawX.length;
   if (total < 3) {
     throw new Error("Для train/val/test нужно минимум 3 строки в CSV.");
   }
@@ -712,7 +764,7 @@ async function trainTabularModel(
   let yIndicesForSplit: number[] = [];
 
   if (modelType === "tabular_regression") {
-    const indices = x.map((_, index) => index);
+    const indices = rawX.map((_, index) => index);
     tf.util.shuffle(indices);
     trainIdx = indices.slice(0, trainCount);
     valIdx = indices.slice(trainCount, trainCount + valCount);
@@ -729,6 +781,13 @@ async function trainTabularModel(
       valCount,
       testCount
     ));
+  }
+
+  tabularFeatureSpecs = buildTabularFeatureSpecs(rawX, trainIdx, categoricalEncoding);
+  const x = encodeTabularFeatures(rawX, tabularFeatureSpecs);
+  const featureCount = x[0]?.length ?? 0;
+  if (featureCount < 1) {
+    throw new Error("Не удалось построить признаки для табличной модели.");
   }
 
   // Регрессия: один Dense без нормализации X и с one-hot категориями — как в раннем пилоте.
@@ -756,117 +815,51 @@ async function trainTabularModel(
     const yTrain = tf.tensor2d(trainIdx.map((i) => [y[i]]));
     const yVal = tf.tensor2d(valIdx.map((i) => [y[i]]));
     const yTest = tf.tensor2d(testIdx.map((i) => [y[i]]));
-    tabularSvmModel = null;
-    tabularRfModel = null;
     tabularModel?.dispose();
-    tabularModel = null;
-
+    tabularModel = tf.sequential({
+      layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
+    });
+    // Пилот: в блоках был LR 0.02; дефолт сменили на 0.001 для табличной классификации — для одного Dense+MSE этого мало.
     const regressionLr = config.learningRate < 0.004 ? 0.02 : config.learningRate;
-    const trainRegressionCandidate = async (args: {
-      xTrainTensor: tf.Tensor2D;
-      xValTensor: tf.Tensor2D;
-      xTestTensor: tf.Tensor2D;
-      progressFrom: number;
-      progressTo: number;
-      modeTitle: string;
-    }) => {
-      const model = tf.sequential({
-        layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
-      });
-      model.compile({
-        optimizer: tf.train.adam(regressionLr),
-        loss: "meanSquaredError",
-        metrics: ["mse"]
-      });
-      const epochHistory: TrainingEpochLog[] = [];
-      await model.fit(args.xTrainTensor, yTrain, {
-        epochs: config.epochs,
-        validationData: [args.xValTensor, yVal],
-        callbacks: {
-          onEpochEnd: async (epoch, logs) => {
-            epochHistory.push({
-              epoch: epoch + 1,
-              loss: logNumber(logs, "loss"),
-              valLoss: logNumber(logs, "val_loss"),
-              mse: logNumber(logs, "mse"),
-              valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
-            });
-            const p = args.progressFrom + ((epoch + 1) / config.epochs) * (args.progressTo - args.progressFrom);
-            onProgress(
-              Math.round(p),
-              `${args.modeTitle}: эпоха ${epoch + 1} / ${config.epochs}`
-            );
-            await tf.nextFrame();
-          }
+    tabularModel.compile({
+      optimizer: tf.train.adam(regressionLr),
+      loss: "meanSquaredError",
+      metrics: ["mse"]
+    });
+    const regEpochHistory: TrainingEpochLog[] = [];
+    await tabularModel.fit(xTrain, yTrain, {
+      epochs: config.epochs,
+      validationData: [xVal, yVal],
+      callbacks: {
+        onEpochEnd: async (epoch, logs) => {
+          regEpochHistory.push({
+            epoch: epoch + 1,
+            loss: logNumber(logs, "loss"),
+            valLoss: logNumber(logs, "val_loss"),
+            mse: logNumber(logs, "mse"),
+            valMse: logNumber(logs, "val_mse", "val_mean_squared_error")
+          });
+          onProgress(
+            Math.round(((epoch + 1) / config.epochs) * 100),
+            `Эпоха ${epoch + 1} / ${config.epochs}`
+          );
+          await tf.nextFrame();
         }
-      });
-
-      const valPreds = model.predict(args.xValTensor) as tf.Tensor;
-      const valMaeTensor = tf.mean(tf.abs(tf.sub(valPreds, yVal)));
-      const valMae = (await valMaeTensor.data())[0] ?? Number.POSITIVE_INFINITY;
-      valPreds.dispose();
-      valMaeTensor.dispose();
-
-      const testEval = model.evaluate(args.xTestTensor, yTest) as tf.Tensor | tf.Tensor[];
-      const evalTensors = Array.isArray(testEval) ? testEval : [testEval];
-      const mseValue = (await evalTensors[0].data())[0] ?? 0;
-      for (const t of evalTensors) {
-        t.dispose();
       }
-
-      const preds = model.predict(args.xTestTensor) as tf.Tensor;
-      const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
-      const maeValue = (await maeTensor.data())[0] ?? 0;
-      const predData = Float32Array.from(await preds.data());
-      const yTestData = Float32Array.from(await yTest.data());
-      preds.dispose();
-      maeTensor.dispose();
-
-      return { model, epochHistory, valMae, mseValue, maeValue, predData, yTestData };
-    };
-
-    onProgress(2, "Регрессия: режим A (без нормализации X)");
-    const rawCandidate = await trainRegressionCandidate({
-      xTrainTensor: xTrain,
-      xValTensor: xVal,
-      xTestTensor: xTest,
-      progressFrom: 2,
-      progressTo: 48,
-      modeTitle: "Режим A"
     });
+    const testEval = tabularModel.evaluate(xTest, yTest) as tf.Tensor | tf.Tensor[];
+    const evalTensors = Array.isArray(testEval) ? testEval : [testEval];
+    const evalTensor = evalTensors[0];
+    const mseValue = (await evalTensor.data())[0] ?? 0;
+    for (const t of evalTensors) {
+      t.dispose();
+    }
 
-    const xNorm = x.map((row) => [...row]);
-    const prevNorm = tabularNorm;
-    const normStats = computeAndApplyTabularNorm(xNorm, trainIdx, featureCount);
-    tabularNorm = prevNorm;
-    const xTrainNorm = tf.tensor2d(trainIdx.map((i) => xNorm[i]!));
-    const xValNorm = tf.tensor2d(valIdx.map((i) => xNorm[i]!));
-    const xTestNorm = tf.tensor2d(testIdx.map((i) => xNorm[i]!));
-    onProgress(52, "Регрессия: режим B (z-score X)");
-    const normCandidate = await trainRegressionCandidate({
-      xTrainTensor: xTrainNorm,
-      xValTensor: xValNorm,
-      xTestTensor: xTestNorm,
-      progressFrom: 52,
-      progressTo: 98,
-      modeTitle: "Режим B"
-    });
-    xTrainNorm.dispose();
-    xValNorm.dispose();
-    xTestNorm.dispose();
-
-    const pickNorm = normCandidate.valMae < rawCandidate.valMae;
-    const chosen = pickNorm ? normCandidate : rawCandidate;
-    const dropped = pickNorm ? rawCandidate : normCandidate;
-    dropped.model.dispose();
-    tabularModel = chosen.model;
-    tabularNorm = pickNorm ? normStats : null;
-
-    const regEpochHistory = chosen.epochHistory;
-    const mseValue = chosen.mseValue;
-    const maeValue = chosen.maeValue;
-    const predData = chosen.predData;
-    const yTestData = chosen.yTestData;
+    const preds = tabularModel.predict(xTest) as tf.Tensor;
+    const maeTensor = tf.mean(tf.abs(tf.sub(preds, yTest)));
+    const maeValue = (await maeTensor.data())[0] ?? 0;
+    const predData = await preds.data();
+    const yTestData = await yTest.data();
     const regressionExamples: { trueY: number; predictedY: number; absError: number }[] = [];
     const nTest = testIdx.length;
     for (let r = 0; r < Math.min(8, nTest); r++) {
@@ -878,6 +871,8 @@ async function trainTabularModel(
         absError: Math.abs(trueY - predictedY)
       });
     }
+    preds.dispose();
+    maeTensor.dispose();
     const rmseValue = Math.sqrt(mseValue);
     const extra = regressionMetricsFromVectors(yTestData, predData, nTest);
 
@@ -961,7 +956,7 @@ async function trainTabularModel(
       yTrainBinary
     );
     const preds = svm.predict(testIdx.map((i) => x[i])) as number[];
-    predictedIdx = preds.map((v) => (Number(v) >= 0 ? 1 : 0));
+    predictedIdx = preds.map((v) => svmScoreToClassIndex(v));
     confidences = predictedIdx.map(() => 1);
     acc =
       predictedIdx.length > 0
@@ -1154,7 +1149,11 @@ async function trainTabularModel(
 
   const summary = `Classification test accuracy: ${(acc * 100).toFixed(1)}%`;
   const cmData = { labels: [...uniqueLabels], matrix: artifacts.confusion };
-  const metrics = { testLoss: loss, testAccuracy: acc, ...flatAggregateMetrics(cmData) };
+  const metrics = {
+    testLoss: loss,
+    testAccuracy: artifacts.accuracy,
+    ...flatAggregateMetrics(cmData)
+  };
   const report: TrainingRunReport = {
     kind: "tabular_classification",
     modelType,
@@ -1384,23 +1383,25 @@ function parsePredictionFeatures(input: string) {
     const spec = tabularFeatureSpecs[i];
     const value = raw[i];
     if (spec.kind === "numeric") {
-      const num = parseNumericFeatureCell(value);
-      if (Number.isNaN(num)) {
-        if (value.trim().length === 0 && spec.fillValue !== undefined) {
+      const parsed = parseNumericFeatureCell(value);
+      if (Number.isNaN(parsed)) {
+        if (spec.fillValue !== undefined) {
           out.push(spec.fillValue);
           continue;
         }
         throw new Error(`Признак #${i + 1} должен быть числом.`);
       }
-      out.push(num);
+      out.push(parsed);
     } else if (spec.categoricalEncoding === "ordinal") {
       const cell =
         spec.rareBucketTop && !spec.rareBucketTop.includes(value) ? OTHER_CATEGORY : value;
       const j = spec.categories.indexOf(cell);
       out.push(j < 0 ? 0 : j);
     } else {
+      const cell =
+        spec.rareBucketTop && !spec.rareBucketTop.includes(value) ? OTHER_CATEGORY : value;
       for (const category of spec.categories) {
-        out.push(value === category ? 1 : 0);
+        out.push(cell === category ? 1 : 0);
       }
     }
   }
@@ -1414,7 +1415,7 @@ async function predictTabularByInput(input: string): Promise<PredictionResult | 
   const features = applyTabularNormToVector(parsePredictionFeatures(input));
   if (tabularSvmModel && tabularMode === "classification") {
     const pred = tabularSvmModel.predictOne(features);
-    const idx = Math.max(0, Math.min(classIndexToLabel.length - 1, Math.round(Number(pred) || 0)));
+    const idx = Math.max(0, Math.min(classIndexToLabel.length - 1, svmScoreToClassIndex(pred)));
     const title = classIndexToLabel[idx] ?? `class_${idx}`;
     return {
       labelId: title,

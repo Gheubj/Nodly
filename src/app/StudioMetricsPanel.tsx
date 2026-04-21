@@ -286,6 +286,8 @@ export type StudioMetricsPanelProps = {
 export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps) {
   const report = useAppStore((s) => s.trainingRunReport);
   const prediction = useAppStore((s) => s.prediction);
+  const predictionIsRegression =
+    prediction?.labelId === "regression_output" || report?.kind === "tabular_regression";
 
   const emptyBody = (
     <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Запусти обучение или предсказание — здесь появятся метрики и графики." />
@@ -321,10 +323,12 @@ export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps
             Последнее предсказание
           </Title>
           <Text>
-            Класс: <strong>{prediction.title}</strong>
+            {predictionIsRegression ? "Прогноз" : "Класс"}: <strong>{prediction.title}</strong>
           </Text>
           <br />
-          <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+          {!predictionIsRegression ? (
+            <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+          ) : null}
         </div>
       ) : null}
     </Space>
