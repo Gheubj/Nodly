@@ -634,7 +634,9 @@ async function trainTabularModel(
   config: TrainConfig,
   onProgress: (progress: number, message: string) => void
 ): Promise<{ evaluation: ModelEvaluation; report: TrainingRunReport }> {
-  const { x, yRaw, featureCount } = parseTabular(dataset);
+  const categoricalEncoding: TabularCategoricalEncoding =
+    modelType === "tabular_regression" ? "onehot" : "ordinal";
+  const { x, yRaw, featureCount } = parseTabular(dataset, categoricalEncoding);
   const total = x.length;
   if (total < 3) {
     throw new Error("Для train/val/test нужно минимум 3 строки в CSV.");
@@ -673,7 +675,13 @@ async function trainTabularModel(
     ));
   }
 
-  computeAndApplyTabularNorm(x, trainIdx, featureCount);
+  // Регрессия: один Dense без нормализации X и с one-hot категориями — как в раннем пилоте.
+  // Z-score + ordinal ломали масштаб относительно y и предсказание после обучения.
+  if (modelType === "tabular_regression") {
+    tabularNorm = null;
+  } else {
+    computeAndApplyTabularNorm(x, trainIdx, featureCount);
+  }
 
   const xTrain = tf.tensor2d(trainIdx.map((i) => x[i]!));
   const xVal = tf.tensor2d(valIdx.map((i) => x[i]!));
@@ -697,7 +705,7 @@ async function trainTabularModel(
       layers: [tf.layers.dense({ inputShape: [featureCount], units: 1 })]
     });
     tabularModel.compile({
-      optimizer: tf.train.adam(Math.min(config.learningRate, 0.005)),
+      optimizer: tf.train.adam(config.learningRate),
       loss: "meanSquaredError",
       metrics: ["mse"]
     });
