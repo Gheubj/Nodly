@@ -2642,3 +2642,433 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-block-editor__card.ant-card {
   border-radius: 12px;
 }
+
+/* 2026 premium redesign layer: tokens + component polish */
+:root,
+html[data-theme="light"] {
+  --font-ui: Inter, Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: Manrope, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --surface-backdrop: rgba(255, 255, 255, 0.68);
+  --surface-panel: rgba(255, 255, 255, 0.84);
+  --surface-floating: rgba(255, 255, 255, 0.92);
+  --surface-stroke: rgba(137, 156, 186, 0.28);
+  --shadow-soft-xl: 0 16px 48px rgba(15, 23, 42, 0.14);
+  --shadow-float: 0 24px 56px rgba(15, 23, 42, 0.16);
+}
+
+html[data-theme="dark"] {
+  --surface-backdrop: rgba(15, 23, 42, 0.54);
+  --surface-panel: rgba(15, 23, 42, 0.74);
+  --surface-floating: rgba(15, 23, 42, 0.88);
+  --surface-stroke: rgba(123, 146, 180, 0.34);
+  --shadow-soft-xl: 0 22px 56px rgba(0, 0, 0, 0.52);
+  --shadow-float: 0 30px 70px rgba(0, 0, 0, 0.62);
+}
+
+body {
+  font-family: var(--font-ui);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.ant-typography h1,
+.ant-typography h2,
+.ant-typography h3,
+.ant-typography h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.app-content:not(.app-content--workspace) {
+  background: color-mix(in srgb, var(--app-bg) 78%, var(--app-surface) 22%);
+}
+
+.app-content:not(.app-content--workspace) .ant-card,
+.app-content:not(.app-content--workspace) .ant-alert,
+.app-content:not(.app-content--workspace) .ant-table-wrapper,
+.app-content:not(.app-content--workspace) .ant-tabs-nav,
+.app-content:not(.app-content--workspace) .ant-collapse {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-content .ant-btn {
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease,
+    color 180ms ease;
+}
+
+.app-content .ant-btn:hover {
+  transform: translateY(-1px);
+}
+
+.app-content .ant-btn:active {
+  transform: translateY(0);
+}
+
+.app-content .ant-btn-primary.ant-btn {
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}
+
+.app-content .ant-input,
+.app-content .ant-input-number,
+.app-content .ant-picker,
+.app-content .ant-select-selector,
+.app-content .ant-input-affix-wrapper {
+  border-color: var(--surface-stroke) !important;
+  background: color-mix(in srgb, var(--surface-floating) 92%, transparent) !important;
+}
+
+.app-header {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--app-header-bg) 88%, #ffffff 12%) 0%,
+    color-mix(in srgb, var(--app-header-bg) 94%, #000000 6%) 80%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-soft-xl);
+}
+
+.app-header-nav-link {
+  border-radius: 10px;
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+.app-header-nav-link--active {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.landing-page__inner {
+  max-width: 1240px;
+  padding: 34px 18px 64px;
+}
+
+.landing-hero {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--surface-stroke);
+  background: linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--surface-backdrop) 88%, transparent) 0%,
+      color-mix(in srgb, var(--surface-panel) 94%, transparent) 48%,
+      color-mix(in srgb, var(--surface-floating) 98%, transparent) 100%
+    ),
+    var(--app-surface);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.landing-hero::before,
+.landing-hero::after {
+  display: none;
+}
+
+.landing-hero__ambient {
+  position: absolute;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: 0.9;
+}
+
+.landing-hero__ambient--left {
+  width: 280px;
+  height: 280px;
+  left: -62px;
+  top: -58px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47, 109, 246, 0.26) 0%, rgba(47, 109, 246, 0) 72%);
+}
+
+.landing-hero__ambient--right {
+  width: 320px;
+  height: 320px;
+  right: -96px;
+  bottom: -110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.2) 0%, rgba(14, 165, 233, 0) 76%);
+}
+
+.landing-hero__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.045) 0,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 13px
+  );
+  opacity: 0.45;
+}
+
+.landing-hero__headline,
+.landing-hero__lead,
+.landing-hero__actions,
+.landing-hero__highlights {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-hero__title.ant-typography {
+  font-size: clamp(2rem, 4.2vw, 2.95rem) !important;
+  font-weight: 760 !important;
+  line-height: 1.12 !important;
+}
+
+.landing-hero__lead {
+  font-size: 1.08rem;
+  max-width: 58ch;
+}
+
+.landing-hero__highlight {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-floating) 92%, transparent);
+}
+
+.landing-showcase {
+  border-radius: var(--radius-lg);
+}
+
+.landing-feature-card.ant-card,
+.landing-guest-paths__card.ant-card,
+.landing-role-card.ant-card,
+.landing-quick-actions-card.ant-card,
+.landing-home-teacher-summary.ant-card,
+.landing-home-direct.ant-card,
+.landing-cta-card.ant-card {
+  border-color: var(--surface-stroke);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-soft-xl);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.landing-feature-card.ant-card:hover,
+.landing-guest-paths__card.ant-card:hover {
+  transform: translateY(-4px);
+}
+
+.landing-footer {
+  background: color-mix(in srgb, var(--surface-panel) 90%, var(--app-surface) 10%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.app-content--workspace {
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--app-bg) 78%, transparent) 0%,
+      color-mix(in srgb, var(--app-surface) 82%, transparent) 48%,
+      var(--app-surface) 100%
+    ),
+    var(--app-bg);
+}
+
+.studio-page__toolbar {
+  border-radius: 16px;
+  border-color: var(--surface-stroke);
+  background: var(--surface-floating);
+  box-shadow: var(--shadow-soft-xl);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.studio-page__toolbar-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.studio-page__side-tabs-inner.ant-tabs > .ant-tabs-nav .ant-tabs-tab {
+  border-radius: 999px;
+  margin-inline-end: 8px;
+  padding-inline: 12px;
+  padding-block: 6px;
+}
+
+.studio-page__side-tabs-inner.ant-tabs > .ant-tabs-nav .ant-tabs-tab-active {
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+}
+
+.studio-stage-panel .ant-card,
+.studio-metrics-card.ant-card,
+.blockly-layout {
+  border-color: var(--surface-stroke);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-panel) 94%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+}
+
+.blockly-palette {
+  background: color-mix(in srgb, var(--surface-backdrop) 82%, var(--app-surface) 18%);
+  border-right-color: var(--surface-stroke);
+}
+
+.blockly-palette-btn {
+  border-radius: 9px;
+}
+
+.studio-projects-drawer .ant-drawer-content,
+.studio-data-drawer .ant-drawer-content,
+.studio-data-modal .ant-modal-content,
+.studio-teacher-review-modal .ant-modal-content,
+.app-settings-drawer .ant-drawer-content,
+.ant-modal .ant-modal-content {
+  border: 1px solid var(--surface-stroke);
+  border-radius: 16px;
+  background: var(--surface-floating);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.studio-projects-list .ant-list-item {
+  border-radius: 12px;
+  padding-inline: 10px;
+  transition: background-color 140ms ease;
+}
+
+.studio-projects-list .ant-list-item:hover {
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+}
+
+.lesson-player-page__head {
+  border-radius: 18px;
+  border-color: var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 96%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+  backdrop-filter: blur(20px);
+}
+
+.lesson-flow--colab {
+  gap: 8px;
+}
+
+.lesson-flow__segment {
+  border-radius: 14px;
+}
+
+.lesson-flow__segment--colab {
+  border-color: var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-panel) 72%, transparent);
+}
+
+.lesson-flow__segment--colab:hover,
+.lesson-flow__segment--colab:focus-within {
+  background: color-mix(in srgb, var(--surface-floating) 88%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent) 28%, var(--surface-stroke));
+}
+
+.lesson-flow__text,
+.lesson-flow__studio,
+.lesson-flow__checkpoint {
+  padding: 18px 20px;
+}
+
+.lesson-flow__markdown {
+  font-size: 17px;
+  line-height: 1.72;
+}
+
+.lesson-flow__checkpoint .ant-radio-group,
+.lesson-flow__checkpoint .ant-checkbox-group {
+  display: grid;
+  gap: 8px;
+}
+
+.lesson-flow__mini-dev-frame {
+  border-radius: 14px;
+  border-color: var(--surface-stroke);
+}
+
+.lesson-player-page__submit-card.ant-card,
+.lesson-player-page__grade-card.ant-card,
+.lesson-player-page__assignment-alert.ant-alert,
+.lesson-player-page__checkpoint-status.ant-alert {
+  border-color: var(--surface-stroke);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+}
+
+.admin-lesson-editor {
+  max-width: min(1460px, 100%);
+}
+
+.admin-lesson-editor__panel {
+  border-color: var(--surface-stroke);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 96%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 16px;
+}
+
+.admin-lesson-editor__title.ant-typography {
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+  font-weight: 720 !important;
+}
+
+.admin-lesson-editor__meta.ant-typography {
+  font-size: 13px;
+}
+
+.admin-lesson-editor__back-btn.ant-btn {
+  padding-inline: 0;
+}
+
+.admin-lesson-editor__footer-actions {
+  border-radius: 14px;
+  border-color: var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 92%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+}
+
+.lesson-block-editor__bulk-actions {
+  margin-bottom: 8px;
+}
+
+.lesson-block-editor__insert-row .ant-btn {
+  border-radius: 999px;
+}
+
+.lesson-block-editor__card.ant-card {
+  border-radius: 14px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.lesson-block-editor__card.ant-card:hover,
+.lesson-block-editor__card.ant-card:focus-within {
+  border-color: color-mix(in srgb, var(--app-accent) 30%, var(--surface-stroke));
+  box-shadow: var(--shadow-soft-xl);
+}
+
+@media (max-width: 920px) {
+  .landing-page__inner {
+    padding-inline: 12px;
+  }
+
+  .landing-hero {
+    padding: 26px 16px 28px;
+  }
+}

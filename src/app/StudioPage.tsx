@@ -1209,8 +1209,10 @@ export function StudioPage() {
         open={libraryOpen}
         width={460}
         onClose={() => setLibraryOpen(false)}
+        rootClassName="studio-projects-drawer"
       >
         <List
+          className="studio-projects-list"
           dataSource={projectItems}
           locale={{ emptyText: "Проекты не найдены" }}
           renderItem={(item) => (

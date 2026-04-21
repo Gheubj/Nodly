@@ -86,17 +86,17 @@ export function AdminLessonTemplateEditorPage() {
         <Space direction="vertical" size="middle" style={{ width: "100%" }} className="admin-lesson-editor__stack">
           <div className="admin-lesson-editor__header admin-lesson-editor__panel">
             <div className="admin-lesson-editor__header-main">
-              <Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
+              <Title level={4} className="admin-lesson-editor__title">
                 {title}
               </Title>
               {template ? (
-                <Text type="secondary">
+                <Text type="secondary" className="admin-lesson-editor__meta">
                   {template.moduleKey} · #{template.sortOrder}
                 </Text>
               ) : null}
             </div>
             <div className="admin-lesson-editor__header-actions">
-              <Button type="link" style={{ paddingInline: 0 }} onClick={() => navigate("/admin/templates")}>
+              <Button type="link" className="admin-lesson-editor__back-btn" onClick={() => navigate("/admin/templates")}>
                 Назад
               </Button>
               <Alert type="warning" showIcon message="Не забудь сохранить изменения перед выходом." />

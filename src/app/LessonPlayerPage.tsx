@@ -560,7 +560,7 @@ export function LessonPlayerPage() {
                 teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
               />
               {allCheckpointsDone && checkpointBlockIds.length > 0 && !isTeacherReview ? (
-                <Alert type="success" showIcon message="Все вопросы пройдены" />
+                <Alert className="lesson-player-page__checkpoint-status" type="success" showIcon message="Все вопросы пройдены" />
               ) : null}
               {showSubmitToTeacher && submission ? (
                 <Card title="Сдача работы" className="lesson-player-page__submit-card">

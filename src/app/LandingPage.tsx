@@ -106,6 +106,9 @@ export function LandingPage() {
           className={`landing-hero${user && sessionRestored && !sessionLoading ? " landing-hero--authed" : ""}`}
           aria-labelledby="landing-hero-title"
         >
+          <div className="landing-hero__ambient landing-hero__ambient--left" aria-hidden />
+          <div className="landing-hero__ambient landing-hero__ambient--right" aria-hidden />
+          <div className="landing-hero__grain" aria-hidden />
           <div className="landing-hero__headline">
             <img
               src={htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png"}
