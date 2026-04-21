@@ -258,6 +258,19 @@ function parseRegressionTargetCell(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+/** Числовой признак: поддерживает локальный десятичный разделитель (27,9). */
+function parseNumericFeatureCell(raw: string): number {
+  let t = raw.trim().replace(/\s/g, "");
+  if (!t) {
+    return NaN;
+  }
+  if (/^-?\d+,\d+$/.test(t)) {
+    t = t.replace(",", ".");
+  }
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function computeTrainValTestCounts(
   total: number,
   trainSplit: number,
@@ -468,7 +481,7 @@ function parseTabular(
   const specs: TabularFeatureSpec[] = [];
   for (let col = 0; col < featureColumnIndices.length; col++) {
     const columnValues = rawX.map((row) => row[col]);
-    const numericValues = columnValues.map((value) => Number(value));
+    const numericValues = columnValues.map((value) => parseNumericFeatureCell(value));
     const allNumeric = numericValues.every((value) => !Number.isNaN(value));
     if (allNumeric) {
       specs.push({ kind: "numeric" });
@@ -519,7 +532,7 @@ function parseTabular(
       const spec = specs[col];
       const value = rawRow[col];
       if (spec.kind === "numeric") {
-        const num = Number(value);
+        const num = parseNumericFeatureCell(value);
         if (Number.isNaN(num)) {
           throw new Error("Числовой признак содержит нечисловое значение.");
         }
@@ -1298,7 +1311,7 @@ function parsePredictionFeatures(input: string) {
     const spec = tabularFeatureSpecs[i];
     const value = raw[i];
     if (spec.kind === "numeric") {
-      const num = Number(value);
+      const num = parseNumericFeatureCell(value);
       if (Number.isNaN(num)) {
         throw new Error(`Признак #${i + 1} должен быть числом.`);
       }
