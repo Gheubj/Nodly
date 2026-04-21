@@ -601,7 +601,10 @@ async function trainTabularModel(
       nEstimators: 35,
       maxFeatures: Math.max(1, Math.min(featureCount, Math.round(Math.sqrt(featureCount)))),
       replacement: true,
-      seed: 42
+      seed: 42,
+      // ml-cart по умолчанию gainThreshold=0.01: при слабом сигнале/разреженных one-hot
+      // корень часто не режется вообще → лист = мода = всегда доминирующий класс.
+      treeOptions: { gainThreshold: 0, minNumSamples: 2 }
     });
     rf.train(trainIdx.map((i) => x[i]), yTrainIdx);
     const preds = rf.predict(testIdx.map((i) => x[i]));
