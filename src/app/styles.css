@@ -493,6 +493,11 @@ html[data-theme="dark"] .app-content--workspace {
   -webkit-overflow-scrolling: touch;
 }
 
+.lesson-player-page:fullscreen .lesson-flow__mini-dev-frame {
+  height: min(86vh, 1200px);
+  min-height: 560px;
+}
+
 .placeholder-text.ant-typography {
   font-size: 16px;
 }
@@ -727,6 +732,19 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
   width: auto;
   min-width: 320px;
   max-width: none;
+}
+
+.studio-mini-host--presentation .studio-page__main--mini-side .studio-page__blockly {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.studio-mini-host--presentation .studio-page__main--mini-side .studio-page__side-tabs--mini {
+  flex: 0 0 auto;
+  width: min(360px, 32vw);
+  min-width: 280px;
+  max-width: 440px;
 }
 
 .studio-stage-panel--mini .studio-stage-panel__mini-layout {

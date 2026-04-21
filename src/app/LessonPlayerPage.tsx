@@ -104,6 +104,8 @@ export function LessonPlayerPage() {
   playerStateRef.current = playerState;
   const lessonRootRef = useRef<HTMLDivElement | null>(null);
   const [isPresentation, setIsPresentation] = useState(false);
+  const isPresentationRef = useRef(false);
+  isPresentationRef.current = isPresentation;
 
   useEffect(() => {
     const onFs = () => {
@@ -141,6 +143,16 @@ export function LessonPlayerPage() {
   }, [bootstrap]);
 
   const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
+
+  useEffect(() => {
+    const frames = lessonRootRef.current?.querySelectorAll<HTMLIFrameElement>("iframe.lesson-flow__mini-dev-frame");
+    frames?.forEach((frame) => {
+      frame.contentWindow?.postMessage(
+        { source: "nodly-lesson", type: "presentation", value: isPresentation },
+        window.location.origin
+      );
+    });
+  }, [isPresentation, flowBlocks]);
 
   const checkpointBlockIds = useMemo(
     () => flowBlocks.filter((b): b is Extract<(typeof flowBlocks)[0], { type: "checkpoint" }> => b.type === "checkpoint").map((b) => b.id),
@@ -324,6 +336,14 @@ export function LessonPlayerPage() {
           }
         };
         void persistState(next);
+        return;
+      }
+      if ((payload as { source?: string; type?: string }).source === "nodly-mini-studio" && (payload as { type?: string }).type === "presentation-query") {
+        const target = (evt.source as Window | null) ?? null;
+        target?.postMessage(
+          { source: "nodly-lesson", type: "presentation", value: isPresentationRef.current },
+          window.location.origin
+        );
         return;
       }
       if (payload.source !== "nodly-mini-studio") {

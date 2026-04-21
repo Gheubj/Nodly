@@ -210,6 +210,7 @@ export function StudioPage() {
   const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
   const [renameProjectTitle, setRenameProjectTitle] = useState("");
   const [renamingProject, setRenamingProject] = useState(false);
+  const [lessonPresentation, setLessonPresentation] = useState(false);
   const [projectItems, setProjectItems] = useState<NodlyProjectMeta[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
@@ -812,6 +813,32 @@ export function StudioPage() {
     tabularPredictionInputs
   ]);
 
+  useEffect(() => {
+    if (!isMini) {
+      return;
+    }
+    const handler = (evt: MessageEvent) => {
+      if (evt.origin !== window.location.origin) {
+        return;
+      }
+      const data = evt.data as { source?: string; type?: string; value?: unknown } | null;
+      if (!data || data.source !== "nodly-lesson" || data.type !== "presentation") {
+        return;
+      }
+      setLessonPresentation(Boolean(data.value));
+    };
+    window.addEventListener("message", handler);
+    try {
+      window.parent?.postMessage(
+        { source: "nodly-mini-studio", type: "presentation-query" },
+        window.location.origin
+      );
+    } catch {
+      // ignore cross-origin
+    }
+    return () => window.removeEventListener("message", handler);
+  }, [isMini]);
+
   const handleSave = async () => {
     await saveProjectToCloud(saveTitle);
     setSaveOpen(false);
@@ -1122,7 +1149,11 @@ export function StudioPage() {
   );
 
   return (
-    <Content className={`app-content app-content--workspace${isMini ? " studio-mini-host" : ""}`}>
+    <Content
+      className={`app-content app-content--workspace${isMini ? " studio-mini-host" : ""}${
+        isMini && lessonPresentation ? " studio-mini-host--presentation" : ""
+      }`}
+    >
       {contextHolder}
       {!isMini && user ? (
         <Tabs
