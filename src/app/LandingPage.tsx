@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Layout, Spin } from "antd";
 import {
   ArrowRightOutlined,
@@ -28,7 +28,7 @@ import {
 } from "@/app/HomeSchoolStudentWelcome";
 import { HomeDirectStudentPanel } from "@/app/HomeDirectStudentPanel";
 import { LandingFooter } from "@/app/LandingFooter";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { NodlyPromoMetrics } from "@/components/NodlyPromoMetrics";
 
 const { Content } = Layout;
 
@@ -36,12 +36,85 @@ function openAuthModal() {
   window.dispatchEvent(new Event("nodly-open-auth"));
 }
 
-function greetingByHour(): string {
+type GreetingPhase = "night" | "dawn" | "day" | "evening";
+
+function greetingWithPhase(): { line: string; phase: GreetingPhase } {
   const h = new Date().getHours();
-  if (h < 5) return "Доброй ночи";
-  if (h < 12) return "Доброе утро";
-  if (h < 18) return "Добрый день";
-  return "Добрый вечер";
+  if (h < 5) return { line: "Доброй ночи", phase: "night" };
+  if (h < 10) return { line: "Доброе утро", phase: "dawn" };
+  if (h < 17) return { line: "Добрый день", phase: "day" };
+  if (h < 23) return { line: "Добрый вечер", phase: "evening" };
+  return { line: "Доброй ночи", phase: "night" };
+}
+
+function GreetingGlyph({ phase }: { phase: GreetingPhase }) {
+  const common = { width: 36, height: 36, viewBox: "0 0 40 40", "aria-hidden": true as const };
+  if (phase === "night") {
+    return (
+      <svg {...common}>
+        <defs>
+          <linearGradient id="gg-moon" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#a5b4fc" />
+            <stop offset="100%" stopColor="#6366f1" />
+          </linearGradient>
+        </defs>
+        <circle cx="14" cy="14" r="5" fill="url(#gg-moon)" opacity="0.9" />
+        <circle cx="22" cy="22" r="9" fill="none" stroke="url(#gg-moon)" strokeWidth="2.2" />
+        <path d="M28 10l1.5 3 3.2.2-2.4 2.4.6 3.2-3-1.6-3 1.6.6-3.2-2.4-2.4 3.2-.2z" fill="#fde68a" opacity="0.85" />
+      </svg>
+    );
+  }
+  if (phase === "dawn") {
+    return (
+      <svg {...common}>
+        <defs>
+          <linearGradient id="gg-dawn" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor="#fb7185" />
+            <stop offset="55%" stopColor="#fbbf24" />
+            <stop offset="100%" stopColor="#93c5fd" />
+          </linearGradient>
+        </defs>
+        <path d="M4 28 Q20 8 36 28 Z" fill="url(#gg-dawn)" opacity="0.95" />
+        <circle cx="28" cy="12" r="5" fill="#fef3c7" opacity="0.95" />
+      </svg>
+    );
+  }
+  if (phase === "evening") {
+    return (
+      <svg {...common}>
+        <defs>
+          <linearGradient id="gg-eve" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#7c3aed" />
+          </linearGradient>
+        </defs>
+        <path d="M2 30h36" stroke="url(#gg-eve)" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="30" cy="10" r="6" fill="#fdba74" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <defs>
+        <radialGradient id="gg-sun" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fde047" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </radialGradient>
+      </defs>
+      <circle cx="20" cy="20" r="10" fill="url(#gg-sun)" />
+      <g stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" opacity="0.85">
+        <path d="M20 4v3M20 33v3M36 20h-3M7 20H4M31.5 8.5l-2 2M10.5 29.5l-2 2M31.5 31.5l-2-2M10.5 10.5l-2-2" />
+      </g>
+    </svg>
+  );
+}
+
+function HomeReactiveSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="home-v2__surface" onMouseMove={onReactiveCardMove}>
+      {children}
+    </div>
+  );
 }
 
 /** Глобальный «курсорный» слой: обновляет CSS-переменные по движению мыши (rAF). */
@@ -176,24 +249,13 @@ const PATHS: GuestPath[] = [
   }
 ];
 
+const FEATURE_TONES = ["events", "data", "model"] as const;
+const PATH_TONES = ["model", "events", "predict"] as const;
+
 function GuestLanding() {
   const htmlTheme = useHtmlDataTheme();
-  const lossGradUid = useId().replace(/:/g, "");
   const sceneRef = useCursorScene<HTMLDivElement>();
   const wordmark = htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
-  const lossDemoRows = useMemo(
-    () =>
-      Array.from({ length: 28 }, (_, i) => {
-        const epoch = i + 1;
-        const t = i / 27;
-        return {
-          epoch,
-          loss: 1.12 * Math.exp(-t * 2.85) + 0.065 + Math.sin(epoch * 0.38) * 0.032,
-          valLoss: 1.26 * Math.exp(-t * 2.48) + 0.095 + Math.cos(epoch * 0.31) * 0.038
-        };
-      }),
-    []
-  );
 
   return (
     <Content className="app-content landing-v2">
@@ -269,53 +331,53 @@ function GuestLanding() {
           id="features"
           aria-label="Возможности Nodly"
         >
-          {FEATURES.map((feature) => (
+          {FEATURES.map((feature, i) => (
             <article
               key={feature.title}
-              className="landing-v2__feature"
+              className={`landing-v2__blockly-card landing-v2__blockly-card--${FEATURE_TONES[i] ?? "events"}`}
               onMouseMove={onReactiveCardMove}
             >
-              <div className="landing-v2__feature-icon" aria-hidden>
+              <div className="landing-v2__blockly-card__icon" aria-hidden>
                 {feature.icon}
               </div>
-              <h3 className="landing-v2__feature-title">{feature.title}</h3>
-              <p className="landing-v2__feature-text">{feature.text}</p>
+              <h3 className="landing-v2__blockly-card__title">{feature.title}</h3>
+              <p className="landing-v2__blockly-card__text">{feature.text}</p>
             </article>
           ))}
         </section>
 
         <section className="landing-v2__paths" aria-label="Сценарии использования">
-          {PATHS.map((path) => (
+          {PATHS.map((path, i) => (
             <article
               key={path.title}
-              className="landing-v2__path"
+              className={`landing-v2__blockly-card landing-v2__blockly-card--${PATH_TONES[i] ?? "model"}`}
               onMouseMove={onReactiveCardMove}
             >
-              <div className="landing-v2__path-chip">
-                <span className="landing-v2__path-chip-icon" aria-hidden>
+              <div className="landing-v2__blockly-card__chip">
+                <span className="landing-v2__blockly-card__chip-icon" aria-hidden>
                   {path.icon}
                 </span>
                 {path.tag}
               </div>
-              <h3 className="landing-v2__path-title">{path.title}</h3>
-              <p className="landing-v2__path-text">{path.text}</p>
-              <div className="landing-v2__path-actions">
+              <h3 className="landing-v2__blockly-card__title">{path.title}</h3>
+              <p className="landing-v2__blockly-card__text">{path.text}</p>
+              <div className="landing-v2__blockly-card__actions">
                 <Button
                   type="primary"
                   ghost
                   onClick={openAuthModal}
-                  className="landing-v2__path-cta"
+                  className="landing-v2__blockly-card__cta"
                 >
                   Войти или зарегистрироваться
                 </Button>
-                <span className="landing-v2__path-hint">{path.hint}</span>
+                <span className="landing-v2__blockly-card__hint">{path.hint}</span>
               </div>
             </article>
           ))}
         </section>
 
         <section
-          className="landing-v2__showcase"
+          className={`landing-v2__showcase${htmlTheme === "light" ? " landing-v2__showcase--light" : ""}`}
           onMouseMove={onReactiveCardMove}
           aria-labelledby="landing-v2-showcase-title"
         >
@@ -365,66 +427,7 @@ function GuestLanding() {
                 <div className="landing-v2__chip landing-v2__chip--teal">Предсказать класс</div>
                 <div className="landing-v2__chip landing-v2__chip--teal">Сохранить</div>
               </div>
-              <div className="landing-v2__device-meter" aria-hidden>
-                <span className="landing-v2__device-meter-fill" />
-              </div>
-              <div className="landing-v2__device-legend">
-                <span>accuracy</span>
-                <strong>0.94</strong>
-              </div>
-              <div className="landing-v2__loss-block" aria-hidden>
-                <div className="landing-v2__loss-head">
-                  <span>loss</span>
-                  <span className="landing-v2__loss-note">train · val</span>
-                </div>
-                <div className="landing-v2__loss-chart">
-                  <ResponsiveContainer width="100%" height={120}>
-                    <LineChart data={lossDemoRows} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id={`${lossGradUid}-lt`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#6aa3ff" />
-                          <stop offset="100%" stopColor="#9d7bff" />
-                        </linearGradient>
-                        <linearGradient id={`${lossGradUid}-lv`} x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#34d399" />
-                          <stop offset="100%" stopColor="#30d7d2" />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="4 6" stroke="rgba(148, 163, 184, 0.2)" vertical={false} />
-                      <XAxis dataKey="epoch" hide />
-                      <YAxis hide domain={["auto", "auto"]} />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: 10,
-                          border: "1px solid rgba(148, 163, 184, 0.35)",
-                          background: "rgba(15, 23, 42, 0.88)",
-                          fontSize: 11,
-                          color: "#e2e8f0"
-                        }}
-                        labelStyle={{ color: "#94a3b8" }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="loss"
-                        name="train"
-                        stroke={`url(#${lossGradUid}-lt)`}
-                        dot={false}
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="valLoss"
-                        name="val"
-                        stroke={`url(#${lossGradUid}-lv)`}
-                        dot={false}
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              <NodlyPromoMetrics />
             </div>
           </div>
         </section>
@@ -512,7 +515,7 @@ function AuthedHome({ user }: { user: SessionUser }) {
     }
   }, [schoolStudent, enrollmentClassroomIds]);
 
-  const greet = useMemo(() => greetingByHour(), []);
+  const greeting = useMemo(() => greetingWithPhase(), []);
 
   const quickLinks: QuickLink[] = useMemo(() => {
     const links: QuickLink[] = [];
@@ -561,8 +564,13 @@ function AuthedHome({ user }: { user: SessionUser }) {
         <div className="home-v2__aurora home-v2__aurora--b" />
       </div>
       <div className="home-v2__inner">
-        <header className="home-v2__hero">
-          <div className="home-v2__hello-eyebrow">{greet}</div>
+        <header className="home-v2__hero home-v2__surface" onMouseMove={onReactiveCardMove}>
+          <div className="home-v2__hello-lead">
+            <span className="home-v2__hello-glyph">
+              <GreetingGlyph phase={greeting.phase} />
+            </span>
+            <span className="home-v2__hello-greet">{greeting.line}</span>
+          </div>
           <h1 className="home-v2__hello">{user.nickname}</h1>
           <p className="home-v2__hello-sub">
             Короткая сводка и быстрый вход в разделы. Всё, что нужно — на одном экране.
@@ -590,37 +598,53 @@ function AuthedHome({ user }: { user: SessionUser }) {
         </nav>
 
         <div className="home-v2__widgets">
-          {teacher ? <HomeTeacherSummary /> : null}
-          {schoolStudent ? (
-            <HomeSchoolStudentWelcome
-              user={user}
-              summary={schoolSummary}
-              summaryLoading={schoolSummaryLoading}
-            />
+          {teacher ? (
+            <HomeReactiveSurface>
+              <HomeTeacherSummary />
+            </HomeReactiveSurface>
           ) : null}
           {schoolStudent ? (
-            <HomeSchoolStudentBanner
-              slots={scheduleSlots}
-              scheduleReady={scheduleReady}
-              scheduleLoading={enrollmentsCount > 0 && !scheduleReady}
-              enrollmentsCount={enrollmentsCount}
-              attentionCount={schoolSummary.assignmentAttentionCount ?? 0}
-              summaryLoading={schoolSummaryLoading}
-            />
+            <HomeReactiveSurface>
+              <HomeSchoolStudentWelcome
+                user={user}
+                summary={schoolSummary}
+                summaryLoading={schoolSummaryLoading}
+              />
+            </HomeReactiveSurface>
           ) : null}
-          {directStudent ? <HomeDirectStudentPanel /> : null}
+          {schoolStudent ? (
+            <HomeReactiveSurface>
+              <HomeSchoolStudentBanner
+                slots={scheduleSlots}
+                scheduleReady={scheduleReady}
+                scheduleLoading={enrollmentsCount > 0 && !scheduleReady}
+                enrollmentsCount={enrollmentsCount}
+                attentionCount={schoolSummary.assignmentAttentionCount ?? 0}
+                summaryLoading={schoolSummaryLoading}
+              />
+            </HomeReactiveSurface>
+          ) : null}
+          {directStudent ? (
+            <HomeReactiveSurface>
+              <HomeDirectStudentPanel />
+            </HomeReactiveSurface>
+          ) : null}
 
           {teacher || schoolStudent ? (
-            <HomeSchedulePreview
-              onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined}
-            />
+            <HomeReactiveSurface>
+              <HomeSchedulePreview
+                onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined}
+              />
+            </HomeReactiveSurface>
           ) : null}
           {schoolStudent ? (
-            <HomeUpcomingHomework
-              rows={homeHwRows}
-              loading={homeHwLoading}
-              onRefresh={reloadHomeHw}
-            />
+            <HomeReactiveSurface>
+              <HomeUpcomingHomework
+                rows={homeHwRows}
+                loading={homeHwLoading}
+                onRefresh={reloadHomeHw}
+              />
+            </HomeReactiveSurface>
           ) : null}
         </div>
       </div>

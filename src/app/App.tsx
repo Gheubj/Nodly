@@ -494,7 +494,10 @@ export function App() {
         </Routes>
         <Modal
         open={authOpen}
+        rootClassName="app-auth-modal"
+        centered
         title="Вход"
+        styles={{ body: { paddingTop: 8 } }}
         onCancel={() => {
           setAuthOpen(false);
           setVerificationCode("");

@@ -6,6 +6,7 @@ import { useAppStore } from "@/store/useAppStore";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCaption";
+import { NodlyPromoMetrics } from "@/components/NodlyPromoMetrics";
 
 const { Text } = Typography;
 
@@ -161,6 +162,7 @@ export function StudioStagePanel({
               )}
             </div>
             <CoachBriefBlock />
+            <NodlyPromoMetrics className="studio-stage-panel__promo-metrics" />
           </div>
         </div>
       </Card>

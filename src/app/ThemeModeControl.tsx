@@ -1,4 +1,4 @@
-import { Segmented } from "antd";
+import type { ReactNode } from "react";
 import { LaptopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { useThemeStore, type ThemeMode } from "@/store/useThemeStore";
 
@@ -7,31 +7,41 @@ type Props = {
   variant?: "header" | "default";
 };
 
+const MODES: { value: ThemeMode; label: string; short: string; icon: ReactNode }[] = [
+  { value: "light", label: "Светлая", short: "Свет", icon: <SunOutlined className="settings-theme-toggle__icon" /> },
+  { value: "dark", label: "Тёмная", short: "Тёмн", icon: <MoonOutlined className="settings-theme-toggle__icon" /> },
+  {
+    value: "system",
+    label: "Система",
+    short: "Авто",
+    icon: <LaptopOutlined className="settings-theme-toggle__icon" />
+  }
+];
+
 export function ThemeModeControl({ variant = "default" }: Props) {
   const themeMode = useThemeStore((s) => s.themeMode);
   const setThemeMode = useThemeStore((s) => s.setThemeMode);
-
-  const options =
-    variant === "header"
-      ? [
-          { value: "light" as const, icon: <SunOutlined />, label: "Свет" },
-          { value: "dark" as const, icon: <MoonOutlined />, label: "Тёмн" },
-          { value: "system" as const, icon: <LaptopOutlined />, label: "Авто" }
-        ]
-      : [
-          { value: "light" as const, icon: <SunOutlined />, label: "Светлая" },
-          { value: "dark" as const, icon: <MoonOutlined />, label: "Тёмная" },
-          { value: "system" as const, icon: <LaptopOutlined />, label: "Система" }
-        ];
+  const compact = variant === "header";
 
   return (
-    <Segmented<ThemeMode>
-      size="small"
-      value={themeMode}
+    <div
+      className={`settings-theme-toggle${compact ? " settings-theme-toggle--header" : ""}`}
+      role="radiogroup"
       aria-label="Тема оформления"
-      className={variant === "header" ? "app-header-theme-segmented" : undefined}
-      onChange={(v) => setThemeMode(v)}
-      options={options}
-    />
+    >
+      {MODES.map((m) => (
+        <button
+          key={m.value}
+          type="button"
+          role="radio"
+          aria-checked={themeMode === m.value}
+          className={`settings-theme-toggle__btn${themeMode === m.value ? " settings-theme-toggle__btn--active" : ""}`}
+          onClick={() => setThemeMode(m.value)}
+        >
+          {m.icon}
+          {compact ? m.short : m.label}
+        </button>
+      ))}
+    </div>
   );
 }

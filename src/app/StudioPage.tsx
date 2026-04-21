@@ -13,7 +13,6 @@ import {
   Modal,
   Select,
   Space,
-  Tabs,
   Popconfirm,
   Typography,
   message
@@ -22,7 +21,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { StudioSidePanelTabs } from "@/app/StudioSidePanelTabs";
-import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import type { StudioGoal } from "@/shared/types/lessonContent";
@@ -1153,18 +1151,7 @@ export function StudioPage() {
   return (
     <Content className={`app-content app-content--workspace${isMini ? " studio-mini-host" : ""}`}>
       {contextHolder}
-      {!isMini && user ? (
-        <Tabs
-          className="studio-workspace-tabs"
-          defaultActiveKey="project"
-          items={[
-            { key: "project", label: "Проект", children: projectWorkspace },
-            { key: "sprite", label: "Персонаж", children: <StudioSpriteSettingsTab /> }
-          ]}
-        />
-      ) : (
-        projectWorkspace
-      )}
+      {projectWorkspace}
       {isMini ? (
         <>
           <Modal

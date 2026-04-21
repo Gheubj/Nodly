@@ -33,19 +33,17 @@ const NODLY_BLOCKLY_DARK = Blockly.Theme.defineTheme("nodly_dark", {
   }
 });
 
-/** Спокойные hex-цвета в духе лендинга (чипы / glass), без кислотных HSV. */
+/** Сдержанные hex-цвета в духе лендинга (приглушённые блоки). */
 const BLOCK_COLOR = {
-  events: "#5b7cff",
-  model: "#8b7ae8",
-  modelTypes: "#7c6fd9",
-  predict: "#3db8b4",
-  control: "#64748b",
-  data: "#6b9fff",
-  output: "#5ec8b8",
-  /** Устаревший блок в старых проектах */
-  deprecated: "#94a3b8",
-  /** Изображения / специальные */
-  image: "#6b9e8f"
+  events: "#4a6ab8",
+  model: "#6a5ba8",
+  modelTypes: "#5d5294",
+  predict: "#2d8f8a",
+  control: "#5a6272",
+  data: "#5578b8",
+  output: "#4a9a8f",
+  deprecated: "#7a8294",
+  image: "#4d7565"
 } as const;
 
 const NODLY_BLOCKLY_LIGHT = Blockly.Theme.defineTheme("nodly_light", {

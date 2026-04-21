@@ -1,6 +1,7 @@
 import { Tabs } from "antd";
 import { StudioMetricsPanel } from "@/app/StudioMetricsPanel";
 import { StudioStagePanel } from "@/app/StudioStagePanel";
+import { StudioSpriteSettingsTab } from "@/app/StudioSpriteSettingsTab";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 
 type MiniSideProps = {
@@ -34,16 +35,21 @@ export function StudioSidePanelTabs(props: StudioSidePanelTabsProps) {
       <StudioStagePanel />
     );
 
+  const tabItems = [
+    { key: "scene", label: "Сцена", children: sceneChildren },
+    { key: "viz", label: "Визуализация", children: <StudioMetricsPanel embedded /> }
+  ];
+  if (!isMini) {
+    tabItems.push({ key: "sprite", label: "Персонаж", children: <StudioSpriteSettingsTab /> });
+  }
+
   return (
     <div className={rootClass}>
       <Tabs
         size="small"
         destroyInactiveTabPane={false}
         className="studio-page__side-tabs-inner"
-        items={[
-          { key: "scene", label: "Сцена", children: sceneChildren },
-          { key: "viz", label: "Визуализация", children: <StudioMetricsPanel embedded /> }
-        ]}
+        items={tabItems}
       />
     </div>
   );
