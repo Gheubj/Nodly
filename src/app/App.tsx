@@ -28,6 +28,7 @@ import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
 import { useSessionStore } from "@/store/useSessionStore";
+import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { apiClient, toUserErrorMessage } from "@/shared/api/client";
 import {
   LEGAL_PRIVACY_POLICY_FILE,
@@ -64,6 +65,9 @@ function RequireUser({ children }: { children: ReactElement }) {
 }
 
 export function App() {
+  const htmlTheme = useHtmlDataTheme();
+  const headerWordmark =
+    htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
   const location = useLocation();
   const isMiniStudioEmbed =
     location.pathname === "/studio" && new URLSearchParams(location.search).get("mini") === "1";
@@ -281,7 +285,7 @@ export function App() {
           <Link to="/" className="app-title-link app-brand" aria-label="Nodly — на главную">
             <span className="app-brand-logo-wrap" aria-hidden>
               <img
-                src="/nodly-wordmark-white.png"
+                src={headerWordmark}
                 alt=""
                 className="app-brand-wordmark"
                 width={165}

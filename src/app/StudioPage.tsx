@@ -1026,113 +1026,127 @@ export function StudioPage() {
       />
     ) : null;
 
+  const mainRowClass =
+    isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : "";
+
+  const studioEditorRow = (
+    <>
+      <div className="studio-page__blockly">
+        <BlocklyWorkspace
+          miniStudioToolbar={isMini}
+          miniCoachGoals={
+            isMini && miniLessonId && miniBlockId
+              ? { goals: miniCoach?.goals ?? [], goalStatus: goalUiStatus, allGoalsDone: allLessonGoalsDone }
+              : undefined
+          }
+          onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
+          onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
+          onMiniStudioActivity={handleMiniStudioActivity}
+        />
+      </div>
+      {isMini && miniLessonId && miniBlockId ? (
+        <StudioSidePanelTabs
+          variant="mini"
+          instructionMarkdown={miniCoach?.instruction ?? ""}
+          goals={miniCoach?.goals ?? []}
+          goalStatus={goalUiStatus}
+          allGoalsDone={allLessonGoalsDone}
+          showGoalsInPanel={false}
+        />
+      ) : null}
+      {!isMini ? <StudioSidePanelTabs variant="full" /> : null}
+    </>
+  );
+
   const projectWorkspace = (
     <div className="studio-page">
       {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
       {!isMini ? (
-        <div className="studio-page__toolbar">
-          <div className="studio-page__toolbar-main">
-            <span className="studio-page__toolbar-title" title={currentProjectTitle}>
-              {currentProjectTitle}
-            </span>
-          </div>
-          <div className="studio-page__toolbar-actions">
-            {!readOnly && activeProject ? (
+        <div className="studio-page__workbench">
+          <div className="studio-page__toolbar">
+            <div className="studio-page__toolbar-main">
+              <div className="studio-page__toolbar-rail" aria-hidden>
+                <span className="studio-page__traffic studio-page__traffic--close" />
+                <span className="studio-page__traffic studio-page__traffic--min" />
+                <span className="studio-page__traffic studio-page__traffic--zoom" />
+              </div>
+              <span className="studio-page__toolbar-title" title={currentProjectTitle}>
+                {currentProjectTitle}
+              </span>
+            </div>
+            <div className="studio-page__toolbar-actions">
+              {!readOnly && activeProject ? (
+                <Button
+                  size="small"
+                  className="studio-page__btn-tertiary"
+                  icon={<FormOutlined />}
+                  onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+                >
+                  Переименовать
+                </Button>
+              ) : null}
+              <Button
+                type="primary"
+                size="small"
+                className="studio-page__btn-primary"
+                disabled={readOnly}
+                onClick={() => {
+                  if (activeProject) {
+                    void saveProjectToCloud(currentProjectTitle || saveTitle || DEFAULT_PROJECT_TITLE);
+                    return;
+                  }
+                  setSaveTitle(currentProjectTitle);
+                  setSaveOpen(true);
+                }}
+              >
+                Сохранить
+              </Button>
+              <Button size="small" className="studio-page__btn-secondary" onClick={() => setLibraryOpen(true)}>
+                Проекты
+              </Button>
+              <Button size="small" className="studio-page__btn-secondary" onClick={handleNewProject}>
+                Новый
+              </Button>
               <Button
                 size="small"
-                className="studio-page__btn-tertiary"
-                icon={<FormOutlined />}
-                onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+                className="studio-page__btn-secondary"
+                icon={<DatabaseOutlined />}
+                onClick={() => setDataLibraryOpen(true)}
               >
-                Переименовать
+                Данные
               </Button>
-            ) : null}
-            <Button
-              type="primary"
-              size="small"
-              className="studio-page__btn-primary"
-              disabled={readOnly}
-              onClick={() => {
-                if (activeProject) {
-                  void saveProjectToCloud(currentProjectTitle || saveTitle || DEFAULT_PROJECT_TITLE);
-                  return;
-                }
-                setSaveTitle(currentProjectTitle);
-                setSaveOpen(true);
-              }}
-            >
-              Сохранить
-            </Button>
-            <Button size="small" className="studio-page__btn-secondary" onClick={() => setLibraryOpen(true)}>
-              Проекты
-            </Button>
-            <Button size="small" className="studio-page__btn-secondary" onClick={handleNewProject}>
-              Новый
-            </Button>
-            <Button
-              size="small"
-              className="studio-page__btn-secondary"
-              icon={<DatabaseOutlined />}
-              onClick={() => setDataLibraryOpen(true)}
-            >
-              Данные
-            </Button>
-            {user && activeProject && !readOnly ? (
-              <Button
-                size="small"
-                className="studio-page__btn-tertiary"
-                onClick={() =>
-                  void (async () => {
-                    try {
-                      const { token } = await apiClient.post<{ token: string }>(
-                        `/api/projects/${activeProject.id}/share-link`,
-                        {}
-                      );
-                      const url = `${window.location.origin}/share/${token}`;
-                      await navigator.clipboard.writeText(url);
-                      messageApi.success("Ссылка для копии проекта скопирована");
-                    } catch {
-                      messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
-                    }
-                  })()
-                }
-              >
-                Поделиться
-              </Button>
-            ) : null}
+              {user && activeProject && !readOnly ? (
+                <Button
+                  size="small"
+                  className="studio-page__btn-tertiary"
+                  onClick={() =>
+                    void (async () => {
+                      try {
+                        const { token } = await apiClient.post<{ token: string }>(
+                          `/api/projects/${activeProject.id}/share-link`,
+                          {}
+                        );
+                        const url = `${window.location.origin}/share/${token}`;
+                        await navigator.clipboard.writeText(url);
+                        messageApi.success("Ссылка для копии проекта скопирована");
+                      } catch {
+                        messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+                      }
+                    })()
+                  }
+                >
+                  Поделиться
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <div className="studio-page__canvas-shell">
+            <div className={`studio-page__main${mainRowClass}`}>{studioEditorRow}</div>
           </div>
         </div>
-      ) : null}
-      <div
-        className={`studio-page__main${
-          isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : ""
-        }`}
-      >
-        <div className="studio-page__blockly">
-          <BlocklyWorkspace
-            miniStudioToolbar={isMini}
-            miniCoachGoals={
-              isMini && miniLessonId && miniBlockId
-                ? { goals: miniCoach?.goals ?? [], goalStatus: goalUiStatus, allGoalsDone: allLessonGoalsDone }
-                : undefined
-            }
-            onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
-            onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
-            onMiniStudioActivity={handleMiniStudioActivity}
-          />
-        </div>
-        {isMini && miniLessonId && miniBlockId ? (
-          <StudioSidePanelTabs
-            variant="mini"
-            instructionMarkdown={miniCoach?.instruction ?? ""}
-            goals={miniCoach?.goals ?? []}
-            goalStatus={goalUiStatus}
-            allGoalsDone={allLessonGoalsDone}
-            showGoalsInPanel={false}
-          />
-        ) : null}
-        {!isMini ? <StudioSidePanelTabs variant="full" /> : null}
-      </div>
+      ) : (
+        <div className={`studio-page__main${mainRowClass}`}>{studioEditorRow}</div>
+      )}
     </div>
   );
 

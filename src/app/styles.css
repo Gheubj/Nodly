@@ -5,27 +5,27 @@ html[data-theme="light"] {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Светлая тема: тёплый off-white, спокойные slate-тона, акцент без «кислотности» */
-  --app-bg: #f3f5f9;
+  /* Светлая тема: приглушённый slate, больше «стекла» и воздуха, без яркой шапки */
+  --app-bg: #d8dee9;
   --app-text: #0f172a;
-  --app-surface: #ffffff;
-  --app-muted: #526077;
+  --app-surface: rgba(248, 250, 252, 0.72);
+  --app-muted: #475569;
   --app-accent: #2563eb;
-  --app-header-bg: #1d4ed8;
-  --app-header-text: #ffffff;
-  --app-header-muted: rgba(255, 255, 255, 0.9);
-  --app-header-active: rgba(255, 255, 255, 0.22);
-  --app-header-hover: rgba(255, 255, 255, 0.12);
-  --landing-hero-border: rgba(15, 23, 42, 0.07);
-  --landing-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 28px rgba(15, 23, 42, 0.07);
-  --app-surface-soft: #f8fafc;
-  --app-surface-elevated: #ffffff;
-  --app-border-soft: rgba(15, 23, 42, 0.11);
-  --app-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
-  --app-shadow-hover: 0 14px 34px rgba(15, 23, 42, 0.11);
-  --app-focus-ring: rgba(37, 99, 235, 0.28);
-  --app-gradient-top: radial-gradient(1200px 520px at 10% -20%, rgba(37, 99, 235, 0.1), transparent 55%),
-    radial-gradient(900px 420px at 90% -25%, rgba(14, 165, 233, 0.09), transparent 58%);
+  --app-header-bg: #e2e8f0;
+  --app-header-text: #0f172a;
+  --app-header-muted: rgba(15, 23, 42, 0.62);
+  --app-header-active: rgba(15, 23, 42, 0.1);
+  --app-header-hover: rgba(15, 23, 42, 0.06);
+  --landing-hero-border: rgba(15, 23, 42, 0.08);
+  --landing-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 14px 36px rgba(15, 23, 42, 0.08);
+  --app-surface-soft: rgba(241, 245, 249, 0.82);
+  --app-surface-elevated: rgba(255, 255, 255, 0.58);
+  --app-border-soft: rgba(51, 65, 85, 0.14);
+  --app-shadow-soft: 0 10px 28px rgba(15, 23, 42, 0.06);
+  --app-shadow-hover: 0 18px 42px rgba(15, 23, 42, 0.1);
+  --app-focus-ring: rgba(37, 99, 235, 0.3);
+  --app-gradient-top: radial-gradient(1100px 480px at 12% -18%, rgba(37, 99, 235, 0.06), transparent 56%),
+    radial-gradient(880px 400px at 88% -22%, rgba(100, 116, 139, 0.08), transparent 58%);
   --density-space: 1;
 }
 
@@ -440,6 +440,70 @@ a.app-header-account-slot {
   color: #e6f4ff !important;
 }
 
+/* Светлая тема: шапка как матовое стекло, не яркий синий баннер */
+html[data-theme="light"] .app-header {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #ffffff 78%, transparent) 0%,
+    color-mix(in srgb, #e2e8f0 52%, transparent) 100%
+  );
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 6px 22px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+html[data-theme="light"] .app-header-theme-segmented.ant-segmented {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="light"] .app-header-theme-segmented.ant-segmented .ant-segmented-item {
+  color: rgba(15, 23, 42, 0.62);
+}
+
+html[data-theme="light"] .app-header-theme-segmented.ant-segmented .ant-segmented-item-selected {
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .app-header-theme-segmented.ant-segmented .ant-segmented-thumb {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .app-header-teacher-btn.ant-btn {
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+html[data-theme="light"] .app-header-teacher-btn.ant-btn:hover {
+  color: #fff !important;
+  border-color: #2563eb !important;
+  background: #2563eb !important;
+}
+
+html[data-theme="light"] .app-header-account-btn.ant-btn {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .app-header-account-btn.ant-btn:hover {
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .app-header-nickname {
+  color: rgba(15, 23, 42, 0.52);
+}
+
+html[data-theme="light"] .header-user-btn.ant-btn {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .header-user-btn.ant-btn:hover {
+  color: #0f172a !important;
+}
+
 .account-page {
   min-height: calc(100dvh - var(--app-header-height));
 }
@@ -556,6 +620,31 @@ html[data-theme="dark"] .app-content--workspace {
   margin: 0 0 8px;
 }
 
+.studio-workspace-tabs .ant-tabs-nav::before {
+  display: none !important;
+}
+
+html[data-theme="light"] .studio-workspace-tabs .ant-tabs-nav {
+  margin-bottom: 10px;
+  padding: 5px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 62%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+html[data-theme="dark"] .studio-workspace-tabs .ant-tabs-nav {
+  margin-bottom: 10px;
+  padding: 5px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 48%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
 .studio-workspace-tabs .ant-tabs-content-holder {
   flex: 1;
   min-height: 0;
@@ -646,6 +735,65 @@ html[data-theme="dark"] .app-content--workspace {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Разработка: общая «подставка» и окно в духе macOS (точки + стекло) */
+.studio-page__workbench {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.studio-page__toolbar-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.studio-page__traffic {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.studio-page__traffic--close {
+  background: #ff5f57;
+}
+
+.studio-page__traffic--min {
+  background: #febc2e;
+}
+
+.studio-page__traffic--zoom {
+  background: #28c840;
+}
+
+.studio-page__canvas-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-panel) 86%, transparent);
+  box-shadow: var(--shadow-soft-xl);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  overflow: hidden;
+}
+
+html[data-theme="light"] .studio-page__canvas-shell {
+  background: color-mix(in srgb, var(--surface-panel) 72%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    var(--shadow-soft-xl);
 }
 
 .studio-page__main {
@@ -2659,12 +2807,12 @@ html[data-theme="light"] {
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 26px;
-  --surface-backdrop: rgba(255, 255, 255, 0.68);
-  --surface-panel: rgba(255, 255, 255, 0.84);
-  --surface-floating: rgba(255, 255, 255, 0.92);
-  --surface-stroke: rgba(137, 156, 186, 0.28);
-  --shadow-soft-xl: 0 16px 48px rgba(15, 23, 42, 0.14);
-  --shadow-float: 0 24px 56px rgba(15, 23, 42, 0.16);
+  --surface-backdrop: rgba(255, 255, 255, 0.38);
+  --surface-panel: rgba(255, 255, 255, 0.52);
+  --surface-floating: rgba(255, 255, 255, 0.66);
+  --surface-stroke: rgba(71, 85, 105, 0.2);
+  --shadow-soft-xl: 0 14px 42px rgba(15, 23, 42, 0.1);
+  --shadow-float: 0 22px 52px rgba(15, 23, 42, 0.12);
 }
 
 html[data-theme="dark"] {
@@ -2880,6 +3028,16 @@ h6,
     var(--app-bg);
 }
 
+html[data-theme="light"] .app-content--workspace {
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, #cbd5e1 55%, transparent) 0%,
+      color-mix(in srgb, var(--app-surface) 48%, transparent) 42%,
+      color-mix(in srgb, #e2e8f0 65%, transparent) 100%
+    ),
+    var(--app-bg);
+}
+
 .studio-page__toolbar {
   border-radius: 16px;
   border-color: var(--surface-stroke);
@@ -2887,6 +3045,13 @@ h6,
   box-shadow: var(--shadow-soft-xl);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-theme="light"] .studio-page__toolbar {
+  background: color-mix(in srgb, var(--surface-floating) 58%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    var(--shadow-soft-xl);
 }
 
 .studio-page__toolbar-title {
@@ -2918,6 +3083,20 @@ h6,
 .blockly-palette {
   background: color-mix(in srgb, var(--surface-backdrop) 82%, var(--app-surface) 18%);
   border-right-color: var(--surface-stroke);
+}
+
+html[data-theme="light"] .blockly-layout {
+  background: color-mix(in srgb, var(--surface-panel) 55%, #e8edf5 45%);
+  border-color: var(--surface-stroke);
+}
+
+html[data-theme="light"] .blockly-palette {
+  background: color-mix(in srgb, var(--surface-floating) 42%, transparent);
+  border-right-color: var(--surface-stroke);
+}
+
+html[data-theme="light"] .blockly-palette-group-title {
+  color: #64748b;
 }
 
 .blockly-palette-btn {
@@ -3103,6 +3282,13 @@ h6,
   min-height: calc(100dvh - var(--app-header-height, 64px));
 }
 
+html[data-theme="light"] .landing-v2 {
+  background:
+    radial-gradient(ellipse at 72% -8%, color-mix(in srgb, var(--app-accent) 10%, transparent), transparent 56%),
+    radial-gradient(ellipse at 8% 118%, color-mix(in srgb, #64748b 16%, transparent), transparent 52%),
+    var(--app-bg);
+}
+
 .landing-v2__scene {
   position: relative;
   min-height: calc(100dvh - var(--app-header-height, 64px));
@@ -3135,7 +3321,7 @@ h6,
 
 html[data-theme="light"] .landing-v2__aurora {
   mix-blend-mode: multiply;
-  opacity: 0.42;
+  opacity: 0.3;
   filter: blur(110px);
 }
 
