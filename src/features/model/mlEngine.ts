@@ -262,7 +262,7 @@ function computeTrainValTestCounts(
   total: number,
   trainSplit: number,
   valSplit: number,
-  testSplit: number
+  _testSplit: number
 ): { trainCount: number; valCount: number; testCount: number } {
   let trainCount = Math.max(1, Math.floor(total * trainSplit));
   let valCount = Math.max(1, Math.floor(total * valSplit));
