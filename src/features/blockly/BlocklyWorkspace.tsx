@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DatabaseOutlined, SaveOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ExportOutlined, SaveOutlined } from "@ant-design/icons";
 import { Button, Segmented, Space } from "antd";
 import * as Blockly from "blockly";
 import { useAppStore } from "@/store/useAppStore";
@@ -2358,6 +2358,17 @@ export function BlocklyWorkspace({
                 disabled={!onSaveProject}
               >
                 Сохранить в проекты
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                className="blockly-root__mini-tab"
+                icon={<ExportOutlined />}
+                href={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Во вкладке
               </Button>
             </>
           ) : (

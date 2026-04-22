@@ -410,18 +410,18 @@ function GuestLanding() {
                 <span className="landing-v2__device-title">mini-studio · iris</span>
               </div>
               <div className="landing-v2__device-row">
-                <div className="landing-v2__chip landing-v2__chip--blue">
-                  <CaretRightOutlined className="landing-v2__chip-play" aria-hidden />
+                <div className="landing-v2__palette-block landing-v2__palette-block--events">
+                  <CaretRightOutlined className="landing-v2__palette-block__play" aria-hidden />
                   Старт
                 </div>
-                <div className="landing-v2__chip landing-v2__chip--blue">Выбрать датасет</div>
+                <div className="landing-v2__palette-block landing-v2__palette-block--data">Выбрать датасет</div>
+              </div>
+              <div className="landing-v2__device-row landing-v2__device-row--full">
+                <div className="landing-v2__palette-block landing-v2__palette-block--model">Обучить модель</div>
               </div>
               <div className="landing-v2__device-row">
-                <div className="landing-v2__chip landing-v2__chip--violet">Обучить модель</div>
-              </div>
-              <div className="landing-v2__device-row">
-                <div className="landing-v2__chip landing-v2__chip--teal">Предсказать класс</div>
-                <div className="landing-v2__chip landing-v2__chip--teal">Сохранить</div>
+                <div className="landing-v2__palette-block landing-v2__palette-block--predict">Предсказать класс</div>
+                <div className="landing-v2__palette-block landing-v2__palette-block--output">Сохранить</div>
               </div>
               <NodlyPromoMetrics />
             </div>

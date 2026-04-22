@@ -104,6 +104,7 @@ export function StudioStagePanel({
       <aside className="studio-stage-panel studio-stage-panel--mini" aria-label="Сцена">
         <Card size="small" title="Сцена" className="studio-stage-card">
           <div className="studio-stage-panel__mini-layout">
+            <NodlyPromoMetrics layout="scene-bars" className="studio-stage-panel__mini-metrics" />
             <div className="studio-stage-panel__mini-figure-wrap">
               <img className="studio-stage-panel__mini-figure" src={coachSrc} alt="" />
             </div>

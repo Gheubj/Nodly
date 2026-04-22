@@ -17,18 +17,22 @@ export function NodlyPromoMetrics({ className, layout = "full" }: NodlyPromoMetr
   if (layout === "scene-bars") {
     return (
       <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars ${className ?? ""}`} aria-hidden>
-        <div className="nodly-promo-metrics__barline">
-          <div className="nodly-promo-metrics__barline-fill nodly-promo-metrics__barline-fill--acc" style={{ width: "94%" }} />
-          <div className="nodly-promo-metrics__barline-cap">
-            <span className="nodly-promo-metrics__barline-name">accuracy</span>
-            <span className="nodly-promo-metrics__barline-value">0.94</span>
+        <div className="nodly-promo-metrics__scene-row">
+          <div className="nodly-promo-metrics__scene-head">
+            <span className="nodly-promo-metrics__scene-name">accuracy</span>
+            <span className="nodly-promo-metrics__scene-value">0.94</span>
+          </div>
+          <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
+            <span className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--acc" style={{ width: "94%" }} />
           </div>
         </div>
-        <div className="nodly-promo-metrics__barline">
-          <div className="nodly-promo-metrics__barline-fill nodly-promo-metrics__barline-fill--f1" style={{ width: "91%" }} />
-          <div className="nodly-promo-metrics__barline-cap">
-            <span className="nodly-promo-metrics__barline-name">f1</span>
-            <span className="nodly-promo-metrics__barline-value">0.91</span>
+        <div className="nodly-promo-metrics__scene-row">
+          <div className="nodly-promo-metrics__scene-head">
+            <span className="nodly-promo-metrics__scene-name">f1</span>
+            <span className="nodly-promo-metrics__scene-value">0.91</span>
+          </div>
+          <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
+            <span className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--f1" style={{ width: "91%" }} />
           </div>
         </div>
       </div>

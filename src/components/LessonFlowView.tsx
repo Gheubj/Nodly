@@ -1,4 +1,5 @@
 import { lazy, Suspense, useLayoutEffect } from "react";
+import { ExportOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Input, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -165,8 +166,8 @@ export function LessonFlowView({
                       title={`mini-dev-${block.id}`}
                       src={frameSrc}
                     />
-                    <Button type="link" href={frameSrc} target="_blank" rel="noreferrer" style={{ paddingInline: 0 }}>
-                      Открыть мини-разработку в отдельной вкладке
+                    <Button type="default" size="small" icon={<ExportOutlined />} href={frameSrc} target="_blank" rel="noreferrer">
+                      Во вкладке
                     </Button>
                   </Space>
                 ) : creating ? (
@@ -196,11 +197,16 @@ export function LessonFlowView({
               <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
-                  <iframe
-                    className="lesson-flow__mini-dev-frame"
-                    title={`mini-dev-${block.id}`}
-                    src={frameSrc}
-                  />
+                  <>
+                    <iframe
+                      className="lesson-flow__mini-dev-frame"
+                      title={`mini-dev-${block.id}`}
+                      src={frameSrc}
+                    />
+                    <Button type="default" size="small" icon={<ExportOutlined />} href={frameSrc} target="_blank" rel="noreferrer">
+                      Во вкладке
+                    </Button>
+                  </>
                 ) : creating ? (
                   <div className="lesson-flow__mini-dev-loading">
                     <Spin />
