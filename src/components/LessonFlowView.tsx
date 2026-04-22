@@ -12,6 +12,39 @@ const LessonPdfReader = lazy(() =>
 
 const { Text } = Typography;
 
+/** URL встроенной студии: урок → полная разработка с `embed=lesson`; проверка сдачи → прежний `mini=1`. */
+function studioLessonFrameSrc(
+  projectId: string,
+  blockId: string,
+  opts: { lessonId?: string; teacherReviewId?: string | null; readOnly: boolean }
+): string {
+  const q = new URLSearchParams();
+  q.set("project", projectId);
+  if (opts.readOnly && opts.teacherReviewId) {
+    q.set("mini", "1");
+    q.set("teacherReviewSubmission", opts.teacherReviewId);
+    if (opts.lessonId) {
+      q.set("miniLessonId", opts.lessonId);
+      q.set("miniBlockId", blockId);
+    }
+    return `/studio?${q.toString()}`;
+  }
+  if (opts.lessonId) {
+    q.set("embed", "lesson");
+    q.set("miniLessonId", opts.lessonId);
+    q.set("miniBlockId", blockId);
+    return `/studio?${q.toString()}`;
+  }
+  q.set("mini", "1");
+  q.set("miniBlockId", blockId);
+  return `/studio?${q.toString()}`;
+}
+
+/** Открыть тот же проект в обычной «Разработке» без параметров урока. */
+function studioStandaloneTabHref(projectId: string): string {
+  return `/studio?project=${encodeURIComponent(projectId)}`;
+}
+
 /** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
 function MiniStudioSessionStore(props: {
   lessonId?: string;
@@ -141,15 +174,14 @@ export function LessonFlowView({
         if (block.type === "studio") {
           const projectId = miniDevProjectId(block.id);
           const creating = miniDevCreating?.(block.id) ?? false;
-          const reviewQs =
-            readOnly && teacherReviewSubmissionId && projectId
-              ? `&teacherReviewSubmission=${encodeURIComponent(teacherReviewSubmissionId)}`
-              : "";
           const frameSrc = projectId
-            ? `/studio?mini=1&project=${encodeURIComponent(projectId)}${
-                lessonId ? `&miniLessonId=${encodeURIComponent(lessonId)}&miniBlockId=${encodeURIComponent(block.id)}` : ""
-              }${reviewQs}`
+            ? studioLessonFrameSrc(projectId, block.id, {
+                lessonId,
+                teacherReviewId: teacherReviewSubmissionId ?? null,
+                readOnly
+              })
             : "";
+          const tabHref = projectId ? studioStandaloneTabHref(projectId) : "";
           if (bareMiniStudio) {
             return (
               <div key={block.id}>
@@ -166,7 +198,7 @@ export function LessonFlowView({
                       title={`mini-dev-${block.id}`}
                       src={frameSrc}
                     />
-                    <Button type="default" size="small" icon={<ExportOutlined />} href={frameSrc} target="_blank" rel="noreferrer">
+                    <Button type="default" size="small" icon={<ExportOutlined />} href={tabHref} target="_blank" rel="noreferrer">
                       Во вкладке
                     </Button>
                   </Space>
@@ -203,7 +235,7 @@ export function LessonFlowView({
                       title={`mini-dev-${block.id}`}
                       src={frameSrc}
                     />
-                    <Button type="default" size="small" icon={<ExportOutlined />} href={frameSrc} target="_blank" rel="noreferrer">
+                    <Button type="default" size="small" icon={<ExportOutlined />} href={tabHref} target="_blank" rel="noreferrer">
                       Во вкладке
                     </Button>
                   </>

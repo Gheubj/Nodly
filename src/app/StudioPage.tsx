@@ -174,9 +174,13 @@ const GRADEABLE_STATUSES = ["submitted", "pending_teacher_review", "needs_revisi
 
 export function StudioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const isMini = searchParams.get("mini") === "1";
+  const isMiniLegacy = searchParams.get("mini") === "1";
+  const embedLesson = searchParams.get("embed") === "lesson";
   const miniLessonId = searchParams.get("miniLessonId");
   const miniBlockId = searchParams.get("miniBlockId");
+  const hasLessonEmbed = Boolean(embedLesson && miniLessonId && miniBlockId);
+  /** Мини-режим в iframe (`mini=1`) или урок в полной студии (`embed=lesson` + ids блока). */
+  const isMiniMode = isMiniLegacy || hasLessonEmbed;
   type MiniCoachPayload = { instruction: string; goals: StudioGoal[] };
   const [miniCoach, setMiniCoach] = useState<MiniCoachPayload | null>(null);
   const [goalUiStatus, setGoalUiStatus] = useState<Record<string, boolean>>({});
@@ -254,7 +258,7 @@ export function StudioPage() {
   }, [resolvedUserId]);
 
   useEffect(() => {
-    if (!isMini || !miniLessonId || !miniBlockId) {
+    if (!isMiniMode || !miniLessonId || !miniBlockId) {
       setMiniCoach(null);
       return;
     }
@@ -272,20 +276,20 @@ export function StudioPage() {
     } catch {
       setMiniCoach({ instruction: "", goals: [] });
     }
-  }, [isMini, miniLessonId, miniBlockId]);
+  }, [isMiniMode, miniLessonId, miniBlockId]);
 
   useEffect(() => {
-    if (!isMini) {
+    if (!isMiniMode) {
       return;
     }
     miniTelemetryRef.current = { trained: false, predicted: false };
     setGoalUiStatus({});
     setAllLessonGoalsDone(false);
     lastPostedGoalsJson.current = "";
-  }, [isMini, miniLessonId, miniBlockId]);
+  }, [isMiniMode, miniLessonId, miniBlockId]);
 
   useEffect(() => {
-    if (!isMini || !miniLessonId || !miniBlockId) {
+    if (!isMiniMode || !miniLessonId || !miniBlockId) {
       return;
     }
     const tick = () => {
@@ -321,7 +325,7 @@ export function StudioPage() {
     tick();
     const id = window.setInterval(tick, 1200);
     return () => window.clearInterval(id);
-  }, [isMini, miniLessonId, miniBlockId, miniCoach]);
+  }, [isMiniMode, miniLessonId, miniBlockId, miniCoach]);
 
   const refreshProjects = async (nextUserId: string) => {
     const list = await listProjects(nextUserId.trim());
@@ -336,7 +340,7 @@ export function StudioPage() {
   const reviewSubmissionIdEarly = searchParams.get("reviewSubmission");
 
   useEffect(() => {
-    if (isMini || readOnly || projectFromUrlEarly || reviewSubmissionIdEarly) {
+    if (isMiniMode || readOnly || projectFromUrlEarly || reviewSubmissionIdEarly) {
       return;
     }
     if (studioBootstrapDoneRef.current) {
@@ -388,7 +392,7 @@ export function StudioPage() {
       cancelled = true;
     };
   }, [
-    isMini,
+    isMiniMode,
     readOnly,
     projectFromUrlEarly,
     reviewSubmissionIdEarly,
@@ -399,7 +403,7 @@ export function StudioPage() {
   ]);
 
   useEffect(() => {
-    if (isMini) {
+    if (isMiniMode) {
       return;
     }
     if (!studioBootstrapDoneRef.current) {
@@ -428,7 +432,7 @@ export function StudioPage() {
         restoringDraftRef.current = false;
       });
     }
-  }, [draftKey, isMini, loadProjectSnapshot, bumpPostStudioBootstrap]);
+  }, [draftKey, isMiniMode, loadProjectSnapshot, bumpPostStudioBootstrap]);
 
   useEffect(() => {
     if (readOnly || restoringDraftRef.current) {
@@ -489,7 +493,7 @@ export function StudioPage() {
   const teacherReviewSubmissionParam = searchParams.get("teacherReviewSubmission");
 
   useEffect(() => {
-    if (!isMini || !projectFromUrl || !user || user.role !== "teacher" || !teacherReviewSubmissionParam) {
+    if (!isMiniLegacy || !projectFromUrl || !user || user.role !== "teacher" || !teacherReviewSubmissionParam) {
       return;
     }
     let cancelled = false;
@@ -534,7 +538,7 @@ export function StudioPage() {
       cancelled = true;
     };
   }, [
-    isMini,
+    isMiniLegacy,
     projectFromUrl,
     teacherReviewSubmissionParam,
     user?.role,
@@ -551,7 +555,7 @@ export function StudioPage() {
     if (!projectFromUrl || !user) {
       return;
     }
-    if (isMini && user.role === "teacher" && teacherReviewSubmissionParam) {
+    if (isMiniLegacy && user.role === "teacher" && teacherReviewSubmissionParam) {
       return;
     }
     let cancelled = false;
@@ -567,7 +571,7 @@ export function StudioPage() {
       setActiveProject(project.meta);
       loadProjectSnapshot(project.snapshot);
       setSaveTitle(project.meta.title);
-      if (!isMini && !project.meta.readOnly) {
+      if (!isMiniMode && !project.meta.readOnly) {
         writeLastStudioProjectId(resolvedUserId.trim() || "guest", project.meta.id);
       }
       messageApi.success(`Загружен проект: ${project.meta.title}`);
@@ -587,7 +591,7 @@ export function StudioPage() {
     projectFromUrl,
     user?.id,
     user?.role,
-    isMini,
+    isMiniMode,
     teacherReviewSubmissionParam,
     resolvedUserId,
     setSearchParams,
@@ -749,7 +753,7 @@ export function StudioPage() {
       createdAt: activeProject?.createdAt ?? now,
       updatedAt: now
     });
-    if (!isMini) {
+    if (!isMiniMode) {
       writeLastStudioProjectId(normalizedUserId, projectId);
     }
     if (!opts?.skipRefreshProjects) {
@@ -761,7 +765,7 @@ export function StudioPage() {
   };
 
   useEffect(() => {
-    if (!isMini || readOnly) {
+    if (!isMiniMode || readOnly) {
       return;
     }
     const onPersist = () => {
@@ -769,11 +773,11 @@ export function StudioPage() {
     };
     window.addEventListener("nodly-persist-studio", onPersist);
     return () => window.removeEventListener("nodly-persist-studio", onPersist);
-  }, [isMini, readOnly]);
+  }, [isMiniMode, readOnly]);
 
   /** Мини-студия: догоняющее автосохранение (редактирование данных / блоков). Сразу после обучения — событие nodly-persist-studio. */
   useEffect(() => {
-    if (!isMini || !user?.id || readOnly || !activeProject?.id) {
+    if (!isMiniMode || !user?.id || readOnly || !activeProject?.id) {
       return;
     }
     let cancelled = false;
@@ -790,7 +794,7 @@ export function StudioPage() {
       window.clearTimeout(timer);
     };
   }, [
-    isMini,
+    isMiniMode,
     user?.id,
     readOnly,
     activeProject?.id,
@@ -888,7 +892,7 @@ export function StudioPage() {
     if (event.type === "predict") {
       miniTelemetryRef.current.predicted = true;
     }
-    if (!isMini || !miniLessonId || !miniBlockId) {
+    if (!isMiniMode || !miniLessonId || !miniBlockId) {
       return;
     }
     window.parent?.postMessage(
@@ -1025,24 +1029,27 @@ export function StudioPage() {
     ) : null;
 
   const mainRowClass =
-    isMini && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : "";
+    isMiniMode && miniLessonId && miniBlockId ? " studio-page__main--mini-side" : "";
 
   const studioEditorRow = (
     <>
       <div className="studio-page__blockly">
         <BlocklyWorkspace
-          miniStudioToolbar={isMini}
+          miniStudioToolbar={isMiniMode}
+          standaloneStudioHref={
+            activeProject?.id ? `/studio?project=${encodeURIComponent(activeProject.id)}` : undefined
+          }
           miniCoachGoals={
-            isMini && miniLessonId && miniBlockId
+            isMiniMode && miniLessonId && miniBlockId
               ? { goals: miniCoach?.goals ?? [], goalStatus: goalUiStatus, allGoalsDone: allLessonGoalsDone }
               : undefined
           }
-          onOpenDataLibrary={isMini ? () => setDataLibraryOpen(true) : undefined}
-          onSaveProject={isMini && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
+          onOpenDataLibrary={isMiniMode ? () => setDataLibraryOpen(true) : undefined}
+          onSaveProject={isMiniMode && !readOnly ? () => void handleMiniSaveToProjects() : undefined}
           onMiniStudioActivity={handleMiniStudioActivity}
         />
       </div>
-      {isMini && miniLessonId && miniBlockId ? (
+      {isMiniMode && miniLessonId && miniBlockId ? (
         <StudioSidePanelTabs
           variant="mini"
           instructionMarkdown={miniCoach?.instruction ?? ""}
@@ -1052,14 +1059,14 @@ export function StudioPage() {
           showGoalsInPanel={false}
         />
       ) : null}
-      {!isMini ? <StudioSidePanelTabs variant="full" /> : null}
+      {!isMiniMode ? <StudioSidePanelTabs variant="full" /> : null}
     </>
   );
 
   const projectWorkspace = (
     <div className="studio-page">
       {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
-      {!isMini ? (
+      {!isMiniMode ? (
         <div className="studio-page__workbench">
           <div className="studio-page__toolbar">
             <div className="studio-page__toolbar-main">
@@ -1149,10 +1156,10 @@ export function StudioPage() {
   );
 
   return (
-    <Content className={`app-content app-content--workspace${isMini ? " studio-mini-host" : ""}`}>
+    <Content className={`app-content app-content--workspace${isMiniMode ? " studio-mini-host" : ""}`}>
       {contextHolder}
       {projectWorkspace}
-      {isMini ? (
+      {isMiniMode ? (
         <>
           <Modal
             title="Данные проекта"
@@ -1203,7 +1210,7 @@ export function StudioPage() {
           <DataLibrary variant="drawer" />
         </Drawer>
       )}
-      {!isMini ? (
+      {!isMiniMode ? (
         <>
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Черновик"}`}

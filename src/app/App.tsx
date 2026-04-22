@@ -69,8 +69,10 @@ export function App() {
   const headerWordmark =
     htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
   const location = useLocation();
+  const studioQs = location.pathname === "/studio" ? new URLSearchParams(location.search) : null;
   const isMiniStudioEmbed =
-    location.pathname === "/studio" && new URLSearchParams(location.search).get("mini") === "1";
+    location.pathname === "/studio" &&
+    (studioQs?.get("mini") === "1" || studioQs?.get("embed") === "lesson");
   const [messageApi, contextHolder] = message.useMessage();
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

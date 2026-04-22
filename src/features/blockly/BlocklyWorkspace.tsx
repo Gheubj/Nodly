@@ -1072,6 +1072,8 @@ function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "no
 export type BlocklyWorkspaceProps = {
   /** Мини-студия в уроке: без переключателя уровней, с кнопкой «Данные» как в полной студии */
   miniStudioToolbar?: boolean;
+  /** Ссылка «Во вкладке» — обычная разработка с тем же `project`, без `embed` / `mini`. */
+  standaloneStudioHref?: string;
   miniCoachGoals?: {
     goals: StudioGoal[];
     goalStatus: Record<string, boolean>;
@@ -1090,6 +1092,7 @@ export type BlocklyWorkspaceProps = {
 
 export function BlocklyWorkspace({
   miniStudioToolbar,
+  standaloneStudioHref,
   miniCoachGoals,
   onOpenDataLibrary,
   onSaveProject,
@@ -1098,6 +1101,10 @@ export function BlocklyWorkspace({
   const htmlTheme = useHtmlDataTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const miniToolbarRef = useRef(Boolean(miniStudioToolbar));
+  useEffect(() => {
+    miniToolbarRef.current = Boolean(miniStudioToolbar);
+  }, [miniStudioToolbar]);
   const isRunningRef = useRef(false);
   const { blocklyState, workspaceLevel, setWorkspaceLevel } = useAppStore();
 
@@ -2214,6 +2221,16 @@ export function BlocklyWorkspace({
       }
       const saved = Blockly.serialization.workspaces.save(workspaceRef.current);
       useAppStore.getState().setBlocklyState(JSON.stringify(saved));
+      if (miniToolbarRef.current) {
+        const w = window as Window & { __nodlyMiniFlushTimer?: number };
+        if (w.__nodlyMiniFlushTimer) {
+          window.clearTimeout(w.__nodlyMiniFlushTimer);
+        }
+        w.__nodlyMiniFlushTimer = window.setTimeout(() => {
+          w.__nodlyMiniFlushTimer = undefined;
+          window.dispatchEvent(new Event("nodly-persist-studio"));
+        }, 450);
+      }
     };
     (window as Window & { __nodlyGetBlocklyState?: () => string }).__nodlyGetBlocklyState = () => {
       if (!workspaceRef.current) {
@@ -2364,7 +2381,10 @@ export function BlocklyWorkspace({
                 size="small"
                 className="blockly-root__mini-tab"
                 icon={<ExportOutlined />}
-                href={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
+                href={
+                  standaloneStudioHref ??
+                  (typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined)
+                }
                 target="_blank"
                 rel="noopener noreferrer"
               >

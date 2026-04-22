@@ -4511,6 +4511,16 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   box-shadow: 0 0 14px rgba(52, 211, 153, 0.45);
 }
 
+.nodly-promo-metrics__meter-fill--rmse {
+  background: linear-gradient(90deg, #f59e0b, #fb7185 55%, #a78bfa);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.nodly-promo-metrics--live-empty .ant-typography {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
 .nodly-promo-metrics--scene-bars {
   margin-top: 0;
   padding-top: 0;
