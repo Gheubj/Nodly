@@ -2768,7 +2768,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .admin-lesson-editor {
-  max-width: min(1380px, 100%);
+  max-width: min(1680px, calc(100vw - 28px));
   margin: 0 auto;
 }
 
@@ -3237,7 +3237,7 @@ html[data-theme="light"] .blockly-palette-group-title {
 }
 
 .admin-lesson-editor {
-  max-width: min(1460px, 100%);
+  max-width: min(1680px, calc(100vw - 28px));
 }
 
 .admin-lesson-editor__panel {
@@ -4476,38 +4476,97 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   border-top: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.nodly-promo-metrics--scene-bars .nodly-promo-metrics__row-head {
+/* Одна строка = дорожка + заливка + подписи поверх (как «на линии», не отдельным текстом над полосой) */
+.nodly-promo-metrics__barline {
+  position: relative;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.55);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.nodly-promo-metrics__barline-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  max-width: 100%;
+  border-radius: inherit;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nodly-promo-metrics__barline-fill--acc {
+  background: linear-gradient(90deg, #5b8cff, #8b6bff 58%, #2ec4c0);
+  box-shadow: 0 0 20px rgba(106, 163, 255, 0.45);
+}
+
+.nodly-promo-metrics__barline-fill--f1 {
+  background: linear-gradient(90deg, #34d399, #2dd4bf 55%, #22d3ee);
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.4);
+}
+
+.nodly-promo-metrics__barline-cap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  padding: 0 14px;
+  pointer-events: none;
+}
+
+.nodly-promo-metrics__barline-name {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(226, 232, 255, 0.62);
+  color: rgba(248, 250, 252, 0.94);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
-.nodly-promo-metrics--scene-bars .nodly-promo-metrics__row-head strong {
+.nodly-promo-metrics__barline-value {
   font-family: var(--font-display, "Manrope", "Inter", sans-serif);
-  font-size: 13px;
-  letter-spacing: 0;
-  text-transform: none;
-  color: #f8faff;
+  font-size: 14px;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
-html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics--scene-bars .nodly-promo-metrics__row-head {
-  color: var(--app-muted);
+html[data-theme="light"] .studio-stage-panel__promo-metrics {
+  border-color: color-mix(in srgb, var(--surface-stroke) 85%, #cbd5e1);
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
-html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics--scene-bars .nodly-promo-metrics__row-head strong {
-  color: var(--app-text);
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__barline {
+  border-color: rgba(71, 85, 105, 0.2);
+  background: #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics--scene-bars .nodly-promo-metrics__meter {
-  background: rgba(71, 85, 105, 0.12);
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__barline-name {
+  color: #475569;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__barline-value {
+  color: #0f172a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__barline-fill {
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .nodly-promo-metrics__legend {
@@ -4802,11 +4861,11 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
   border-top-color: var(--surface-stroke);
 }
 
-/* Урок: колонка по центру (Space по умолчанию inline-flex — ломает margin: auto) */
+/* Урок: колонка по центру; ~+2 см с каждой стороны к прежним 1120px */
 .lesson-player-page__stack.ant-space.ant-space-vertical {
   display: flex !important;
   flex-direction: column;
-  width: min(1120px, 100%);
+  width: min(1272px, 100%);
   max-width: 100%;
   margin-inline: auto;
 }
@@ -4816,7 +4875,7 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
 }
 
 .lesson-flow--colab {
-  max-width: min(1120px, 100%);
+  max-width: min(1272px, 100%);
   margin-inline: auto;
   width: 100%;
 }
@@ -4826,12 +4885,13 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
 .lesson-player-page__submit-card.ant-card,
 .lesson-player-page__grade-card.ant-card,
 .lesson-player-page__checkpoint-status.ant-alert {
-  max-width: min(1120px, 100%) !important;
+  max-width: min(1272px, 100%) !important;
   margin-inline: auto !important;
 }
 
 .admin-lesson-editor {
-  max-width: min(1120px, 100%) !important;
+  max-width: min(1680px, calc(100vw - 28px)) !important;
+  width: 100%;
 }
 
 .studio-page__side-tabs--full {

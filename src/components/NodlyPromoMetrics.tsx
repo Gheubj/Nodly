@@ -17,25 +17,18 @@ export function NodlyPromoMetrics({ className, layout = "full" }: NodlyPromoMetr
   if (layout === "scene-bars") {
     return (
       <div className={`nodly-promo-metrics nodly-promo-metrics--scene-bars ${className ?? ""}`} aria-hidden>
-        <div className="nodly-promo-metrics__row">
-          <div className="nodly-promo-metrics__row-head">
-            <span>accuracy</span>
-            <strong>0.94</strong>
-          </div>
-          <div className="nodly-promo-metrics__meter">
-            <span className="nodly-promo-metrics__meter-fill" style={{ width: "94%" }} />
+        <div className="nodly-promo-metrics__barline">
+          <div className="nodly-promo-metrics__barline-fill nodly-promo-metrics__barline-fill--acc" style={{ width: "94%" }} />
+          <div className="nodly-promo-metrics__barline-cap">
+            <span className="nodly-promo-metrics__barline-name">accuracy</span>
+            <span className="nodly-promo-metrics__barline-value">0.94</span>
           </div>
         </div>
-        <div className="nodly-promo-metrics__row">
-          <div className="nodly-promo-metrics__row-head">
-            <span>f1</span>
-            <strong>0.91</strong>
-          </div>
-          <div className="nodly-promo-metrics__meter">
-            <span
-              className="nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--f1"
-              style={{ width: "91%" }}
-            />
+        <div className="nodly-promo-metrics__barline">
+          <div className="nodly-promo-metrics__barline-fill nodly-promo-metrics__barline-fill--f1" style={{ width: "91%" }} />
+          <div className="nodly-promo-metrics__barline-cap">
+            <span className="nodly-promo-metrics__barline-name">f1</span>
+            <span className="nodly-promo-metrics__barline-value">0.91</span>
           </div>
         </div>
       </div>
