@@ -4530,7 +4530,7 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   gap: 8px;
 }
 
-/* Сцена: подпись сверху, полоса + проценты внутри заливки или справа от трека */
+/* Сцена: строка «название · %» над полосой, ниже только трек */
 .nodly-promo-metrics__scene-row {
   display: flex;
   flex-direction: column;
@@ -4538,18 +4538,27 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 }
 
 .nodly-promo-metrics__scene-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
   min-height: 1em;
+}
+
+.nodly-promo-metrics__scene-name-row .nodly-promo-metrics__scene-name {
+  min-width: 0;
 }
 
 .nodly-promo-metrics__scene-meter-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  width: 100%;
   min-width: 0;
 }
 
 .nodly-promo-metrics__scene-meter-row .nodly-promo-metrics__meter--scene {
   flex: 1 1 0;
+  width: 100%;
   min-width: 0;
 }
 
@@ -4570,32 +4579,13 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   width: auto;
 }
 
-.nodly-promo-metrics__meter-fill--live {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  box-sizing: border-box;
-  min-width: 0;
-  padding-right: 5px;
-}
-
-.nodly-promo-metrics__scene-pct-in {
+.nodly-promo-metrics__scene-pct-above {
   font-family: var(--font-display, "Manrope", "Inter", sans-serif);
   font-size: 11px;
   font-weight: 750;
   letter-spacing: -0.03em;
   color: rgba(248, 250, 252, 0.96);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.nodly-promo-metrics__scene-pct-out {
-  font-family: var(--font-display, "Manrope", "Inter", sans-serif);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  color: rgba(226, 232, 255, 0.88);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -4617,17 +4607,8 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
   height: 6px;
 }
 
-.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-meter-row {
-  gap: 6px;
-}
-
-.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-pct-in {
+.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-pct-above {
   font-size: 9px;
-  padding-right: 3px;
-}
-
-.nodly-promo-metrics--live-compact .nodly-promo-metrics__scene-pct-out {
-  font-size: 10px;
 }
 
 .nodly-promo-metrics__meter-fill--acc {
@@ -4647,8 +4628,9 @@ html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics
   color: var(--app-muted);
 }
 
-html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-out {
+html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-above {
   color: var(--app-text);
+  text-shadow: none;
 }
 
 html[data-theme="light"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__meter--scene {
@@ -4659,8 +4641,9 @@ html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics_
   color: var(--app-muted);
 }
 
-html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-out {
+html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-above {
   color: var(--app-text);
+  text-shadow: none;
 }
 
 html[data-theme="light"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__meter--scene {
@@ -4741,18 +4724,13 @@ html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__
   color: rgba(186, 198, 235, 0.72);
 }
 
-html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-out,
-html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-out {
-  color: rgba(224, 231, 255, 0.9);
-}
-
 html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__meter--scene,
 html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__meter--scene {
   background: rgba(51, 65, 95, 0.55);
 }
 
-html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-in,
-html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-in {
+html[data-theme="dark"] .studio-stage-panel__promo-metrics .nodly-promo-metrics__scene-pct-above,
+html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__scene-pct-above {
   color: rgba(248, 250, 252, 0.98);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
 }

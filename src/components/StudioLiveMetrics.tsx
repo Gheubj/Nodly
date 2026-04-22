@@ -90,7 +90,7 @@ type StudioLiveMetricsProps = {
 };
 
 /**
- * Метрики последнего обучения: только подпись категории + полоса; число — проценты у конца заливки (не дробь отдельным блоком).
+ * Метрики последнего обучения: название и проценты над полосой, ниже — только прогресс.
  */
 export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps) {
   const evaluation = useAppStore((s) => s.evaluation);
@@ -152,28 +152,21 @@ export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps
     <div className={rootClass}>
       {rows.map((row) => {
         const w = Math.round(row.fill * 1000) / 10;
-        const showInside = w >= 14;
         return (
           <div key={row.key} className="nodly-promo-metrics__scene-row">
             <div className="nodly-promo-metrics__scene-name-row">
               <span className="nodly-promo-metrics__scene-name">{row.name}</span>
+              <span className="nodly-promo-metrics__scene-pct-above">{row.pctLabel}</span>
             </div>
             <div className="nodly-promo-metrics__scene-meter-row">
               <div className="nodly-promo-metrics__meter nodly-promo-metrics__meter--scene">
                 <span
-                  className={`nodly-promo-metrics__meter-fill nodly-promo-metrics__meter-fill--live${
+                  className={`nodly-promo-metrics__meter-fill${
                     row.key === "f1" ? " nodly-promo-metrics__meter-fill--f1" : ""
                   }${row.key === "rmse" ? " nodly-promo-metrics__meter-fill--rmse" : ""}`}
                   style={{ width: `${w}%` }}
-                >
-                  {showInside ? (
-                    <span className="nodly-promo-metrics__scene-pct-in">{row.pctLabel}</span>
-                  ) : null}
-                </span>
+                />
               </div>
-              {!showInside ? (
-                <span className="nodly-promo-metrics__scene-pct-out">{row.pctLabel}</span>
-              ) : null}
             </div>
           </div>
         );
