@@ -3181,14 +3181,84 @@ html[data-theme="light"] .blockly-palette-group-title {
   -webkit-backdrop-filter: blur(22px);
 }
 
+.studio-projects-list.ant-list-split .ant-list-item {
+  border-block-end-color: transparent;
+}
+
 .studio-projects-list .ant-list-item {
-  border-radius: 12px;
-  padding-inline: 10px;
-  transition: background-color 140ms ease;
+  display: block;
+  padding: 0;
+  margin-bottom: 12px;
+  border: none !important;
+  transition: none;
+}
+
+.studio-projects-list .ant-list-item:last-child {
+  margin-bottom: 0;
 }
 
 .studio-projects-list .ant-list-item:hover {
-  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+  background: transparent;
+}
+
+.studio-projects-list .ant-list-item .ant-list-item-main {
+  width: 100%;
+  max-width: 100%;
+}
+
+.studio-projects-list__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+  box-shadow: var(--app-shadow-soft);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.studio-projects-list__item:hover .studio-projects-list__card {
+  border-color: color-mix(in srgb, var(--app-accent) 35%, var(--surface-stroke));
+  background: color-mix(in srgb, var(--app-accent) 6%, var(--surface-panel));
+  box-shadow: var(--app-shadow-hover);
+}
+
+.studio-projects-list__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.studio-projects-list__title {
+  display: block;
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  color: var(--app-text);
+}
+
+.studio-projects-list__meta {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.studio-projects-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.studio-projects-list__actions .ant-btn {
+  flex: 0 0 auto;
 }
 
 .lesson-player-page__head {

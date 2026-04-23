@@ -1244,57 +1244,57 @@ export function StudioPage() {
           dataSource={projectItems}
           locale={{ emptyText: "Проекты не найдены" }}
           renderItem={(item) => (
-            <List.Item
-              actions={[
-                <Button key="load" type="link" onClick={() => void handleLoadProject(item.id)}>
-                  Загрузить
-                </Button>,
-                <Button
-                  key="rename"
-                  type="link"
-                  onClick={() => openRenameProjectModal(item.id, item.title)}
-                >
-                  Переименовать
-                </Button>,
-                <Popconfirm
-                  key="delete"
-                  title="Удалить проект?"
-                  okText="Удалить"
-                  cancelText="Отмена"
-                  onConfirm={async () => {
-                    setDeletingProjectId(item.id);
-                    try {
-                      await deleteProjectSmart(item.id);
-                      messageApi.success("Проект удалён");
-                      await refreshProjects(resolvedUserId);
-                      const uid = resolvedUserId.trim() || "guest";
-                      if (readLastStudioProjectId(uid) === item.id) {
-                        clearLastStudioProjectId(uid);
-                      }
-                      if (activeProject?.id === item.id) {
-                        clearLastStudioProjectId(uid);
-                        clearUnsavedStudioDraft(resolvedUserId);
-                        setActiveProject(null);
-                        loadProjectSnapshot(EMPTY_SNAPSHOT);
-                        setSaveTitle(DEFAULT_PROJECT_TITLE);
-                      }
-                    } catch (e) {
-                      messageApi.error(e instanceof Error ? e.message : "Не удалось удалить проект");
-                    } finally {
-                      setDeletingProjectId(null);
-                    }
-                  }}
-                >
-                  <Button key="delete-btn" type="link" danger loading={deletingProjectId === item.id}>
-                    Удалить
+            <List.Item className="studio-projects-list__item" key={item.id}>
+              <div className="studio-projects-list__card">
+                <div className="studio-projects-list__head">
+                  <Text strong className="studio-projects-list__title">
+                    {item.title}
+                  </Text>
+                  <Text type="secondary" className="studio-projects-list__meta">
+                    Обновлен: {new Date(item.updatedAt).toLocaleString("ru-RU")}
+                  </Text>
+                </div>
+                <div className="studio-projects-list__actions">
+                  <Button size="small" type="primary" onClick={() => void handleLoadProject(item.id)}>
+                    Загрузить
                   </Button>
-                </Popconfirm>
-              ]}
-            >
-              <List.Item.Meta
-                title={item.title}
-                description={`Обновлен: ${new Date(item.updatedAt).toLocaleString("ru-RU")}`}
-              />
+                  <Button size="small" type="default" onClick={() => openRenameProjectModal(item.id, item.title)}>
+                    Переименовать
+                  </Button>
+                  <Popconfirm
+                    title="Удалить проект?"
+                    okText="Удалить"
+                    cancelText="Отмена"
+                    onConfirm={async () => {
+                      setDeletingProjectId(item.id);
+                      try {
+                        await deleteProjectSmart(item.id);
+                        messageApi.success("Проект удалён");
+                        await refreshProjects(resolvedUserId);
+                        const uid = resolvedUserId.trim() || "guest";
+                        if (readLastStudioProjectId(uid) === item.id) {
+                          clearLastStudioProjectId(uid);
+                        }
+                        if (activeProject?.id === item.id) {
+                          clearLastStudioProjectId(uid);
+                          clearUnsavedStudioDraft(resolvedUserId);
+                          setActiveProject(null);
+                          loadProjectSnapshot(EMPTY_SNAPSHOT);
+                          setSaveTitle(DEFAULT_PROJECT_TITLE);
+                        }
+                      } catch (e) {
+                        messageApi.error(e instanceof Error ? e.message : "Не удалось удалить проект");
+                      } finally {
+                        setDeletingProjectId(null);
+                      }
+                    }}
+                  >
+                    <Button size="small" danger type="default" loading={deletingProjectId === item.id}>
+                      Удалить
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </div>
             </List.Item>
           )}
         />
