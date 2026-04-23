@@ -1,5 +1,4 @@
 import { lazy, Suspense, useLayoutEffect } from "react";
-import { ExportOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Input, Radio, Space, Spin, Tag, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,11 +37,6 @@ function studioLessonFrameSrc(
   q.set("mini", "1");
   q.set("miniBlockId", blockId);
   return `/studio?${q.toString()}`;
-}
-
-/** Открыть тот же проект в обычной «Разработке» без параметров урока. */
-function studioStandaloneTabHref(projectId: string): string {
-  return `/studio?project=${encodeURIComponent(projectId)}`;
 }
 
 /** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
@@ -181,7 +175,6 @@ export function LessonFlowView({
                 readOnly
               })
             : "";
-          const tabHref = projectId ? studioStandaloneTabHref(projectId) : "";
           if (bareMiniStudio) {
             return (
               <div key={block.id}>
@@ -192,16 +185,11 @@ export function LessonFlowView({
                   goals={block.goals ?? []}
                 />
                 {projectId ? (
-                  <Space direction="vertical" size="small" style={{ width: "100%" }}>
-                    <iframe
-                      className="lesson-flow__mini-dev-frame"
-                      title={`mini-dev-${block.id}`}
-                      src={frameSrc}
-                    />
-                    <Button type="default" size="small" icon={<ExportOutlined />} href={tabHref} target="_blank" rel="noreferrer">
-                      Во вкладке
-                    </Button>
-                  </Space>
+                  <iframe
+                    className="lesson-flow__mini-dev-frame"
+                    title={`mini-dev-${block.id}`}
+                    src={frameSrc}
+                  />
                 ) : creating ? (
                   <div className="lesson-flow__mini-dev-loading">
                     <Spin />
@@ -229,16 +217,11 @@ export function LessonFlowView({
               <div className="lesson-flow__studio-markdown">{renderMarkdown(block.instruction, "lesson-flow__markdown")}</div>
               <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {projectId ? (
-                  <>
-                    <iframe
-                      className="lesson-flow__mini-dev-frame"
-                      title={`mini-dev-${block.id}`}
-                      src={frameSrc}
-                    />
-                    <Button type="default" size="small" icon={<ExportOutlined />} href={tabHref} target="_blank" rel="noreferrer">
-                      Во вкладке
-                    </Button>
-                  </>
+                  <iframe
+                    className="lesson-flow__mini-dev-frame"
+                    title={`mini-dev-${block.id}`}
+                    src={frameSrc}
+                  />
                 ) : creating ? (
                   <div className="lesson-flow__mini-dev-loading">
                     <Spin />

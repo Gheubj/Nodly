@@ -1051,15 +1051,19 @@ function registerBlocks() {
   };
 }
 
-function getDefaultWorkspaceJson(trainBlockType: "noda_train_model_simple" | "noda_train_model") {
+function getDefaultWorkspaceJson(
+  trainBlockType: "noda_train_model_simple" | "noda_train_model",
+  opts?: { mini?: boolean }
+) {
+  const dy = opts?.mini ? 96 : 0;
   const blocks: Record<string, unknown>[] = [
-    { type: "noda_start", x: 20, y: 20 },
-    { type: trainBlockType, x: 20, y: 100 }
+    { type: "noda_start", x: 24, y: 24 + dy },
+    { type: trainBlockType, x: 24, y: 104 + dy }
   ];
   if (trainBlockType === "noda_train_model") {
-    blocks.push({ type: "noda_predict_class", x: 20, y: 180 });
+    blocks.push({ type: "noda_predict_class", x: 24, y: 184 + dy });
   } else {
-    blocks.push({ type: "noda_predict_l1", x: 20, y: 180 });
+    blocks.push({ type: "noda_predict_l1", x: 24, y: 184 + dy });
   }
   return {
     blocks: {
@@ -2191,7 +2195,7 @@ export function BlocklyWorkspace({
     const initialState =
       blocklyState.trim().length > 0
         ? JSON.parse(blocklyState)
-        : getDefaultWorkspaceJson(trainType);
+        : getDefaultWorkspaceJson(trainType, { mini: Boolean(miniStudioToolbar) });
     Blockly.serialization.workspaces.load(initialState, workspaceRef.current);
     clampBlocksToViewport(workspaceRef.current);
     refreshAllPredictL1Blocks(workspaceRef.current);
@@ -2325,7 +2329,7 @@ export function BlocklyWorkspace({
     }
     const level = effectiveToolboxLevel(useAppStore.getState().workspaceLevel);
     const trainType = level === 1 ? "noda_train_model_simple" : "noda_train_model";
-    const defaultJson = getDefaultWorkspaceJson(trainType);
+    const defaultJson = getDefaultWorkspaceJson(trainType, { mini: Boolean(miniStudioToolbar) });
     const trimmed = blocklyState.trim();
     let toLoad: unknown = defaultJson;
     if (trimmed.length > 0) {
@@ -2351,7 +2355,7 @@ export function BlocklyWorkspace({
     } catch {
       /* malformed or incompatible saved state */
     }
-  }, [blocklyState, workspaceLevel]);
+  }, [blocklyState, workspaceLevel, miniStudioToolbar]);
 
   return (
     <div className="blockly-root">

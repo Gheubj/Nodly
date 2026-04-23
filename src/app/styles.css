@@ -963,7 +963,7 @@ html[data-theme="dark"] .studio-metrics-panel__cm-table td {
 }
 
 .studio-stage-panel__mini-metrics {
-  margin: 0 0 3px;
+  margin: 8px 0 0;
   padding: 6px 8px 8px;
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.2);
