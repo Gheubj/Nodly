@@ -6,7 +6,7 @@ import { getOnboardingPersona } from "@/onboarding/persona";
 import { stepsForPersona } from "@/onboarding/stepDefinitions";
 import { readOnboardingState, writeOnboardingState } from "@/onboarding/storage";
 import { anchorSelector, waitForElement } from "@/onboarding/waitForElement";
-import type { OnboardingPersona, OnboardingStepDef } from "@/onboarding/types";
+import type { OnboardingStepDef } from "@/onboarding/types";
 
 export const NODLY_START_ONBOARDING_EVENT = "nodly-start-onboarding";
 export const NODLY_ONBOARDING_STORAGE_EVENT = "nodly-onboarding-storage-updated";
@@ -121,11 +121,13 @@ export function OnboardingTourHost({ user, disabled }: Props) {
 
   const tourSteps: TourProps["steps"] = useMemo(
     () =>
-      defs.map((d) => ({
+      defs.map((d, i) => ({
         title: d.title,
         description: d.description,
         placement: d.placement,
-        target: () => document.querySelector(anchorSelector(d.targetAttr)) ?? document.body
+        target: () => document.querySelector(anchorSelector(d.targetAttr)) ?? document.body,
+        prevButtonProps: { children: "Назад" },
+        nextButtonProps: { children: i < defs.length - 1 ? "Далее" : "Готово" }
       })),
     [defs, tick]
   );
@@ -195,7 +197,6 @@ export function OnboardingTourHost({ user, disabled }: Props) {
           {cur + 1} / {total}
         </span>
       )}
-      locale={{ Next: "Далее", Previous: "Назад", Finish: "Готово" }}
     />
   );
 }
