@@ -40,15 +40,97 @@ const headerAccount: OnboardingStepDef = {
   placement: "bottom"
 };
 
-const studioWorkbench: OnboardingStepDef = {
+const homeQuicklinks: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-quicklinks",
+  title: "Быстрые разделы на главной",
+  description:
+    "Карточки ведут сразу в Разработку, Обучение и Профиль — удобно, если не хочется искать ссылки в шапке.",
+  placement: "bottom"
+};
+
+const homeSchoolWidgets: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-school-widgets",
+  title: "Сводка для школьника",
+  description:
+    "Кратко: на что обратить внимание, задания, дедлайны. Ниже на главной — расписание и список ДЗ; подробности всегда в разделе «Обучение».",
+  placement: "top"
+};
+
+const homeTeacherSummary: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-teacher-summary",
+  title: "Сводка для учителя",
+  description: "Новые ученики, сдачи на проверку и напоминания — без захода в кабинет.",
+  placement: "top",
+  optional: true
+};
+
+const homeScheduleWidget: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-schedule",
+  title: "Расписание на главной",
+  description: "Ближайшие слоты занятий. Полный дневник с работами — во вкладке «Дневник» в разделе «Обучение».",
+  placement: "top",
+  optional: true
+};
+
+const homeHomeworkWidget: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-homework",
+  title: "Домашние задания на главной",
+  description:
+    "Список ближайших ДЗ и сроков. Статусы, фильтры и сдача — во вкладке «Все задания» в «Обучении».",
+  placement: "top",
+  optional: true
+};
+
+const homeDirectPanel: OnboardingStepDef = {
+  routeMatch: exact("/"),
+  navigateTo: "/",
+  targetAttr: "home-direct-panel",
+  title: "Прогресс без школы",
+  description: "Кратко по модулям и урокам в самостоятельном режиме. Каталог и открытие уроков — в разделе «Обучение».",
+  placement: "top"
+};
+
+const studioToolbar: OnboardingStepDef = {
   routeMatch: starts("/studio"),
   navigateTo: "/studio",
-  targetAttr: "studio-workbench",
-  title: "Среда разработки",
+  targetAttr: "studio-toolbar",
+  title: "Панель проекта",
   description:
-    "Сохранение в облако, данные, список проектов и Blockly. Из урока мини-студия открывается здесь же — в полном окне.",
+    "Строка с названием черновика или проекта. «Сохранить» — записать в облако (первый раз откроется имя). «Данные» — датасеты, модели, входы для предсказаний. «Новый проект» — чистый черновик. «Проекты» — список, загрузить, удалить, переименовать. «Поделиться» — ссылка на копию черновика (после сохранения в облако).",
+  placement: "bottom"
+};
+
+const studioBlockly: OnboardingStepDef = {
+  routeMatch: starts("/studio"),
+  navigateTo: "/studio",
+  targetAttr: "studio-blockly",
+  title: "Blockly — логика и ML",
+  description:
+    "Собираешь программу из блоков: события, циклы, обучение классификатора, предсказания. В уроке открывается мини-студия; здесь — полная среда с тем же проектом.",
   placement: "right"
 };
+
+const studioSidePanel: OnboardingStepDef = {
+  routeMatch: starts("/studio"),
+  navigateTo: "/studio",
+  targetAttr: "studio-side-panel",
+  title: "Правая колонка",
+  description:
+    "«Сцена» — превью набора данных. «Визуализация» — графики и метрики после обучения. «Персонаж» — спрайт для уроков и внешний вид.",
+  placement: "left"
+};
+
+const STUDIO_ONBOARDING_STEPS: OnboardingStepDef[] = [studioToolbar, studioBlockly, studioSidePanel];
 
 const accountProfile: OnboardingStepDef = {
   routeMatch: starts("/account"),
@@ -106,6 +188,9 @@ const teacherSchedule: OnboardingStepDef = {
 
 export const TEACHER_ONBOARDING_STEPS: OnboardingStepDef[] = [
   headerHome,
+  homeQuicklinks,
+  homeTeacherSummary,
+  homeScheduleWidget,
   headerTeacher,
   headerStudio,
   headerSettings,
@@ -113,7 +198,7 @@ export const TEACHER_ONBOARDING_STEPS: OnboardingStepDef[] = [
   teacherClasses,
   teacherAssignments,
   teacherSchedule,
-  studioWorkbench,
+  ...STUDIO_ONBOARDING_STEPS,
   accountProfile
 ];
 
@@ -193,6 +278,10 @@ const lessonPlayerFlow: OnboardingStepDef = {
 
 export const STUDENT_SCHOOL_ONBOARDING_STEPS: OnboardingStepDef[] = [
   headerHome,
+  homeQuicklinks,
+  homeSchoolWidgets,
+  homeScheduleWidget,
+  homeHomeworkWidget,
   headerLearningSchool,
   headerStudio,
   headerSettings,
@@ -202,7 +291,7 @@ export const STUDENT_SCHOOL_ONBOARDING_STEPS: OnboardingStepDef[] = [
   studentClassAll,
   studentClassInfo,
   lessonPlayerFlow,
-  studioWorkbench,
+  ...STUDIO_ONBOARDING_STEPS,
   accountProfile,
   accountJoinSchool
 ];
@@ -229,13 +318,15 @@ const directCatalog: OnboardingStepDef = {
 
 export const STUDENT_DIRECT_ONBOARDING_STEPS: OnboardingStepDef[] = [
   headerHome,
+  homeQuicklinks,
+  homeDirectPanel,
   headerLearningDirect,
   directCatalog,
   lessonPlayerFlow,
   headerStudio,
   headerSettings,
   headerAccount,
-  studioWorkbench,
+  ...STUDIO_ONBOARDING_STEPS,
   accountProfile
 ];
 

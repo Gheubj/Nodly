@@ -92,7 +92,7 @@ export function OnboardingTourHost({ user, disabled }: Props) {
         return;
       }
       applyPrepare(def);
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
       const el = await waitForElement(anchorSelector(def.targetAttr), 4500);
       if (!el && def.optional) {
         setCurrent((c) => {
@@ -172,7 +172,6 @@ export function OnboardingTourHost({ user, disabled }: Props) {
         finishTour();
         return;
       }
-      setOpen(false);
       setCurrent(next);
       bump();
     },
@@ -192,6 +191,10 @@ export function OnboardingTourHost({ user, disabled }: Props) {
       steps={tourSteps}
       onChange={onChange}
       disabledInteraction
+      rootClassName="nodly-onboarding-tour"
+      animated={{ placeholder: true }}
+      scrollIntoViewOptions={{ behavior: "smooth", block: "nearest" }}
+      mask={{ style: { transition: "opacity 0.28s ease" } }}
       indicatorsRender={(cur, total) => (
         <span style={{ fontSize: 12 }}>
           {cur + 1} / {total}

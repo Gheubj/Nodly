@@ -44,7 +44,7 @@ export function StudioSidePanelTabs(props: StudioSidePanelTabsProps) {
   }
 
   return (
-    <div className={rootClass}>
+    <div className={rootClass} data-onboarding={isMini ? undefined : "studio-side-panel"}>
       <Tabs
         size="small"
         destroyInactiveTabPane={false}

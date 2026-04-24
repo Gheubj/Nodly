@@ -5148,3 +5148,18 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
   .landing-v2__showcase { padding: 24px; }
   .home-v2__inner { padding: 22px 14px 48px; }
 }
+
+/* Онбординг (antd Tour): плавнее смена подсветки и панели */
+.nodly-onboarding-tour .ant-tour-inner {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.26s ease;
+}
+.nodly-onboarding-tour .ant-tour-arrow {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ant-tour-target-placeholder {
+  transition:
+    top 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.32s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}

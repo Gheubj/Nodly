@@ -621,7 +621,7 @@ function AuthedHome({ user }: { user: SessionUser }) {
           />
         ) : null}
 
-        <nav className="home-v2__quicklinks" aria-label="Быстрые разделы">
+        <nav className="home-v2__quicklinks" aria-label="Быстрые разделы" data-onboarding="home-quicklinks">
           {quickLinks.map((ql) => (
             <Link
               key={ql.to}
@@ -643,45 +643,55 @@ function AuthedHome({ user }: { user: SessionUser }) {
 
         <div className="home-v2__widgets">
           {teacher ? (
-            <HomeReactiveSurface>
-              <HomeTeacherSummary />
-            </HomeReactiveSurface>
+            <div data-onboarding="home-teacher-summary">
+              <HomeReactiveSurface>
+                <HomeTeacherSummary />
+              </HomeReactiveSurface>
+            </div>
           ) : null}
           {schoolStudent ? (
-            <HomeReactiveSurface>
-              <HomeSchoolStudentWelcome
-                user={user}
-                summary={schoolSummary}
-                summaryLoading={schoolSummaryLoading}
-              />
-            </HomeReactiveSurface>
-          ) : null}
-          {schoolStudent && shouldShowHomeSchoolStudentBanner(schoolBannerProps) ? (
-            <HomeReactiveSurface>
-              <HomeSchoolStudentBanner {...schoolBannerProps} />
-            </HomeReactiveSurface>
+            <div data-onboarding="home-school-widgets">
+              <HomeReactiveSurface>
+                <HomeSchoolStudentWelcome
+                  user={user}
+                  summary={schoolSummary}
+                  summaryLoading={schoolSummaryLoading}
+                />
+              </HomeReactiveSurface>
+              {shouldShowHomeSchoolStudentBanner(schoolBannerProps) ? (
+                <HomeReactiveSurface>
+                  <HomeSchoolStudentBanner {...schoolBannerProps} />
+                </HomeReactiveSurface>
+              ) : null}
+            </div>
           ) : null}
           {directStudent ? (
-            <HomeReactiveSurface>
-              <HomeDirectStudentPanel />
-            </HomeReactiveSurface>
+            <div data-onboarding="home-direct-panel">
+              <HomeReactiveSurface>
+                <HomeDirectStudentPanel />
+              </HomeReactiveSurface>
+            </div>
           ) : null}
 
           {teacher || schoolStudent ? (
-            <HomeReactiveSurface>
-              <HomeSchedulePreview
-                onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined}
-              />
-            </HomeReactiveSurface>
+            <div data-onboarding="home-schedule">
+              <HomeReactiveSurface>
+                <HomeSchedulePreview
+                  onSlotsLoaded={schoolStudent ? onScheduleSlotsLoaded : undefined}
+                />
+              </HomeReactiveSurface>
+            </div>
           ) : null}
           {schoolStudent ? (
-            <HomeReactiveSurface>
-              <HomeUpcomingHomework
-                rows={homeHwRows}
-                loading={homeHwLoading}
-                onRefresh={reloadHomeHw}
-              />
-            </HomeReactiveSurface>
+            <div data-onboarding="home-homework">
+              <HomeReactiveSurface>
+                <HomeUpcomingHomework
+                  rows={homeHwRows}
+                  loading={homeHwLoading}
+                  onRefresh={reloadHomeHw}
+                />
+              </HomeReactiveSurface>
+            </div>
           ) : null}
         </div>
       </div>

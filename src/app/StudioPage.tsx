@@ -1040,7 +1040,7 @@ export function StudioPage() {
 
   const studioEditorRow = (
     <>
-      <div className="studio-page__blockly">
+      <div className="studio-page__blockly" data-onboarding="studio-blockly">
         <BlocklyWorkspace
           miniStudioToolbar={isMiniMode}
           standaloneStudioHref={
@@ -1074,8 +1074,8 @@ export function StudioPage() {
     <div className="studio-page">
       {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
       {!isMiniMode ? (
-        <div className="studio-page__workbench" data-onboarding="studio-workbench">
-          <div className="studio-page__toolbar">
+        <div className="studio-page__workbench">
+          <div className="studio-page__toolbar" data-onboarding="studio-toolbar">
             <div className="studio-page__toolbar-main">
               <div className="studio-page__toolbar-rail" aria-hidden>
                 <span className="studio-page__traffic studio-page__traffic--close" />
