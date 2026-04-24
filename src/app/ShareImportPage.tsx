@@ -51,7 +51,7 @@ export function ShareImportPage() {
   return (
     <Content className="app-content">
       {contextHolder}
-      <Card style={{ maxWidth: 520 }}>
+      <Card style={{ maxWidth: 520 }} data-onboarding="share-import">
         <Title level={4} style={{ marginTop: 0 }}>
           Импорт проекта по ссылке
         </Title>

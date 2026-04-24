@@ -1,6 +1,7 @@
 import { Button, Card, Space, Typography } from "antd";
 import { Link } from "react-router-dom";
 import { ThemeModeControl } from "@/app/ThemeModeControl";
+import { getOnboardingPersona, NODLY_START_ONBOARDING_EVENT } from "@/onboarding";
 import { useSessionStore } from "@/store/useSessionStore";
 
 const { Paragraph, Text } = Typography;
@@ -15,6 +16,7 @@ type Props = {
 export function SettingsPanel({ variant = "drawer", onAfterNavigate }: Props) {
   const { user } = useSessionStore();
   const gap = variant === "drawer" ? "middle" : "large";
+  const onboardingPersona = user ? getOnboardingPersona(user) : null;
 
   return (
     <Space direction="vertical" size={gap} style={{ width: "100%" }}>
@@ -27,6 +29,25 @@ export function SettingsPanel({ variant = "drawer", onAfterNavigate }: Props) {
         </Text>
         <ThemeModeControl />
       </Card>
+      {user && onboardingPersona ? (
+        <Card title="Экскурсия" size="small">
+          <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+            Подсветка разделов с подсказками — в любой момент можно закрыть
+          </Text>
+          <Button
+            type="default"
+            block
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent(NODLY_START_ONBOARDING_EVENT, { detail: { fromSettings: true } })
+              );
+              onAfterNavigate?.();
+            }}
+          >
+            Показать экскурсию
+          </Button>
+        </Card>
+      ) : null}
       {user ? (
         <Link to="/account" onClick={() => onAfterNavigate?.()}>
           <Button type="default" block>

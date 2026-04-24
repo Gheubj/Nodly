@@ -27,6 +27,7 @@ import { AdminLessonTemplateEditorPage } from "@/app/AdminLessonTemplateEditorPa
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
+import { OnboardingTourHost } from "@/onboarding";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { apiClient, toUserErrorMessage } from "@/shared/api/client";
@@ -311,71 +312,82 @@ export function App() {
               </button>
             ) : null}
             {user ? (
-              <NavLink to="/" end className={headerNavClass}>
-                Главная
-              </NavLink>
+              <span data-onboarding="header-home" style={{ display: "inline-flex" }}>
+                <NavLink to="/" end className={headerNavClass}>
+                  Главная
+                </NavLink>
+              </span>
             ) : null}
             {user?.role === "student" && user.studentMode === "school" ? (
-              <Badge
-                count={meSummary.assignmentAttentionCount ?? 0}
-                size="small"
-                offset={[8, 2]}
-                classNames={{ root: "app-header-nav-badge" }}
-              >
-                <NavLink
-                  to="/class"
-                  className={headerNavClass}
-                  onClick={() =>
-                    setMeSummary((s) => ({
-                      ...s,
-                      assignmentAttentionCount: 0
-                    }))
-                  }
+              <span data-onboarding="header-learning" style={{ display: "inline-flex" }}>
+                <Badge
+                  count={meSummary.assignmentAttentionCount ?? 0}
+                  size="small"
+                  offset={[8, 2]}
+                  classNames={{ root: "app-header-nav-badge" }}
                 >
-                  Обучение
-                </NavLink>
-              </Badge>
+                  <NavLink
+                    to="/class"
+                    className={headerNavClass}
+                    onClick={() =>
+                      setMeSummary((s) => ({
+                        ...s,
+                        assignmentAttentionCount: 0
+                      }))
+                    }
+                  >
+                    Обучение
+                  </NavLink>
+                </Badge>
+              </span>
             ) : null}
             {user?.role === "student" && user.studentMode === "direct" ? (
-              <NavLink to="/learning" className={headerNavClass}>
-                Обучение
-              </NavLink>
+              <span data-onboarding="header-learning" style={{ display: "inline-flex" }}>
+                <NavLink to="/learning" className={headerNavClass}>
+                  Обучение
+                </NavLink>
+              </span>
             ) : null}
             {user?.role === "teacher" || user?.role === "admin" ? (
-              <Badge
-                count={
-                  user?.role === "teacher"
-                    ? (meSummary.pendingReviewCount ?? 0) + (meSummary.newEnrollmentCount ?? 0)
-                    : 0
-                }
-                size="small"
-                offset={[8, 2]}
-                classNames={{ root: "app-header-nav-badge" }}
-              >
-                <NavLink
-                  to="/teacher"
-                  className={headerNavClass}
-                  onClick={() =>
-                    setMeSummary((s) => ({
-                      ...s,
-                      pendingReviewCount: 0,
-                      newEnrollmentCount: 0
-                    }))
+              <span data-onboarding="header-teacher" style={{ display: "inline-flex" }}>
+                <Badge
+                  count={
+                    user?.role === "teacher"
+                      ? (meSummary.pendingReviewCount ?? 0) + (meSummary.newEnrollmentCount ?? 0)
+                      : 0
                   }
+                  size="small"
+                  offset={[8, 2]}
+                  classNames={{ root: "app-header-nav-badge" }}
                 >
-                  {user?.role === "admin" ? "Админ" : "Кабинет учителя"}
-                </NavLink>
-              </Badge>
+                  <NavLink
+                    to="/teacher"
+                    className={headerNavClass}
+                    onClick={() =>
+                      setMeSummary((s) => ({
+                        ...s,
+                        pendingReviewCount: 0,
+                        newEnrollmentCount: 0
+                      }))
+                    }
+                  >
+                    {user?.role === "admin" ? "Админ" : "Кабинет учителя"}
+                  </NavLink>
+                </Badge>
+              </span>
             ) : null}
             {user ? (
-              <NavLink to="/studio" className={headerNavClass}>
-                Разработка
-              </NavLink>
+              <span data-onboarding="header-studio" style={{ display: "inline-flex" }}>
+                <NavLink to="/studio" className={headerNavClass}>
+                  Разработка
+                </NavLink>
+              </span>
             ) : null}
           </nav>
           {user ? (
             <div className="app-header-account-cluster">
               <div
+                data-onboarding="header-settings"
                 className={`app-header-account-slot${settingsOpen ? " app-header-account-slot--active" : ""}`}
               >
                 <Button
@@ -389,7 +401,12 @@ export function App() {
                 />
                 <span className="app-header-nickname">Настройки</span>
               </div>
-              <Link to="/account" className="app-header-account-slot" aria-label="Личный кабинет">
+              <Link
+                to="/account"
+                className="app-header-account-slot"
+                aria-label="Личный кабинет"
+                data-onboarding="header-account"
+              >
                 <Button
                   type="text"
                   size="large"
@@ -726,6 +743,7 @@ export function App() {
           ]}
         />
       </Modal>
+      <OnboardingTourHost user={user} disabled={isMiniStudioEmbed} />
       <Modal
         open={forgotOpen}
         title="Сброс пароля"

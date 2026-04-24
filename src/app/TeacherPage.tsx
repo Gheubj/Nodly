@@ -312,6 +312,20 @@ export function TeacherPage() {
     }
   }, [user?.role, location.pathname, syncTeacherBadges]);
 
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const key = (e as CustomEvent<string>).detail;
+      if (typeof key === "string" && key.trim()) {
+        setActiveTab(key);
+        if (key === "assignments") {
+          setLmsInnerTab("assignments");
+        }
+      }
+    };
+    window.addEventListener("nodly-onboarding-teacher-tab", onTab as EventListener);
+    return () => window.removeEventListener("nodly-onboarding-teacher-tab", onTab as EventListener);
+  }, []);
+
   const handleTeacherTabChange = (key: string) => {
     setActiveTab(key);
   };
@@ -1200,6 +1214,7 @@ export function TeacherPage() {
   }
 
   const classesTab = (
+    <div data-onboarding="teacher-classes">
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <Card size="small" title="Быстрые действия">
         <Space wrap>
@@ -1269,9 +1284,11 @@ export function TeacherPage() {
         ))
       )}
     </Space>
+    </div>
   );
 
   const assignmentsTab = (
+    <div data-onboarding="teacher-assignments">
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <Card size="small" title="Класс">
         <Select
@@ -1476,6 +1493,7 @@ export function TeacherPage() {
         />
       )}
     </Space>
+    </div>
   );
 
   const gradebookTab = (
@@ -1525,6 +1543,7 @@ export function TeacherPage() {
   );
 
   const scheduleCabinetTab = (
+    <div data-onboarding="teacher-schedule">
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <Card size="small" title="Класс">
         <Select
@@ -1588,6 +1607,7 @@ export function TeacherPage() {
         </Spin>
       )}
     </Space>
+    </div>
   );
 
   const roadmapTab = (

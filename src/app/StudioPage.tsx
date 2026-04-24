@@ -1074,7 +1074,7 @@ export function StudioPage() {
     <div className="studio-page">
       {submissionBanner ? <div className="studio-page__chrome">{submissionBanner}</div> : null}
       {!isMiniMode ? (
-        <div className="studio-page__workbench">
+        <div className="studio-page__workbench" data-onboarding="studio-workbench">
           <div className="studio-page__toolbar">
             <div className="studio-page__toolbar-main">
               <div className="studio-page__toolbar-rail" aria-hidden>

@@ -91,7 +91,7 @@ export function AccountPage() {
                 <Button type="primary">Кабинет учителя — классы и ученики</Button>
               </Link>
             ) : null}
-            <Card title="Профиль">
+            <Card title="Профиль" data-onboarding="account-profile">
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Text>
                   Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
@@ -115,7 +115,7 @@ export function AccountPage() {
               </Space>
             </Card>
             {user.role === "student" && user.studentMode === "school" ? (
-              <Card title="Код класса">
+              <Card title="Код класса" data-onboarding="account-join-class">
                 <Space wrap>
                   <Input
                     placeholder="Код класса"

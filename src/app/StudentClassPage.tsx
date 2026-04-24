@@ -106,6 +106,18 @@ export function StudentClassPage() {
   const [allFilterGrade, setAllFilterGrade] = useState<"all" | "graded" | "not_graded">("all");
   const [allFilterKind, setAllFilterKind] = useState<"all" | "homework" | "classwork">("all");
   const [allFilterOverdue, setAllFilterOverdue] = useState<"all" | "overdue" | "not_overdue">("all");
+  const [classTabKey, setClassTabKey] = useState("diary");
+
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const key = (e as CustomEvent<string>).detail;
+      if (typeof key === "string" && key.trim()) {
+        setClassTabKey(key);
+      }
+    };
+    window.addEventListener("nodly-onboarding-student-class-tab", onTab as EventListener);
+    return () => window.removeEventListener("nodly-onboarding-student-class-tab", onTab as EventListener);
+  }, []);
 
   const loadAssignments = useCallback(async () => {
     setLoading(true);
@@ -434,6 +446,7 @@ export function StudentClassPage() {
     ) : null;
 
   const infoTab = (
+    <div data-onboarding="student-class-info">
     <Space direction="vertical" size="large" style={{ width: "100%" }} className="student-class-page__info-tab">
       {enrollments.map((e) => (
         <Card key={e.id} title={e.classroomTitle} className="student-class-page__info-card">
@@ -454,9 +467,11 @@ export function StudentClassPage() {
         </Card>
       ))}
     </Space>
+    </div>
   );
 
   const courseTab = (
+    <div data-onboarding="student-class-course">
     <Card className="student-class-page__course-card">
       <Spin spinning={courseScheduleLoading}>
         <Paragraph type="secondary" className="student-class-page__course-meta">
@@ -492,6 +507,7 @@ export function StudentClassPage() {
         />
       </Spin>
     </Card>
+    </div>
   );
 
 
@@ -519,6 +535,7 @@ export function StudentClassPage() {
   }, [assignments, allFilterGrade, allFilterKind, allFilterOverdue]);
 
   const diaryTab = (
+    <div data-onboarding="student-class-diary">
     <Card className="student-class-page__diary-card">
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Title level={5} style={{ marginTop: 0 }}>
@@ -560,9 +577,11 @@ export function StudentClassPage() {
         </Spin>
       </Space>
     </Card>
+    </div>
   );
 
   const allAssignmentsTab = (
+    <div data-onboarding="student-class-all-assignments">
     <Card className="student-class-page__assignments-card">
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
       <Space wrap align="center" className="student-class-page__filters">
@@ -615,6 +634,7 @@ export function StudentClassPage() {
       />
     </Space>
     </Card>
+    </div>
   );
 
   return (
@@ -623,7 +643,8 @@ export function StudentClassPage() {
       {classPicker}
       <Tabs
         className="student-class-page__tabs"
-        defaultActiveKey="diary"
+        activeKey={classTabKey}
+        onChange={setClassTabKey}
         items={[
           { key: "course", label: "Курс", children: courseTab },
           { key: "diary", label: "Дневник", children: diaryTab },

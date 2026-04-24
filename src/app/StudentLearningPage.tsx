@@ -125,6 +125,7 @@ export function StudentLearningPage() {
         </Paragraph>
       </div>
       <Card size="small" title="Каталог">
+        <div data-onboarding="direct-learning-catalog">
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <Select
             style={{ width: "100%", maxWidth: 480 }}
@@ -192,6 +193,7 @@ export function StudentLearningPage() {
             )}
           />
         </Space>
+        </div>
       </Card>
     </Space>
   );

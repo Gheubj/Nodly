@@ -496,6 +496,7 @@ export function LessonPlayerPage() {
     <Content className="app-content app-content--workspace lesson-player-page">
       {holder}
       <Spin spinning={loading}>
+        <div data-onboarding="lesson-player-flow">
         <Space direction="vertical" size="large" style={{ width: "100%" }} className="lesson-player-page__stack">
           <div className="lesson-player-page__head">
             <Title level={4} style={{ marginTop: 0 }} className="lesson-player-page__title">
@@ -621,6 +622,7 @@ export function LessonPlayerPage() {
             </>
           ) : null}
         </Space>
+        </div>
       </Spin>
     </Content>
   );
