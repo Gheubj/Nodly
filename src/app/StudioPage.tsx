@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
+  AppstoreOutlined,
   DatabaseOutlined,
   FolderOpenOutlined,
   FormOutlined,
+  MoreOutlined,
   PlusOutlined,
   SaveOutlined,
   ShareAltOutlined
@@ -11,6 +13,7 @@ import {
   Alert,
   Button,
   Drawer,
+  Dropdown,
   FloatButton,
   Form,
   Input,
@@ -24,10 +27,12 @@ import {
   Typography,
   message
 } from "antd";
+import type { MenuProps } from "antd";
 import { Link, useSearchParams } from "react-router-dom";
 import { BlocklyWorkspace } from "@/features/blockly/BlocklyWorkspace";
 import { DataLibrary } from "@/features/data/DataLibrary";
 import { StudioSidePanelTabs } from "@/app/StudioSidePanelTabs";
+import { useIsPhone } from "@/hooks/useViewportNarrow";
 import { useAppStore } from "@/store/useAppStore";
 import type { NodlyProjectMeta, NodlyProjectSnapshot } from "@/shared/types/project";
 import type { StudioGoal } from "@/shared/types/lessonContent";
@@ -209,8 +214,10 @@ export function StudioPage() {
     localStorage.setItem(GUEST_USER_ID_KEY, next);
     return next;
   });
+  const isPhone = useIsPhone();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [dataLibraryOpen, setDataLibraryOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState(DEFAULT_PROJECT_TITLE);
   const [miniSaveToProjectsOpen, setMiniSaveToProjectsOpen] = useState(false);
@@ -1066,9 +1073,59 @@ export function StudioPage() {
           showGoalsInPanel={false}
         />
       ) : null}
-      {!isMiniMode ? <StudioSidePanelTabs variant="full" /> : null}
+      {/* Десктоп / планшет шире 720px: side-panel инлайн в строке.
+          На мобиле панель живёт в bottom Drawer ниже — а здесь не рендерим. */}
+      {!isMiniMode && !isPhone ? <StudioSidePanelTabs variant="full" /> : null}
     </>
   );
+
+  const moreToolbarItems: MenuProps["items"] = useMemo(() => {
+    const items: NonNullable<MenuProps["items"]> = [];
+    if (!readOnly) {
+      items.push({
+        key: "new",
+        label: "Новый проект",
+        icon: <PlusOutlined />,
+        onClick: handleNewProject
+      });
+    }
+    items.push({
+      key: "projects",
+      label: "Проекты",
+      icon: <FolderOpenOutlined />,
+      onClick: () => setLibraryOpen(true)
+    });
+    if (!readOnly && activeProject) {
+      items.push({
+        key: "rename",
+        label: "Переименовать",
+        icon: <FormOutlined />,
+        onClick: () => openRenameProjectModal(activeProject.id, activeProject.title)
+      });
+    }
+    if (user && activeProject && !readOnly) {
+      items.push({
+        key: "share",
+        label: "Поделиться",
+        icon: <ShareAltOutlined />,
+        onClick: () =>
+          void (async () => {
+            try {
+              const { token } = await apiClient.post<{ token: string }>(
+                `/api/projects/${activeProject.id}/share-link`,
+                {}
+              );
+              const url = `${window.location.origin}/share/${token}`;
+              await navigator.clipboard.writeText(url);
+              messageApi.success("Ссылка для копии проекта скопирована");
+            } catch {
+              messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+            }
+          })()
+      });
+    }
+    return items;
+  }, [readOnly, activeProject?.id, activeProject?.title, user?.id, messageApi]);
 
   const projectWorkspace = (
     <div className="studio-page">
@@ -1112,57 +1169,78 @@ export function StudioPage() {
               >
                 Данные
               </Button>
-              <Button
-                size="small"
-                className="studio-page__btn-secondary"
-                icon={<PlusOutlined />}
-                disabled={readOnly}
-                onClick={handleNewProject}
-              >
-                Новый проект
-              </Button>
-              <Button
-                size="small"
-                className="studio-page__btn-secondary"
-                icon={<FolderOpenOutlined />}
-                onClick={() => setLibraryOpen(true)}
-              >
-                Проекты
-              </Button>
-              {!readOnly && activeProject ? (
-                <Button
-                  size="small"
-                  className="studio-page__btn-secondary"
-                  icon={<FormOutlined />}
-                  onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+              {/* Тач-устройства: вторичные действия — за «Ещё»; десктопу
+                  показываем все кнопки явно (исторический layout). */}
+              {isPhone ? (
+                <Dropdown
+                  menu={{ items: moreToolbarItems }}
+                  trigger={["click"]}
+                  placement="bottomRight"
                 >
-                  Переименовать
-                </Button>
-              ) : null}
-              {user && activeProject && !readOnly ? (
-                <Button
-                  size="small"
-                  className="studio-page__btn-secondary"
-                  icon={<ShareAltOutlined />}
-                  onClick={() =>
-                    void (async () => {
-                      try {
-                        const { token } = await apiClient.post<{ token: string }>(
-                          `/api/projects/${activeProject.id}/share-link`,
-                          {}
-                        );
-                        const url = `${window.location.origin}/share/${token}`;
-                        await navigator.clipboard.writeText(url);
-                        messageApi.success("Ссылка для копии проекта скопирована");
-                      } catch {
-                        messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+                  <Button
+                    size="small"
+                    className="studio-page__btn-secondary studio-page__toolbar-more-btn"
+                    icon={<MoreOutlined />}
+                    aria-label="Ещё действия"
+                  >
+                    Ещё
+                  </Button>
+                </Dropdown>
+              ) : (
+                <>
+                  <Button
+                    size="small"
+                    className="studio-page__btn-secondary"
+                    icon={<PlusOutlined />}
+                    disabled={readOnly}
+                    onClick={handleNewProject}
+                  >
+                    Новый проект
+                  </Button>
+                  <Button
+                    size="small"
+                    className="studio-page__btn-secondary"
+                    icon={<FolderOpenOutlined />}
+                    onClick={() => setLibraryOpen(true)}
+                  >
+                    Проекты
+                  </Button>
+                  {!readOnly && activeProject ? (
+                    <Button
+                      size="small"
+                      className="studio-page__btn-secondary"
+                      icon={<FormOutlined />}
+                      onClick={() => openRenameProjectModal(activeProject.id, activeProject.title)}
+                    >
+                      Переименовать
+                    </Button>
+                  ) : null}
+                  {user && activeProject && !readOnly ? (
+                    <Button
+                      size="small"
+                      className="studio-page__btn-secondary"
+                      icon={<ShareAltOutlined />}
+                      onClick={() =>
+                        void (async () => {
+                          try {
+                            const { token } = await apiClient.post<{ token: string }>(
+                              `/api/projects/${activeProject.id}/share-link`,
+                              {}
+                            );
+                            const url = `${window.location.origin}/share/${token}`;
+                            await navigator.clipboard.writeText(url);
+                            messageApi.success("Ссылка для копии проекта скопирована");
+                          } catch {
+                            messageApi.error("Не удалось создать ссылку (сохрани проект в облако)");
+                          }
+                        })()
                       }
-                    })()
-                  }
-                >
-                  Поделиться
-                </Button>
-              ) : null}
+                    >
+                      Поделиться
+                    </Button>
+                  ) : null}
+                </>
+              )}
             </div>
           </div>
           <div className="studio-page__canvas-shell">
@@ -1220,12 +1298,13 @@ export function StudioPage() {
       ) : (
         <Drawer
           title="Данные проекта"
-          placement="right"
-          width={580}
+          placement={isPhone ? "bottom" : "right"}
+          width={isPhone ? "100%" : 580}
+          height={isPhone ? "92dvh" : undefined}
           open={dataLibraryOpen}
           onClose={() => setDataLibraryOpen(false)}
           destroyOnClose={false}
-          rootClassName="studio-data-drawer"
+          rootClassName={`studio-data-drawer${isPhone ? " studio-data-drawer--mobile" : ""}`}
         >
           <DataLibrary variant="drawer" />
         </Drawer>
@@ -1235,9 +1314,11 @@ export function StudioPage() {
       <Drawer
         title={`Проекты: ${user?.nickname ?? "Черновик"}`}
         open={libraryOpen}
-        width={460}
+        placement={isPhone ? "bottom" : "right"}
+        width={isPhone ? "100%" : 460}
+        height={isPhone ? "92dvh" : undefined}
         onClose={() => setLibraryOpen(false)}
-        rootClassName="studio-projects-drawer"
+        rootClassName={`studio-projects-drawer${isPhone ? " studio-projects-drawer--mobile" : ""}`}
       >
         <List
           className="studio-projects-list"
@@ -1417,6 +1498,37 @@ export function StudioPage() {
           tooltip="Проверка работы"
           onClick={() => setTeacherReviewModalOpen(true)}
         />
+      ) : null}
+      {/* Мобильная правая колонка: bottom Drawer + плавающая кнопка-триггер.
+          Якорь онбординга (data-onboarding) переносим на FAB-обёртку, чтобы
+          тур указывал на кнопку, а не на скрытую инлайн-панель. */}
+      {!isMiniMode && isPhone ? (
+        <>
+          <span
+            data-onboarding="studio-side-panel"
+            className="studio-page__side-fab-anchor"
+            aria-hidden="true"
+          />
+          <FloatButton
+            type="primary"
+            shape="circle"
+            icon={<AppstoreOutlined />}
+            tooltip="Сцена / Визуализация"
+            className="studio-page__side-fab"
+            onClick={() => setSidePanelOpen(true)}
+          />
+          <Drawer
+            title="Сцена · Визуализация · Персонаж"
+            open={sidePanelOpen}
+            placement="bottom"
+            height="88dvh"
+            onClose={() => setSidePanelOpen(false)}
+            destroyOnClose={false}
+            rootClassName="studio-side-tabs-drawer"
+          >
+            <StudioSidePanelTabs variant="full" omitOnboardingAnchor />
+          </Drawer>
+        </>
       ) : null}
     </Content>
   );

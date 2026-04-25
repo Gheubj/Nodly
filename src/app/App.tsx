@@ -30,6 +30,7 @@ import { SettingsPanel } from "@/app/SettingsPanel";
 import { OnboardingTourHost } from "@/onboarding";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
+import { useIsPhone } from "@/hooks/useViewportNarrow";
 import { apiClient, toUserErrorMessage } from "@/shared/api/client";
 import {
   LEGAL_PRIVACY_POLICY_FILE,
@@ -69,6 +70,7 @@ export function App() {
   const htmlTheme = useHtmlDataTheme();
   const headerWordmark =
     htmlTheme === "light" ? "/nodly-wordmark-outline.png" : "/nodly-wordmark-white.png";
+  const isPhone = useIsPhone();
   const location = useLocation();
   const studioQs = location.pathname === "/studio" ? new URLSearchParams(location.search) : null;
   const isMiniStudioEmbed =
@@ -432,12 +434,13 @@ export function App() {
       <div className="app-layout-body">
         <Drawer
           title="Настройки"
-          placement="right"
-          width={360}
+          placement={isPhone ? "bottom" : "right"}
+          width={isPhone ? "100%" : 360}
+          height={isPhone ? "92dvh" : undefined}
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
           destroyOnClose={false}
-          rootClassName="app-settings-drawer"
+          rootClassName={`app-settings-drawer${isPhone ? " app-settings-drawer--mobile" : ""}`}
         >
           <SettingsPanel variant="drawer" onAfterNavigate={() => setSettingsOpen(false)} />
         </Drawer>

@@ -4,7 +4,6 @@ import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider, theme } from "antd";
 import ruRU from "antd/locale/ru_RU";
 import { App } from "@/app/App";
-import { NarrowScreenGate } from "@/app/NarrowScreenGate";
 import { useThemeStore, type ThemeMode } from "@/store/useThemeStore";
 import "@/app/styles.css";
 
@@ -103,9 +102,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemedProviders>
-        <NarrowScreenGate>
-          <App />
-        </NarrowScreenGate>
+        <App />
       </ThemedProviders>
     </BrowserRouter>
   </React.StrictMode>

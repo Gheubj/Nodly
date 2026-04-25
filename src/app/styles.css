@@ -69,6 +69,11 @@ body,
 body {
   line-height: 1.5;
   text-rendering: optimizeLegibility;
+  /* Глобально запрещаем горизонтальный скролл body — все осознанные
+     горизонтально-скроллируемые зоны (таблицы LMS, навигация шапки,
+     палитра Blockly, тулбар студии) скроллят сами себя внутри своих
+     обёрток. Это защищает от случайного «сдвига» страницы вправо. */
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -5170,3 +5175,879 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
   animation-duration: 0.38s;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* =========================================================================
+   M O B I L E   L A Y E R   (2026)
+   Дизайн-система брейкпоинтов: 480 / 720 / 960 / 1200.
+   Слой ниже идёт В КОНЦЕ файла, поэтому может переопределять более ранние
+   правила без !important; мы сохраняем визуальную идентичность бренда
+   (--app-* переменные, glass-карточки), а адаптируем только размещение.
+   ========================================================================= */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --touch-target: 44px;
+  --mobile-app-header-height: 56px;
+  --mobile-content-pad-x: 14px;
+  --mobile-content-pad-y: 14px;
+  --mobile-bottom-fab: calc(20px + var(--safe-bottom));
+}
+
+/* Базовые мобильные правила — применяются на всех узких экранах ≤ 720px.
+   Цель: убрать горизонтальный скролл body, фиксированные высоты viewport,
+   обновить тач-таргеты. */
+@media (max-width: 720px) {
+  :root {
+    --app-header-height: var(--mobile-app-header-height);
+  }
+
+  html,
+  body,
+  #root {
+    /* Защита от случайного горизонтального скролла на узких экранах:
+       если что-то «торчит», это бага в конкретном блоке, а не в layout */
+    overflow-x: hidden;
+  }
+
+  body {
+    /* Чтобы шрифт не уезжал при ротации iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Тач-таргеты для всех Ant-кнопок и навигации */
+  .ant-btn:not(.ant-btn-sm):not(.ant-btn-link):not(.ant-btn-icon-only),
+  .app-header-nav-link {
+    min-height: var(--touch-target);
+  }
+
+  /* Иконки-кнопки 44×44 как минимум */
+  .ant-btn.ant-btn-icon-only:not(.ant-btn-sm) {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+
+  /* Контент: компактные поля, безопасный нижний отступ под нависающие
+     кнопки и safe-area домашнего жеста */
+  .app-content {
+    padding: var(--mobile-content-pad-y) var(--mobile-content-pad-x)
+      calc(var(--mobile-content-pad-y) + var(--safe-bottom));
+  }
+
+  /* «Не workspace» (обычные scroll-страницы): мы хотим использовать
+     dvh, чтобы убрать «прыжки» из-за Safari URL-bar */
+  .app-content:not(.app-content--workspace) {
+    min-height: calc(100dvh - var(--app-header-height));
+  }
+
+  /* Workspace (студия / плеер с фиксированной высотой) — на мобиле
+     не запираем 100dvh, иначе клавиатура / scroll ломаются. Рендерим
+     как обычную скролл-страницу. */
+  .app-content--workspace {
+    height: auto;
+    min-height: calc(100dvh - var(--app-header-height));
+    max-height: none;
+    overflow: auto;
+    padding: 8px var(--mobile-content-pad-x)
+      calc(8px + var(--safe-bottom));
+  }
+
+  /* Footer-бордюры карточек дают «двойную» рамку на телефоне — снимаем */
+  .app-content:not(.app-content--workspace) .ant-card {
+    border-radius: 14px;
+  }
+}
+
+/* =========================================================================
+   1. ШАПКА  (App.tsx)
+   ========================================================================= */
+
+@media (max-width: 720px) {
+  :root {
+    /* Шапка стала двухстрочной (logo+account → nav-strip),
+       пересчитываем токен высоты, чтобы content корректно использовал
+       calc(100dvh - var(--app-header-height)). */
+    --app-header-height: 104px;
+  }
+
+  .app-header,
+  .app-header.app-header--authed {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: max(6px, var(--safe-top)) 10px 6px;
+    min-height: var(--mobile-app-header-height);
+  }
+
+  .app-header > .app-title {
+    flex: 0 0 auto;
+    align-self: center;
+    order: 1;
+  }
+
+  .app-brand-wordmark {
+    height: 26px;
+    max-width: 124px;
+  }
+
+  /* Ключевой трюк: распускаем .app-header-end через display: contents,
+     чтобы все её дочерние элементы оказались напрямую внутри .app-header
+     и могли быть переставлены через order. JSX при этом не меняется. */
+  .app-header-end {
+    display: contents;
+  }
+
+  /* Account-cluster переходит в первую строку справа от логотипа */
+  .app-header-account-cluster {
+    position: static;
+    order: 2;
+    margin-left: auto;
+    flex-shrink: 0;
+    align-items: center;
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .app-header--authed {
+    padding-top: max(6px, var(--safe-top));
+  }
+
+  .app-header-account-slot {
+    min-width: 40px;
+    max-width: 56px;
+    padding: 2px 4px 3px;
+    gap: 0;
+  }
+
+  .app-header-nickname {
+    font-size: 9px;
+    line-height: 1.1;
+    max-width: 56px;
+  }
+
+  /* Скрываем подпись "Настройки" под иконкой (tooltip достаточно) */
+  .app-header-account-cluster
+    > [data-onboarding="header-settings"]
+    .app-header-nickname {
+    display: none;
+  }
+
+  .app-header-account-btn.ant-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .app-header-account-icon {
+    font-size: 18px;
+  }
+
+  /* Login-кнопка для гостя: компактнее, в первой строке справа */
+  .app-header-right {
+    order: 2;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* Navigation: вторая строка, горизонтальный скролл */
+  .app-header-nav {
+    order: 4;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 0 4px;
+    gap: 4px;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+  .app-header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-header-nav > * {
+    flex-shrink: 0;
+  }
+
+  .app-header-nav-link {
+    min-height: 38px;
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--app-header-active) 50%, transparent);
+  }
+
+  .app-header-nav-link--active {
+    background: var(--app-header-active);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-brand-wordmark {
+    height: 24px;
+    max-width: 110px;
+  }
+  .app-header-nav-link {
+    font-size: 13.5px;
+    padding: 6px 10px;
+  }
+}
+
+/* =========================================================================
+   2. SETTINGS / DRAWERS / MODALS  (мобильное полноэкранное поведение)
+   ========================================================================= */
+
+/* Settings drawer: на узких экранах — bottom-sheet с округлым верхом */
+@media (max-width: 720px) {
+  .app-settings-drawer .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+
+  .app-settings-drawer--mobile .ant-drawer-content {
+    border-radius: 18px 18px 0 0;
+    background: var(--surface-floating);
+    border: 1px solid var(--surface-stroke);
+    box-shadow: var(--shadow-float);
+  }
+  .app-settings-drawer--mobile .ant-drawer-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--surface-stroke);
+  }
+  .app-settings-drawer--mobile .ant-drawer-body {
+    padding: 12px 14px calc(20px + var(--safe-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  .app-settings-drawer--mobile .ant-drawer-close {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+
+  /* Studio drawers (data, projects) — тоже fullscreen-friendly */
+  .studio-projects-drawer .ant-drawer-content-wrapper,
+  .studio-data-drawer .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+
+  /* Bottom-placement drawers (правая колонка студии на мобиле) */
+  .ant-drawer-bottom .ant-drawer-content-wrapper {
+    max-height: calc(100dvh - 24px - var(--safe-top));
+  }
+
+  /* Все модалки, кроме целенаправленно центральных и узких,
+     становятся «лист»-fullscreen с прокруткой внутри */
+  .ant-modal-root .ant-modal:not(.ant-modal-confirm) {
+    max-width: 100vw !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    top: 0 !important;
+    padding-bottom: 0 !important;
+    vertical-align: top;
+  }
+
+  .ant-modal-root .ant-modal:not(.ant-modal-confirm) .ant-modal-content {
+    border-radius: 0 !important;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .ant-modal-root .ant-modal-header {
+    padding: 14px 20px;
+    margin: 0;
+    border-bottom: 1px solid var(--surface-stroke);
+    flex-shrink: 0;
+  }
+
+  .ant-modal-root .ant-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 16px 18px calc(16px + var(--safe-bottom));
+  }
+
+  .ant-modal-root .ant-modal-footer {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 12px 16px calc(12px + var(--safe-bottom));
+    border-top: 1px solid var(--surface-stroke);
+    background: color-mix(in srgb, var(--surface-floating) 92%, transparent);
+  }
+
+  .ant-modal-root .ant-modal-footer .ant-btn {
+    min-height: 40px;
+  }
+
+  /* Auth-модалка: в полный экран, но скролл колеблющийся (клавиатура iOS) */
+  .app-auth-modal.ant-modal .ant-modal-content {
+    border-radius: 0 !important;
+  }
+
+  /* Подтверждения (confirm/Popconfirm) оставить компактными */
+  .ant-modal-confirm.ant-modal {
+    max-width: min(96vw, 420px) !important;
+    width: 96vw !important;
+    margin: 0 auto !important;
+    top: 80px !important;
+  }
+}
+
+/* =========================================================================
+   3. СТУДИЯ  (StudioPage)
+   ========================================================================= */
+
+@media (max-width: 960px) {
+  /* Toolbar: переход в одну прокручиваемую строку с приклеенной
+     первичной кнопкой «Сохранить»; вторичные действия скрываются
+     в JS-контролируемой кнопке «Ещё» (StudioPage.tsx). */
+  .studio-page__toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .studio-page__toolbar-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .studio-page__toolbar-title {
+    max-width: none;
+    font-size: 14px;
+  }
+
+  .studio-page__toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 720px) {
+  .studio-page {
+    gap: 8px;
+  }
+
+  /* Скрываем «macOS traffic-lights» на телефонах — украшение,
+     отнимающее ширину у заголовка */
+  .studio-page__toolbar-rail {
+    display: none;
+  }
+
+  .studio-page__canvas-shell {
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  /* На телефоне уменьшаем тулбар и заголовок проекта; тулбар
+     становится единым горизонтальным «трэем» */
+  .studio-page__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .studio-page__toolbar-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .studio-page__toolbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .studio-page__toolbar-actions .ant-btn {
+    flex-shrink: 0;
+    min-height: 38px;
+    padding-inline: 12px;
+  }
+
+  /* Кнопка «Ещё» (Dropdown trigger в StudioPage.tsx) — при необходимости
+     управляется классом ниже; на десктопе она скрыта */
+  .studio-page__toolbar-more-btn {
+    display: inline-flex !important;
+  }
+
+  /* Главное содержимое: Blockly занимает почти весь экран; правая
+     колонка убирается, открывается через FAB → Drawer (см. StudioPage). */
+  .studio-page__main {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* В обычном режиме студии: side-tabs не показываем инлайн на
+     телефоне — JS перенесёт их в Drawer */
+  .studio-page__main--mobile-collapsed > .studio-page__side-tabs {
+    display: none;
+  }
+
+  /* Blockly — высокая, но не на весь экран; клавиатура должна
+     иметь место. Используем dvh для корректной работы Safari URL-bar. */
+  .blockly-layout {
+    min-height: 60dvh;
+    height: 60dvh;
+    max-height: 60dvh;
+  }
+
+  /* Палитра уже на телефоне — иначе блоки не помещаются */
+  .blockly-palette {
+    width: 168px;
+    padding: 6px;
+  }
+
+  .blockly-palette-btn {
+    min-height: 36px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+  }
+
+  .blockly-palette-group-title {
+    font-size: 10px;
+  }
+
+  /* Toolbar внутри Blockly (Segmented level / mini-actions) */
+  .blockly-root__toolbar {
+    margin-bottom: 4px;
+    gap: 6px;
+  }
+
+  /* Mini-режим (lesson embed) — отдельная высота, без вычитания шапки */
+  .studio-mini-host .blockly-layout {
+    min-height: 58dvh;
+    height: 58dvh;
+    max-height: 58dvh;
+  }
+}
+
+@media (max-width: 480px) {
+  .blockly-palette {
+    width: 152px;
+    padding: 5px;
+  }
+  .blockly-palette-btn {
+    min-height: 34px;
+    font-size: 12px;
+  }
+  .studio-page__toolbar-title {
+    font-size: 13px;
+  }
+  .studio-page__toolbar-actions .ant-btn {
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+}
+
+/* FAB «Сцена / Данные / Визуализация» — стек кнопок справа снизу
+   с учётом safe-area iOS */
+.studio-mobile-fab.ant-float-btn-group {
+  inset-inline-end: 16px !important;
+  bottom: var(--mobile-bottom-fab) !important;
+}
+
+/* Триггер боковой панели студии на мобиле (FAB). Позиционируется
+   ant-float-btn'ом — мы только сдвигаем над safe-area. */
+.studio-page__side-fab.ant-float-btn {
+  inset-inline-end: 16px !important;
+  bottom: var(--mobile-bottom-fab) !important;
+  width: 56px;
+  height: 56px;
+}
+
+/* Невидимый якорь для тура — занимает место FAB, чтобы document.querySelector
+   возвращал реальный элемент в viewport (FloatButton рендерится через portal,
+   и его позиционирование делается inline-стилями). */
+.studio-page__side-fab-anchor {
+  position: fixed;
+  inset-inline-end: 16px;
+  bottom: var(--mobile-bottom-fab);
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Mobile drawers (data, projects) — bottom-sheet с округлёнными углами */
+.studio-data-drawer--mobile .ant-drawer-content,
+.studio-projects-drawer--mobile .ant-drawer-content {
+  border-radius: 18px 18px 0 0;
+  background: var(--surface-floating);
+  border: 1px solid var(--surface-stroke);
+  box-shadow: var(--shadow-float);
+}
+.studio-data-drawer--mobile .ant-drawer-header,
+.studio-projects-drawer--mobile .ant-drawer-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--surface-stroke);
+}
+.studio-data-drawer--mobile .ant-drawer-body,
+.studio-projects-drawer--mobile .ant-drawer-body {
+  padding: 12px 12px calc(16px + var(--safe-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.studio-data-drawer--mobile .ant-drawer-close,
+.studio-projects-drawer--mobile .ant-drawer-close {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+}
+
+/* Список проектов в mobile-drawer: карточки на всю ширину, действия снизу */
+@media (max-width: 720px) {
+  .studio-projects-list__card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .studio-projects-list__actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .studio-projects-list__actions .ant-btn {
+    min-height: 36px;
+  }
+}
+
+/* Drawer для правой колонки студии (placement="bottom") */
+.studio-side-tabs-drawer .ant-drawer-content {
+  border-radius: 18px 18px 0 0;
+  background: var(--surface-floating);
+  border: 1px solid var(--surface-stroke);
+  box-shadow: var(--shadow-float);
+}
+
+.studio-side-tabs-drawer .ant-drawer-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--surface-stroke);
+}
+
+.studio-side-tabs-drawer .ant-drawer-body {
+  padding: 12px 12px calc(12px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.studio-side-tabs-drawer .studio-page__side-tabs {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+}
+
+/* Когда боковая колонка отображается в Drawer'е, её прокрутка
+   проходит на уровне tabpane */
+.studio-side-tabs-drawer .studio-page__side-tabs-inner .ant-tabs-tabpane {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================================================================
+   4. УРОК / ПЛЕЕР  (LessonPlayerPage + LessonFlowView)
+   ========================================================================= */
+
+@media (max-width: 720px) {
+  .lesson-player-page.app-content--workspace {
+    padding: 8px var(--mobile-content-pad-x)
+      calc(8px + var(--safe-bottom));
+  }
+
+  .lesson-player-page__head {
+    position: static;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  .lesson-player-page__title.ant-typography {
+    font-size: 1.25rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Колонка контента — на телефоне используем всю ширину */
+  .lesson-player-page__stack.ant-space.ant-space-vertical {
+    width: 100% !important;
+  }
+
+  .lesson-flow--colab {
+    max-width: 100% !important;
+    width: 100%;
+  }
+
+  .lesson-flow__segment {
+    border-radius: 12px;
+  }
+
+  .lesson-flow__text,
+  .lesson-flow__studio,
+  .lesson-flow__checkpoint {
+    padding: 14px 14px;
+  }
+
+  .lesson-flow__markdown {
+    font-size: 16px;
+    line-height: 1.62;
+  }
+
+  /* Mini-dev iframe — компактнее, но всё ещё читаемая высота */
+  .lesson-flow__mini-dev-frame {
+    height: 56dvh;
+    min-height: 320px;
+  }
+
+  /* Submit / grade card — кнопки во всю ширину для thumb-зоны */
+  .lesson-player-page__submit-card.ant-card .ant-card-body,
+  .lesson-player-page__grade-card.ant-card .ant-card-body {
+    padding: 14px 14px;
+  }
+
+  .lesson-player-page__submit-card .ant-btn,
+  .lesson-player-page__grade-card .ant-btn[type="submit"],
+  .lesson-player-page__grade-card .ant-btn-primary {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+/* =========================================================================
+   5. LMS  (TeacherPage / StudentClassPage / Tables)
+   ========================================================================= */
+
+@media (max-width: 960px) {
+  .lms-shell-wide {
+    padding-inline: 0;
+  }
+
+  /* Любая Ant-таблица — горизонтальный скролл с импульсом, без вылета
+     наружу контейнера: контейнер скроллит сам себя. */
+  .ant-table-wrapper {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .ant-table-wrapper .ant-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .ant-table-wrapper .ant-table-content,
+  .ant-table-wrapper .ant-table-body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Минимальная ширина строк, чтобы не сжимать колонки в кашу */
+  .ant-table-wrapper .ant-table-cell {
+    white-space: nowrap;
+  }
+
+  /* Tabs LMS: горизонтальный скролл, не плодим высоту */
+  .ant-tabs-top > .ant-tabs-nav .ant-tabs-nav-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ant-tabs-top > .ant-tabs-nav .ant-tabs-nav-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Карточки школьника */
+  .student-class-page__picker-card.ant-card .ant-card-body,
+  .student-class-page__course-card.ant-card .ant-card-body,
+  .student-class-page__diary-card.ant-card .ant-card-body,
+  .student-class-page__assignments-card.ant-card .ant-card-body,
+  .student-class-page__info-card.ant-card .ant-card-body {
+    padding: 14px 14px;
+  }
+}
+
+@media (max-width: 720px) {
+  /* Tabs (учитель / класс): ровный горизонтальный скролл */
+  .student-class-page__tabs.ant-tabs > .ant-tabs-nav,
+  .ant-tabs > .ant-tabs-nav {
+    margin-bottom: 10px;
+  }
+
+  .student-class-page__tabs.ant-tabs .ant-tabs-tab,
+  .ant-tabs > .ant-tabs-nav .ant-tabs-tab {
+    padding-inline: 10px;
+  }
+
+  .ant-tabs > .ant-tabs-nav .ant-tabs-nav-list {
+    gap: 4px;
+  }
+
+  /* Filters: стек, кнопки полноширинные */
+  .student-class-page__filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .student-class-page__filters .ant-select,
+  .student-class-page__filters .ant-input,
+  .student-class-page__filters .ant-input-affix-wrapper {
+    width: 100% !important;
+  }
+}
+
+/* =========================================================================
+   6. LANDING / HOME  (LandingPage v2 + AccountPage)
+   ========================================================================= */
+
+@media (max-width: 720px) {
+  .landing-page__inner {
+    padding: 16px 14px 36px;
+  }
+
+  .landing-hero {
+    padding: 22px 16px 22px;
+    border-radius: 18px;
+  }
+
+  .landing-hero__title.ant-typography {
+    font-size: clamp(1.55rem, 6.5vw, 2rem) !important;
+  }
+
+  .landing-hero__lead {
+    font-size: 1rem;
+    margin-bottom: 18px;
+  }
+
+  /* Кнопки CTA: full-width на телефоне */
+  .landing-hero__actions .ant-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .landing-features {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Home v2 */
+  .home-v2__inner {
+    padding: 18px 14px 36px;
+    gap: 18px;
+  }
+
+  .home-v2__quicklinks {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .home-v2__ql {
+    padding: 14px 14px;
+    border-radius: 16px;
+  }
+
+  /* Landing v2 (lazy hero) */
+  .landing-v2__hero {
+    padding: 12px 0 32px;
+  }
+
+  .landing-v2__features,
+  .landing-v2__paths {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Account page */
+  .account-page__inner {
+    padding: 0 0 32px;
+  }
+
+  /* Кабинет: карточки и кнопки на полную ширину */
+  .account-page__inner .ant-card {
+    border-radius: 16px;
+  }
+  .account-page__inner .ant-card .ant-card-body {
+    padding: 14px 14px;
+  }
+  .account-page__inner .ant-form-item .ant-btn {
+    min-height: 42px;
+  }
+
+  /* Дашборд-виджеты главной */
+  .landing-home-schedule__grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+  .landing-home-direct.ant-card .ant-card-body,
+  .landing-home-school-banner.ant-alert {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-hero {
+    padding: 18px 14px;
+  }
+
+  .landing-hero__highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero__highlight {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+}
+
+/* =========================================================================
+   7. ОНБОРДИНГ  (Tour AntD на узких экранах)
+   ========================================================================= */
+@media (max-width: 720px) {
+  .nodly-onboarding-tour .ant-tour-inner {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+/* =========================================================================
+   8. AUTH MODAL
+   ========================================================================= */
+@media (max-width: 480px) {
+  .app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
+    padding: 14px 44px 14px 16px;
+    font-size: 17px;
+  }
+  .app-auth-modal.ant-modal .ant-modal-body {
+    padding: 14px 16px 18px;
+  }
+}
+
+/* =========================================================================
+   9. КЛАВИАТУРА И VISUAL VIEWPORT
+   На iOS, когда клавиатура открыта, `100dvh` уменьшается; контент-страницы
+   уже используют `min-height: 100dvh` и `overflow: auto`, поэтому в большинстве
+   случаев этого достаточно. Здесь — финальные защиты.
+   ========================================================================= */
+@media (max-width: 960px) {
+  /* Клавиатура iOS не должна перекрывать активные input/textarea */
+  input,
+  textarea,
+  select {
+    scroll-margin-bottom: 96px;
+    scroll-margin-top: 80px;
+  }
+
+  /* На телефоне 16px минимум — чтобы Safari не зумил автоматически */
+  .ant-input,
+  .ant-input-number-input,
+  .ant-input-password,
+  .ant-input-affix-wrapper input,
+  .ant-select-selection-search-input,
+  textarea.ant-input {
+    font-size: 16px !important;
+  }
+}
+
