@@ -120,12 +120,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         return;
       }
       const res = await postAuthRefresh();
-      if (res.ok) {
-        const data = (await res.json()) as { accessToken?: string };
-        if (data.accessToken) {
-          setAccessToken(data.accessToken);
-          await get().refreshMe();
-        }
+      if (res.ok && res.accessToken) {
+        setAccessToken(res.accessToken);
+        await get().refreshMe();
       }
     } finally {
       set({ loading: false, sessionRestored: true });

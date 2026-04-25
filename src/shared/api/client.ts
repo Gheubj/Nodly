@@ -33,19 +33,50 @@ function readPersistedAccessToken(): string {
 
 accessToken = readPersistedAccessToken();
 
-/** Один in-flight POST /api/auth/refresh — иначе два параллельных /me дают два refresh и гонку на сервере. */
-let refreshCookiePromise: Promise<Response> | null = null;
+export interface RefreshResult {
+  ok: boolean;
+  accessToken: string | null;
+}
 
-export function postAuthRefresh(): Promise<Response> {
-  if (!refreshCookiePromise) {
-    refreshCookiePromise = fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include"
-    }).finally(() => {
-      refreshCookiePromise = null;
-    });
+/**
+ * Один in-flight POST /api/auth/refresh — иначе два параллельных /me дают
+ * два refresh и гонку на сервере (rotation удалит старый refresh-токен
+ * только один раз → второй параллельный вызов получит 401 и выкинет юзера).
+ *
+ * Кешируем УЖЕ ПРОЧИТАННЫЙ payload, а не Response: тело fetch-Response —
+ * one-shot stream, попытка повторного `.json()` второго ожидающего бросает
+ * TypeError ("body stream already read") и роняет ретрай 401 для всех,
+ * кроме первого ожидающего.
+ */
+let refreshInflight: Promise<RefreshResult> | null = null;
+
+export function postAuthRefresh(): Promise<RefreshResult> {
+  if (!refreshInflight) {
+    refreshInflight = (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include"
+        });
+        if (!r.ok) {
+          return { ok: false, accessToken: null };
+        }
+        let token: string | null = null;
+        try {
+          const data = (await r.json()) as { accessToken?: string } | null;
+          token = typeof data?.accessToken === "string" && data.accessToken.length > 0 ? data.accessToken : null;
+        } catch {
+          token = null;
+        }
+        return { ok: true, accessToken: token };
+      } catch {
+        return { ok: false, accessToken: null };
+      } finally {
+        refreshInflight = null;
+      }
+    })();
   }
-  return refreshCookiePromise;
+  return refreshInflight;
 }
 
 export function getApiBaseUrl() {
@@ -122,12 +153,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (response.status === 401 && path !== "/api/auth/refresh") {
     const refresh = await postAuthRefresh();
-    if (refresh.ok) {
-      const data = (await refresh.json()) as { accessToken?: string };
-      if (data.accessToken) {
-        setAccessToken(data.accessToken);
-        return request<T>(path, init);
-      }
+    if (refresh.ok && refresh.accessToken) {
+      setAccessToken(refresh.accessToken);
+      return request<T>(path, init);
     }
     setAccessToken("");
   }
@@ -159,12 +187,9 @@ async function requestForm<T>(path: string, formData: FormData): Promise<T> {
   });
   if (response.status === 401 && path !== "/api/auth/refresh") {
     const refresh = await postAuthRefresh();
-    if (refresh.ok) {
-      const data = (await refresh.json()) as { accessToken?: string };
-      if (data.accessToken) {
-        setAccessToken(data.accessToken);
-        return requestForm<T>(path, formData);
-      }
+    if (refresh.ok && refresh.accessToken) {
+      setAccessToken(refresh.accessToken);
+      return requestForm<T>(path, formData);
     }
     setAccessToken("");
   }
