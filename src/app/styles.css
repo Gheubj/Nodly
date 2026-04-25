@@ -66,14 +66,18 @@ body,
   color: var(--app-text);
 }
 
+/* Глобальная защита от случайного горизонтального сдвига страницы.
+   Используем `overflow-x: clip` на html, а НЕ `overflow-x: hidden` на body:
+   `clip` не превращает элемент в скролл-контейнер, поэтому вертикальный
+   скролл `.ant-layout-content` продолжает работать (особенно на iOS, где
+   двойной overflow:auto-контейнер съедает touch-скролл). */
+html {
+  overflow-x: clip;
+}
+
 body {
   line-height: 1.5;
   text-rendering: optimizeLegibility;
-  /* Глобально запрещаем горизонтальный скролл body — все осознанные
-     горизонтально-скроллируемые зоны (таблицы LMS, навигация шапки,
-     палитра Blockly, тулбар студии) скроллят сами себя внутри своих
-     обёрток. Это защищает от случайного «сдвига» страницы вправо. */
-  overflow-x: hidden;
 }
 
 ::selection {
@@ -5326,13 +5330,6 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
     font-size: 9px;
     line-height: 1.1;
     max-width: 56px;
-  }
-
-  /* Скрываем подпись "Настройки" под иконкой (tooltip достаточно) */
-  .app-header-account-cluster
-    > [data-onboarding="header-settings"]
-    .app-header-nickname {
-    display: none;
   }
 
   .app-header-account-btn.ant-btn {
