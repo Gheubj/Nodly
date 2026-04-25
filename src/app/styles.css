@@ -5397,6 +5397,72 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
 }
 
 /* =========================================================================
+   1.5  PAGE-LEVEL SCROLL  (мобильные/планшетные браузеры)
+   ----------------------------------------------------------------------
+   На десктопе скролл идёт ВНУТРИ `.ant-layout-content { overflow: auto }`,
+   а заголовок остаётся «приклеенным» через flex-shrink. Это удобно для
+   мыши, но iOS/Android считают такой контейнер «desktop scrollbar» и
+   часто пропускают touch-жесты — пользователь может прокручивать только
+   тягой за полосу прокрутки.
+
+   На мобиле переходим к естественной модели: страница (window) скроллится
+   как обычный документ, а шапка становится `position: sticky`.
+   Студия (`.app-content--workspace` с фиксированной высотой Blockly) и
+   её мини-режим — исключения, остаются с внутренним overflow.
+   ========================================================================= */
+@media (max-width: 960px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .app-layout {
+    min-height: 100dvh;
+    height: auto;
+  }
+
+  .app-layout-body {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  /* Страницы НЕ-workspace: без вложенного скролл-контейнера, контент
+     течёт по высоте, скроллит вся страница. */
+  .app-layout-body > .ant-layout-content:not(.app-content--workspace) {
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-content:not(.app-content--workspace) {
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+    touch-action: auto;
+    overscroll-behavior-y: auto;
+  }
+
+  /* Lesson player исторически использует .app-content--workspace,
+     но по сути это длинная скроллируемая лента. На мобиле делаем
+     page-scroll. */
+  .lesson-player-page.app-content--workspace {
+    overflow: visible;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  /* Шапка остаётся доступной при скролле. */
+  .app-layout > .ant-layout-header.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+}
+
+/* =========================================================================
    2. SETTINGS / DRAWERS / MODALS  (мобильное полноэкранное поведение)
    ========================================================================= */
 
