@@ -1269,6 +1269,23 @@ html[data-theme="dark"] .studio-stage-panel__bubble {
   padding-bottom: 20px;
 }
 
+/* Модалка переименования: заголовок и крестик выровнены по центру и не обрезаются */
+.studio-rename-project-modal .ant-modal-header {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding-right: 48px;
+}
+
+.studio-rename-project-modal .ant-modal-header .ant-modal-title {
+  line-height: 1.25;
+}
+
+.studio-rename-project-modal .ant-modal-close {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .data-library--drawer {
   margin-top: -4px;
 }
@@ -4566,7 +4583,7 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 
 .app-auth-modal.ant-modal .ant-modal-header {
   margin: 0;
-  padding: 0;
+  padding: 0 52px 0 0;
   min-height: 52px;
   display: flex;
   align-items: center;
@@ -4578,7 +4595,7 @@ html[data-theme="light"] .app-header .settings-theme-toggle__btn--active {
 .app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
   flex: 1;
   margin: 0;
-  padding: 14px 48px 14px 20px;
+  padding: 14px 0 14px 20px;
   font-size: 18px;
   font-weight: 660;
   letter-spacing: -0.02em;
@@ -6080,7 +6097,7 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
    ========================================================================= */
 @media (max-width: 480px) {
   .app-auth-modal.ant-modal .ant-modal-header .ant-modal-title {
-    padding: 14px 44px 14px 16px;
+    padding: 14px 0 14px 16px;
     font-size: 17px;
   }
   .app-auth-modal.ant-modal .ant-modal-body {

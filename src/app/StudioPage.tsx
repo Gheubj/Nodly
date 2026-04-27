@@ -1395,6 +1395,7 @@ export function StudioPage() {
       <Modal
         open={renameProjectOpen}
         title="Переименовать проект"
+        rootClassName="studio-rename-project-modal"
         okText="Сохранить"
         confirmLoading={renamingProject}
         onOk={() => void submitRenameProject()}
