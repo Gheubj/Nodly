@@ -1270,13 +1270,24 @@ html[data-theme="dark"] .studio-stage-panel__bubble {
 }
 
 /* Модалка переименования: заголовок и крестик выровнены по центру и не обрезаются */
+.studio-rename-project-modal .ant-modal-content {
+  overflow: hidden;
+  padding: 0;
+}
+
 .studio-rename-project-modal .ant-modal-header {
   display: flex;
   align-items: center;
-  padding-right: 44px;
+  margin: 0;
+  padding: 0 44px 0 0;
+  min-height: 52px;
+  background: #fff;
+  border-bottom: 1px solid var(--surface-stroke);
 }
 
 .studio-rename-project-modal .ant-modal-header .ant-modal-title {
+  margin: 0;
+  padding: 14px 0 14px 20px;
   line-height: 1.25;
 }
 
