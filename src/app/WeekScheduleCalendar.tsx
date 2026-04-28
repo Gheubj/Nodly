@@ -318,13 +318,6 @@ export function WeekScheduleCalendar({
                                             Сдать учителю
                                           </Button>
                                         ) : null}
-                                        {st === "graded" &&
-                                        studentSlotNeedsAttention(row) &&
-                                        onStudentMarkGradedSeen ? (
-                                          <Button size="small" onClick={() => onStudentMarkGradedSeen(row)}>
-                                            Понятно
-                                          </Button>
-                                        ) : null}
                                       </Space>
                                     </div>
                                   </Space>

@@ -125,19 +125,6 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
     }
   };
 
-  const markGradedSeen = async (row: SlotStudentAssignmentRow) => {
-    const sid = row.submission?.id;
-    if (!sid) {
-      return;
-    }
-    try {
-      await apiClient.post(`/api/student/submissions/${sid}/mark-graded-seen`, {});
-      await onRefresh();
-    } catch {
-      messageApi.error("Не удалось отметить просмотр");
-    }
-  };
-
   const renderHwSlot = (r: HomeSchoolAssignmentRow) => {
     const row = toSlotRow(r);
     const st = row.submission?.status ?? "not_started";
@@ -185,11 +172,6 @@ export function HomeUpcomingHomework({ rows, loading, onRefresh }: Props) {
           {(st === "draft" || st === "needs_revision") && hasProject ? (
             <Button size="small" onClick={() => void submitWork(row)}>
               Сдать учителю
-            </Button>
-          ) : null}
-          {st === "graded" && studentSlotNeedsAttention(row) ? (
-            <Button size="small" onClick={() => void markGradedSeen(row)}>
-              Понятно
             </Button>
           ) : null}
         </Space>

@@ -259,18 +259,38 @@ export function StudentClassPage() {
     }
   };
 
-  const markGradedSeen = async (row: StudentAssignmentRow) => {
-    const sid = row.submission?.id;
-    if (!sid) {
+  useEffect(() => {
+    if (classTabKey !== "all") {
       return;
     }
-    try {
-      await apiClient.post(`/api/student/submissions/${sid}/mark-graded-seen`, {});
-      await loadAssignments();
-    } catch {
-      messageApi.error("Не удалось отметить просмотр");
+    const unseenSubmissionIds = assignmentsForClass
+      .filter((row) => row.submission?.status === "graded" && !row.submission?.gradedSeenAt)
+      .map((row) => row.submission?.id)
+      .filter((id): id is string => Boolean(id));
+    if (unseenSubmissionIds.length === 0) {
+      return;
     }
-  };
+    let cancelled = false;
+    void (async () => {
+      try {
+        await Promise.all(
+          unseenSubmissionIds.map((id) =>
+            apiClient.post(`/api/student/submissions/${id}/mark-graded-seen`, {})
+          )
+        );
+        if (!cancelled) {
+          await loadAssignments();
+        }
+      } catch {
+        if (!cancelled) {
+          messageApi.error("Не удалось обновить уведомления");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classTabKey, assignmentsForClass, loadAssignments, messageApi]);
 
   const updateSlotAttendance = useCallback(
     async (slotId: string, plansToAttend: boolean | null) => {
@@ -383,11 +403,6 @@ export function StudentClassPage() {
             {(st === "draft" || st === "needs_revision") && hasProject ? (
               <Button size="small" type="default" onClick={() => void submitWork(row)}>
                 {user?.studentMode === "school" ? "Сдать учителю" : "Сдать"}
-              </Button>
-            ) : null}
-            {st === "graded" && needsAttention(row) ? (
-              <Button size="small" onClick={() => void markGradedSeen(row)}>
-                Понятно
               </Button>
             ) : null}
           </Space>
@@ -595,7 +610,6 @@ export function StudentClassPage() {
             onAttendanceChange={(slotId, value) => void updateSlotAttendance(slotId, value)}
             onStudentStartAssignment={(row) => void startOrOpen(row as unknown as StudentAssignmentRow)}
             onStudentSubmitAssignment={(row) => void submitWork(row as unknown as StudentAssignmentRow)}
-            onStudentMarkGradedSeen={(row) => void markGradedSeen(row as unknown as StudentAssignmentRow)}
           />
         </Spin>
       </Space>
