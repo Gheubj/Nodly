@@ -93,7 +93,6 @@ type Props = {
   onAttendanceChange?: (slotId: string, value: boolean | null) => void;
   onStudentStartAssignment?: (row: SlotStudentAssignmentRow) => void;
   onStudentSubmitAssignment?: (row: SlotStudentAssignmentRow) => void;
-  onStudentMarkGradedSeen?: (row: SlotStudentAssignmentRow) => void;
 };
 
 function dayKey(d: Dayjs) {
@@ -158,8 +157,7 @@ export function WeekScheduleCalendar({
   onEditSlot,
   onAttendanceChange,
   onStudentStartAssignment,
-  onStudentSubmitAssignment,
-  onStudentMarkGradedSeen
+  onStudentSubmitAssignment
 }: Props) {
   const monday = weekAnchor.startOf("isoWeek");
   const days = Array.from({ length: 7 }, (_, i) => monday.add(i, "day"));
