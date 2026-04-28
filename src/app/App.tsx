@@ -402,14 +402,23 @@ export function App() {
               <div
                 data-onboarding="header-settings"
                 className={`app-header-account-slot${settingsOpen ? " app-header-account-slot--active" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label="Настройки"
+                aria-expanded={settingsOpen}
+                onClick={() => setSettingsOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSettingsOpen(true);
+                  }
+                }}
               >
                 <Button
                   type="text"
                   size="large"
                   icon={<SettingOutlined className="app-header-account-icon" />}
                   className="header-user-btn app-header-account-btn"
-                  aria-label="Настройки"
-                  aria-expanded={settingsOpen}
                   onClick={() => setSettingsOpen(true)}
                 />
                 <span className="app-header-nickname">Настройки</span>
