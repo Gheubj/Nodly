@@ -3910,6 +3910,57 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   height: 9px;
 }
 
+/* Eyebrow с акцентом «Бесплатно» */
+.landing-v2__eyebrow--free {
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--surface-stroke));
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--surface-floating));
+  color: var(--app-text);
+}
+
+.landing-v2__eyebrow--free .landing-v2__dot {
+  background: var(--app-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+/* Подзаголовок секции (под крупным заголовком) */
+.landing-v2__section-sub {
+  margin: 12px auto 0;
+  max-width: 60ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--app-muted);
+  text-wrap: balance;
+}
+
+/* Чек-лист «что входит в программу» */
+.landing-v2__module-includes {
+  list-style: none;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  margin: 16px auto 0;
+}
+
+.landing-v2__module-includes li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 560;
+  border-radius: 999px;
+  border: 1px solid var(--surface-stroke);
+  background: color-mix(in srgb, var(--surface-floating) 88%, transparent);
+  color: var(--app-text);
+}
+
+.landing-v2__module-includes li .anticon {
+  color: color-mix(in srgb, var(--app-accent) 80%, var(--app-text));
+  font-size: 12px;
+}
+
 .landing-v2__pill {
   display: inline-flex;
   align-items: center;
@@ -3924,6 +3975,20 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: var(--app-muted);
+}
+
+.landing-v2__pill--accent {
+  font-weight: 640;
+  font-size: 13px;
+  padding: 7px 14px;
+  color: var(--app-text);
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--surface-stroke));
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--surface-floating));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+.landing-v2__pill--accent .anticon {
+  color: var(--app-accent);
 }
 
 .landing-v2__pill .anticon {
@@ -5520,6 +5585,26 @@ html[data-theme="dark"] .studio-stage-panel__mini-metrics .nodly-promo-metrics__
   color: color-mix(in srgb, var(--app-accent) 82%, var(--app-text));
   background: color-mix(in srgb, var(--app-accent) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--app-accent) 22%, var(--surface-stroke));
+}
+
+/* Карточка-урок в модуле A: бейдж шага «Урок N» */
+.landing-v2__feature--lesson {
+  position: relative;
+}
+
+.landing-v2__lesson-step {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-text);
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--surface-floating));
+  border: 1px solid color-mix(in srgb, var(--app-accent) 34%, var(--surface-stroke));
 }
 
 .landing-v2__feature-title,

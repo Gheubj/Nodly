@@ -191,22 +191,22 @@ const FEATURES: Feature[] = [
 const MODULE_PLAN: Feature[] = [
   {
     icon: <BookOutlined />,
-    title: "Урок 1. Введение в ИИ",
+    title: "Введение в ИИ",
     text: "Что такое модель, зачем нужны данные и как выглядит путь AI-разработчика от задачи до результата."
   },
   {
     icon: <DatabaseOutlined />,
-    title: "Урок 2. Регрессия",
+    title: "Регрессия",
     text: "Учимся предсказывать числовые значения, работать с признаками и оценивать точность модели."
   },
   {
     icon: <NodeIndexOutlined />,
-    title: "Урок 3. Классификация",
+    title: "Классификация",
     text: "Определяем классы объектов, разбираем ошибки модели и улучшаем результат на реальных примерах."
   },
   {
     icon: <ExperimentOutlined />,
-    title: "Урок 4. Нейросети",
+    title: "Нейросети",
     text: "Знакомимся с базовой логикой нейросетей и собираем первый рабочий пример в визуальной среде."
   }
 ];
@@ -219,8 +219,8 @@ const ADVANTAGES: Feature[] = [
   },
   {
     icon: <BookOutlined />,
-    title: "Бесплатный модуль A",
-    text: "4 урока: введение в ИИ, регрессия, классификация и нейросети. Готовый примерный план уже внутри."
+    title: "Бесплатно: готовая программа на 4 урока",
+    text: "Не план тем, а полный пакет: материалы, мини-проекты, ДЗ и проверка. Открыл и пошёл."
   },
   {
     icon: <TeamOutlined />,
@@ -353,17 +353,14 @@ function GuestLanding() {
           </div>
 
           <ul className="landing-v2__pills" role="list">
-            <li className="landing-v2__pill">
-              <CheckCircleFilled /> Без установки
+            <li className="landing-v2__pill landing-v2__pill--accent">
+              <CheckCircleFilled /> Готовая программа на 4 урока — бесплатно
             </li>
             <li className="landing-v2__pill">
               <CheckCircleFilled /> Не пользователь ИИ, а разработчик ИИ
             </li>
             <li className="landing-v2__pill">
-              <CheckCircleFilled /> Бесплатный модуль A
-            </li>
-            <li className="landing-v2__pill">
-              <CheckCircleFilled /> 4 стартовых урока
+              <CheckCircleFilled /> Без установки
             </li>
             <li className="landing-v2__pill">
               <CheckCircleFilled /> Школы и кружки
@@ -398,19 +395,32 @@ function GuestLanding() {
         </section>
 
         <div className="landing-v2__section-intro">
-          <div className="landing-v2__eyebrow">
+          <div className="landing-v2__eyebrow landing-v2__eyebrow--free">
             <span className="landing-v2__dot" aria-hidden />
-            Бесплатный старт
+            Готовая программа · Бесплатно
           </div>
-          <h2 className="landing-v2__section-title">Модуль A: 4 урока с понятной траекторией</h2>
+          <h2 className="landing-v2__section-title">
+            Полностью готовая программа на 4 урока — материалы, практика и ДЗ внутри
+          </h2>
+          <p className="landing-v2__section-sub">
+            Не план-список тем, а целый учебный пакет: тексты уроков, мини-проекты,
+            домашние задания и проверка результата. Достаточно открыть и пройти.
+          </p>
+          <ul className="landing-v2__module-includes" role="list">
+            <li><CheckCircleFilled /> Материалы уроков</li>
+            <li><CheckCircleFilled /> Практика в студии</li>
+            <li><CheckCircleFilled /> Домашние задания</li>
+            <li><CheckCircleFilled /> Проверка и обратная связь</li>
+          </ul>
         </div>
         <section className="landing-v2__features landing-v2__features--four" aria-label="План модуля A">
-          {MODULE_PLAN.map((feature) => (
+          {MODULE_PLAN.map((feature, idx) => (
             <article
               key={feature.title}
-              className="landing-v2__feature"
+              className="landing-v2__feature landing-v2__feature--lesson"
               onMouseMove={onReactiveCardMove}
             >
+              <div className="landing-v2__lesson-step">Урок {idx + 1}</div>
               <div className="landing-v2__feature-icon" aria-hidden>
                 {feature.icon}
               </div>
