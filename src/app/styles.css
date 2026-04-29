@@ -3964,36 +3964,23 @@ html[data-theme="dark"] .landing-v2__logo-sheen {
 .landing-v2__pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 12.5px;
+  gap: 8px;
+  padding: 9px 17px;
+  font-size: 15px;
   letter-spacing: 0.01em;
-  font-weight: 520;
+  font-weight: 640;
   border-radius: 999px;
-  border: 1px solid var(--surface-stroke);
-  background: color-mix(in srgb, var(--surface-backdrop) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, var(--surface-stroke));
+  background: color-mix(in srgb, var(--app-accent) 14%, var(--surface-floating));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: var(--app-muted);
-}
-
-.landing-v2__pill--accent {
-  font-weight: 640;
-  font-size: 13px;
-  padding: 7px 14px;
   color: var(--app-text);
-  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--surface-stroke));
-  background: color-mix(in srgb, var(--app-accent) 14%, var(--surface-floating));
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--app-accent) 22%, transparent);
-}
-
-.landing-v2__pill--accent .anticon {
-  color: var(--app-accent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--app-accent) 18%, transparent);
 }
 
 .landing-v2__pill .anticon {
-  color: color-mix(in srgb, var(--app-accent) 75%, var(--app-muted));
-  font-size: 12px;
+  color: var(--app-accent);
+  font-size: 14px;
 }
 
 /* Showcase */

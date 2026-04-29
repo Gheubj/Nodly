@@ -353,7 +353,7 @@ function GuestLanding() {
           </div>
 
           <ul className="landing-v2__pills" role="list">
-            <li className="landing-v2__pill landing-v2__pill--accent">
+            <li className="landing-v2__pill">
               <CheckCircleFilled /> Готовая программа на 4 урока — бесплатно
             </li>
             <li className="landing-v2__pill">
@@ -421,9 +421,6 @@ function GuestLanding() {
               onMouseMove={onReactiveCardMove}
             >
               <div className="landing-v2__lesson-step">Урок {idx + 1}</div>
-              <div className="landing-v2__feature-icon" aria-hidden>
-                {feature.icon}
-              </div>
               <h3 className="landing-v2__feature-title">{feature.title}</h3>
               <p className="landing-v2__feature-text">{feature.text}</p>
             </article>
