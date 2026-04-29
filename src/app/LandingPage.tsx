@@ -3,7 +3,6 @@ import { Alert, Button, Layout, Space, Spin } from "antd";
 import {
   ArrowRightOutlined,
   BookOutlined,
-  CalendarOutlined,
   CaretRightOutlined,
   CheckCircleFilled,
   ClockCircleOutlined,
@@ -527,7 +526,9 @@ function GuestLanding() {
           <div className="landing-v2__showcase-inner landing-v2__showcase-inner--reverse">
             <div className="landing-v2__lms-mock" aria-hidden>
               <div className="landing-v2__lms-mock-rail">
-                <CalendarOutlined className="landing-v2__lms-mock-rail-icon" />
+                <span className="landing-v2__device-dot" />
+                <span className="landing-v2__device-dot" />
+                <span className="landing-v2__device-dot" />
                 <span className="landing-v2__lms-mock-rail-title">Расписание · 7А · неделя</span>
               </div>
               <div className="landing-v2__lms-week" role="list">
