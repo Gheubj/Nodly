@@ -303,7 +303,7 @@ app.post("/api/auth/forgot-password", forgotPasswordLimiter, async (req, res) =>
   void (async () => {
     try {
       const user = await prisma.user.findUnique({ where: { email } });
-      if (!user?.passwordHash || user.provider !== "email") {
+      if (!user?.passwordHash || user.provider !== "email" || !user.email) {
         return;
       }
       await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
@@ -370,6 +370,205 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
   if (!ok) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
+  }
+  const payload = { sub: user.id, role: user.role };
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+  await persistRefreshToken(user.id, refreshToken);
+  setRefreshCookie(res, refreshToken);
+  res.json({
+    accessToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      role: user.role,
+      studentMode: user.studentMode
+    }
+  });
+});
+
+const nicknameField = z
+  .string()
+  .trim()
+  .min(3)
+  .max(32)
+  .regex(/^[a-zA-Z0-9_а-яА-Я-]+$/, "Ник: только буквы, цифры, дефис и подчёркивание");
+
+app.post("/api/auth/school-code", authLimiter, async (req, res) => {
+  const parsed = z
+    .object({
+      code: z.string().trim().min(4),
+      nickname: nicknameField
+    })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  let emailLower: string | undefined;
+  const rawEmail = (req.body as { email?: unknown }).email;
+  if (typeof rawEmail === "string" && rawEmail.trim()) {
+    const em = z.string().email().safeParse(rawEmail.trim());
+    if (!em.success) {
+      res.status(400).json({ error: "Некорректный email" });
+      return;
+    }
+    emailLower = em.data.toLowerCase();
+  }
+
+  const invite = await prisma.inviteCode.findFirst({
+    where: { code: parsed.data.code.toUpperCase(), active: true },
+    include: { classroom: true }
+  });
+  if (!invite) {
+    res.status(404).json({ error: "Код не найден или отключён" });
+    return;
+  }
+
+  const nick = parsed.data.nickname;
+  const existing = await prisma.user.findUnique({ where: { nickname: nick } });
+
+  if (existing) {
+    if (existing.role !== "student") {
+      res.status(403).json({ error: "Этот способ входа только для учеников" });
+      return;
+    }
+    if (existing.provider !== "school_code") {
+      res.status(400).json({
+        error:
+          existing.provider === "yandex"
+            ? "Для этого аккаунта войдите через Яндекс"
+            : existing.provider === "vk"
+              ? "Для этого аккаунта войдите через VK"
+              : "Для этого аккаунта используйте вход по почте и паролю"
+      });
+      return;
+    }
+    if (emailLower && !existing.email) {
+      const taken = await prisma.user.findFirst({
+        where: { email: emailLower, NOT: { id: existing.id } }
+      });
+      if (taken) {
+        res.status(409).json({ error: "Этот email уже занят" });
+        return;
+      }
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { email: emailLower }
+      });
+    } else if (emailLower && existing.email && emailLower !== existing.email) {
+      res.status(400).json({ error: "Почта в аккаунте уже указана — сменить её нельзя отсюда" });
+      return;
+    }
+
+    const existedEnrollment = await prisma.enrollment.findUnique({
+      where: {
+        classroomId_studentId: {
+          classroomId: invite.classroomId,
+          studentId: existing.id
+        }
+      }
+    });
+    const enrollment = await prisma.enrollment.upsert({
+      where: {
+        classroomId_studentId: {
+          classroomId: invite.classroomId,
+          studentId: existing.id
+        }
+      },
+      create: { classroomId: invite.classroomId, studentId: existing.id },
+      update: {}
+    });
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: { studentMode: "school" },
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        role: true,
+        studentMode: true
+      }
+    });
+    if (!existedEnrollment) {
+      const [room, stud] = await Promise.all([
+        prisma.classroom.findUnique({
+          where: { id: invite.classroomId },
+          include: { teacher: { select: { email: true } } }
+        }),
+        prisma.user.findUnique({ where: { id: existing.id }, select: { nickname: true } })
+      ]);
+      if (room?.teacher?.email && stud) {
+        const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/teacher`;
+        void sendTeacherNewStudentEmail(room.teacher.email, {
+          studentNickname: stud.nickname,
+          classTitle: room.title,
+          appUrl
+        }).catch(() => {});
+      }
+    }
+    const payload = { sub: user.id, role: user.role };
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+    await persistRefreshToken(user.id, refreshToken);
+    setRefreshCookie(res, refreshToken);
+    res.json({
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        role: user.role,
+        studentMode: user.studentMode
+      },
+      enrollmentId: enrollment.id
+    });
+    return;
+  }
+
+  if (emailLower) {
+    const emailTaken = await prisma.user.findUnique({ where: { email: emailLower } });
+    if (emailTaken) {
+      res.status(409).json({ error: "Этот email уже зарегистрирован — войдите другим способом" });
+      return;
+    }
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      email: emailLower ?? null,
+      nickname: nick,
+      provider: "school_code",
+      role: "student",
+      studentMode: "school",
+      emailVerifiedAt: emailLower ? new Date() : null
+    },
+    select: {
+      id: true,
+      email: true,
+      nickname: true,
+      role: true,
+      studentMode: true
+    }
+  });
+  await prisma.enrollment.create({
+    data: { classroomId: invite.classroomId, studentId: user.id }
+  });
+  const [room, stud] = await Promise.all([
+    prisma.classroom.findUnique({
+      where: { id: invite.classroomId },
+      include: { teacher: { select: { email: true } } }
+    }),
+    prisma.user.findUnique({ where: { id: user.id }, select: { nickname: true } })
+  ]);
+  if (room?.teacher?.email && stud) {
+    const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/teacher`;
+    void sendTeacherNewStudentEmail(room.teacher.email, {
+      studentNickname: stud.nickname,
+      classTitle: room.title,
+      appUrl
+    }).catch(() => {});
   }
   const payload = { sub: user.id, role: user.role };
   const accessToken = signAccessToken(payload);
@@ -577,7 +776,7 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
           title: string;
           code: string;
           school: { id: string; name: string };
-          teacher: { id: string; nickname: string; email: string };
+          teacher: { id: string; nickname: string; email: string | null };
         };
       }) => ({
         id: e.id,
@@ -586,7 +785,7 @@ app.get("/api/me", authRequired, async (req: AuthenticatedRequest, res) => {
         classCode: e.classroom.code,
         schoolName: e.classroom.school.name,
         teacherNickname: e.classroom.teacher.nickname,
-        teacherEmail: e.classroom.teacher.email
+        teacherEmail: e.classroom.teacher.email ?? ""
       })
     ),
     spriteSelection: user.spriteSelection
@@ -628,6 +827,35 @@ app.patch("/api/me/nickname", authRequired, async (req: AuthenticatedRequest, re
   res.json({ id: user.id, nickname: user.nickname });
 });
 
+app.patch("/api/me/email", authRequired, async (req: AuthenticatedRequest, res) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const userId = req.session!.sub;
+  const current = await prisma.user.findUnique({ where: { id: userId } });
+  if (!current) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (current.email) {
+    res.status(400).json({ error: "Почта уже указана в аккаунте" });
+    return;
+  }
+  const email = parsed.data.email.toLowerCase();
+  const taken = await prisma.user.findUnique({ where: { email } });
+  if (taken) {
+    res.status(409).json({ error: "Этот email уже занят" });
+    return;
+  }
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { email, emailVerifiedAt: new Date() }
+  });
+  res.json({ id: user.id, email: user.email });
+});
+
 app.post("/api/me/delete-account", authRequired, async (req: AuthenticatedRequest, res) => {
   const parsed = z
     .object({
@@ -652,7 +880,10 @@ app.post("/api/me/delete-account", authRequired, async (req: AuthenticatedReques
       return;
     }
   } else {
-    const expected = `DELETE ${account.email}`;
+    const expected =
+      account.email != null && account.email.length > 0
+        ? `DELETE ${account.email}`
+        : `DELETE ${account.nickname}`;
     if (parsed.data.confirmPhrase !== expected) {
       res.status(400).json({
         error: "Для аккаунта без пароля введите фразу подтверждения",

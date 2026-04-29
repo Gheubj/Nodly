@@ -50,7 +50,7 @@ interface DashboardStudent {
   joinedAt: string;
   id: string;
   nickname: string;
-  email: string;
+  email: string | null;
 }
 
 interface DashboardClassroom {
@@ -133,7 +133,7 @@ interface TeacherSubmissionRow {
   submittedAt: string | null;
   gradedAt: string | null;
   projectId: string | null;
-  student: { id: string; nickname: string; email: string };
+  student: { id: string; nickname: string; email: string | null };
   assignment: { id: string; title: string; maxScore: number; kind: string; lessonTemplateId: string | null };
 }
 
@@ -1015,7 +1015,7 @@ export function TeacherPage() {
 
   const getStudentColumns = (classroomId: string): ColumnsType<DashboardStudent> => [
     { title: "Ник", dataIndex: "nickname", key: "nickname" },
-    { title: "Email", dataIndex: "email", key: "email" },
+    { title: "Email", dataIndex: "email", key: "email", render: (v: string | null) => v?.trim() || "—" },
     {
       title: "В классе с",
       dataIndex: "joinedAt",
@@ -1284,7 +1284,8 @@ export function TeacherPage() {
             }
           >
             <Paragraph type="secondary" style={{ marginTop: 0 }}>
-              Ученик в разделе «Обучение → Мой класс» (режим «ученик школы») вводит этот код.
+              Ученик при входе выбирает вкладку «Код класса», вводит этот код и ник (почта по желанию). Чтобы
+              подключиться ещё к классу позже — раздел «Обучение → Мой класс».
             </Paragraph>
             <Table<DashboardStudent>
               size="small"

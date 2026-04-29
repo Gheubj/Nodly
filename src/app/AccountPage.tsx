@@ -14,6 +14,7 @@ export function AccountPage() {
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteAck, setDeleteAck] = useState(false);
   const [nickname, setNickname] = useState("");
+  const [addEmail, setAddEmail] = useState("");
 
   useEffect(() => {
     setNickname(user?.nickname ?? "");
@@ -41,6 +42,22 @@ export function AccountPage() {
       await apiClient.patch("/api/me/nickname", { nickname });
       await refreshMe();
       messageApi.success("Ник обновлен");
+    } catch (e) {
+      messageApi.error(toUserErrorMessage(e));
+    }
+  };
+
+  const handleAddEmailSave = async () => {
+    const trimmed = addEmail.trim();
+    if (!trimmed) {
+      messageApi.warning("Введите email");
+      return;
+    }
+    try {
+      await apiClient.patch("/api/me/email", { email: trimmed });
+      setAddEmail("");
+      await refreshMe();
+      messageApi.success("Почта сохранена");
     } catch (e) {
       messageApi.error(toUserErrorMessage(e));
     }
@@ -86,7 +103,22 @@ export function AccountPage() {
                   Роль: {user.role === "teacher" ? "Учитель" : "Ученик"}
                   {user.nickname ? ` · ${user.nickname}` : ""}
                 </Text>
-                <Text type="secondary">{user.email}</Text>
+                <Text type="secondary">
+                  {user.email ? <>Почта: {user.email}</> : <>Почта не указана — уведомления на email не отправляются</>}
+                </Text>
+                {!user.email ? (
+                  <Space.Compact style={{ width: "100%", maxWidth: 400 }}>
+                    <Input
+                      type="email"
+                      value={addEmail}
+                      onChange={(e) => setAddEmail(e.target.value)}
+                      placeholder="Добавить email для уведомлений"
+                    />
+                    <Button type="primary" onClick={() => void handleAddEmailSave()}>
+                      Сохранить
+                    </Button>
+                  </Space.Compact>
+                ) : null}
                 <Space.Compact style={{ width: "100%", maxWidth: 360 }}>
                   <Input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Ник" />
                   <Button type="primary" onClick={() => void handleNicknameSave()}>
@@ -119,10 +151,8 @@ export function AccountPage() {
                 {user.hasPassword === false ? (
                   <>
                     <Text>
-                      Для входа через Яндекс без пароля введи фразу целиком:{" "}
-                      <Text code>
-                        DELETE {user.email}
-                      </Text>
+                      Для аккаунта без пароля введи фразу целиком:{" "}
+                      <Text code>DELETE {user.email ?? user.nickname}</Text>
                     </Text>
                     <Input
                       placeholder="Фраза подтверждения"

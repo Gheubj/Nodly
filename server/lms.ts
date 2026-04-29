@@ -108,7 +108,11 @@ async function notifyEnrolledStudentsNewAssignment(classroomId: string, assignme
   }
   const appUrl = `${config.appBaseUrl.replace(/\/$/, "")}/class`;
   for (const e of classroom.enrollments) {
-    void sendStudentNewAssignmentEmail(e.student.email, {
+    const to = e.student.email?.trim();
+    if (!to) {
+      continue;
+    }
+    void sendStudentNewAssignmentEmail(to, {
       assignmentTitle,
       classTitle: classroom.title,
       appUrl

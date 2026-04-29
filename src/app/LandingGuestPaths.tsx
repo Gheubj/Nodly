@@ -7,6 +7,10 @@ function openAuthModal() {
   window.dispatchEvent(new Event("nodly-open-auth"));
 }
 
+function openAuthModalSchool() {
+  window.dispatchEvent(new CustomEvent("nodly-open-auth", { detail: { tab: "school" } }));
+}
+
 export function LandingGuestPaths() {
   return (
     <div className="landing-guest-paths">
@@ -32,13 +36,13 @@ export function LandingGuestPaths() {
           <Card size="small" title="Я ученик в классе" className="landing-guest-paths__card">
             <div className="landing-guest-paths__chip">Школьный режим</div>
             <Paragraph type="secondary" style={{ marginBottom: 12, minHeight: 56 }}>
-              Получите код от учителя, введите его в личном кабинете и открывайте задания и расписание.
+              Получите код от учителя и введите его на вкладке «Код класса» в окне входа — почта не обязательна.
             </Paragraph>
-            <Button type="primary" block icon={<UserOutlined />} onClick={openAuthModal}>
-              Войти или зарегистрироваться
+            <Button type="primary" block icon={<UserOutlined />} onClick={openAuthModalSchool}>
+              Войти по коду класса
             </Button>
             <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
-              Роль «Ученик», режим «Ученик школы»
+              Тот же ник и код при повторном входе. Почту можно указать — тогда придут письма о заданиях.
             </Paragraph>
           </Card>
         </Col>

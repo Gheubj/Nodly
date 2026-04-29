@@ -16,7 +16,7 @@ export interface SessionEnrollment {
 
 export interface SessionUser {
   id: string;
-  email: string;
+  email: string | null;
   nickname: string;
   role: UserRole;
   studentMode: StudentMode;
@@ -45,6 +45,7 @@ interface SessionState {
   }) => Promise<void>;
   requestForgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
+  loginWithSchoolCode: (args: { code: string; nickname: string; email?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
   restoreSession: () => Promise<void>;
@@ -98,6 +99,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
   resetPassword: async (token, newPassword) => {
     await apiClient.post<{ ok: boolean }>("/api/auth/reset-password", { token, newPassword });
+  },
+  loginWithSchoolCode: async ({ code, nickname, email }) => {
+    set({ loading: true });
+    try {
+      const data = await apiClient.post<{ accessToken: string; user: SessionUser }>("/api/auth/school-code", {
+        code,
+        nickname,
+        ...(email?.trim() ? { email: email.trim() } : {})
+      });
+      setAccessToken(data.accessToken);
+      set({ loading: false });
+      await get().refreshMe();
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
   },
   logout: async () => {
     await apiClient.post<{ ok: boolean }>("/api/auth/logout");

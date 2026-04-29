@@ -100,10 +100,13 @@ export function App() {
   const [legalConsent, setLegalConsent] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
-  const [authLoginTab, setAuthLoginTab] = useState<"email" | "yandex">("email");
+  const [authLoginTab, setAuthLoginTab] = useState<"email" | "yandex" | "school">("email");
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
-  const { user, register, login, requestRegistrationCode, requestForgotPassword } = useSessionStore();
+  const [schoolClassCode, setSchoolClassCode] = useState("");
+  const [schoolOptionalEmail, setSchoolOptionalEmail] = useState("");
+  const { user, register, login, requestRegistrationCode, requestForgotPassword, loginWithSchoolCode } =
+    useSessionStore();
   const [meSummary, setMeSummary] = useState<{
     pendingReviewCount?: number;
     assignmentAttentionCount?: number;
@@ -209,7 +212,14 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const openAuth = () => setAuthOpen(true);
+    const openAuth = (ev: Event) => {
+      setAuthOpen(true);
+      const tab = (ev as CustomEvent<{ tab?: string }>).detail?.tab;
+      if (tab === "school") {
+        setAuthLoginTab("school");
+        setIsRegister(false);
+      }
+    };
     window.addEventListener("nodly-open-auth", openAuth);
     return () => window.removeEventListener("nodly-open-auth", openAuth);
   }, []);
@@ -252,9 +262,7 @@ export function App() {
       } else {
         await login(email, password);
       }
-      setAuthOpen(false);
-      setVerificationCode("");
-      setAuthLoginTab("email");
+      resetAuthModal();
       messageApi.success(isRegister ? "Регистрация выполнена" : "Вход выполнен");
     } catch (error) {
       messageApi.error(toUserErrorMessage(error));
@@ -274,6 +282,43 @@ export function App() {
     } catch (error) {
       messageApi.error(toUserErrorMessage(error));
     }
+  };
+
+  const handleSchoolCodeAuth = async () => {
+    if (!legalConsent) {
+      messageApi.error("Нужно согласиться с политикой конфиденциальности и пользовательским соглашением");
+      return;
+    }
+    const code = schoolClassCode.trim();
+    const nick = nickname.trim();
+    if (!code) {
+      messageApi.error("Введите код приглашения");
+      return;
+    }
+    if (nick.length < 3) {
+      messageApi.error("Ник не короче 3 символов");
+      return;
+    }
+    try {
+      await loginWithSchoolCode({
+        code,
+        nickname: nick,
+        email: schoolOptionalEmail.trim() || undefined
+      });
+      resetAuthModal();
+      messageApi.success("Вход выполнен");
+    } catch (error) {
+      messageApi.error(toUserErrorMessage(error));
+    }
+  };
+
+  const resetAuthModal = () => {
+    setAuthOpen(false);
+    setVerificationCode("");
+    setAuthLoginTab("email");
+    setLegalConsent(false);
+    setSchoolClassCode("");
+    setSchoolOptionalEmail("");
   };
 
   const headerNavClass = ({ isActive }: { isActive: boolean }) =>
@@ -543,23 +588,12 @@ export function App() {
         title="Вход"
         styles={{ body: { paddingTop: 12 } }}
         onCancel={() => {
-          setAuthOpen(false);
-          setVerificationCode("");
-          setAuthLoginTab("email");
-          setLegalConsent(false);
+          resetAuthModal();
         }}
         footer={
           authLoginTab === "email"
             ? [
-                <Button
-                  key="cancel"
-                  onClick={() => {
-                    setAuthOpen(false);
-                    setVerificationCode("");
-                    setAuthLoginTab("email");
-                    setLegalConsent(false);
-                  }}
-                >
+                <Button key="cancel" onClick={() => resetAuthModal()}>
                   Отмена
                 </Button>,
                 <Button
@@ -571,31 +605,44 @@ export function App() {
                   {isRegister ? "Создать аккаунт" : "Войти"}
                 </Button>
               ]
-            : [
-                <Button
-                  key="cancel"
-                  onClick={() => {
-                    setAuthOpen(false);
-                    setAuthLoginTab("email");
-                    setLegalConsent(false);
-                  }}
-                >
-                  Отмена
-                </Button>,
-                <Button
-                  key="yandex"
-                  type="primary"
-                  disabled={isRegister && !legalConsent}
-                  onClick={() => handleYandexContinue()}
-                >
-                  Продолжить в Яндексе
-                </Button>
-              ]
+            : authLoginTab === "yandex"
+              ? [
+                  <Button key="cancel" onClick={() => resetAuthModal()}>
+                    Отмена
+                  </Button>,
+                  <Button
+                    key="yandex"
+                    type="primary"
+                    disabled={isRegister && !legalConsent}
+                    onClick={() => handleYandexContinue()}
+                  >
+                    Продолжить в Яндексе
+                  </Button>
+                ]
+              : [
+                  <Button key="cancel" onClick={() => resetAuthModal()}>
+                    Отмена
+                  </Button>,
+                  <Button
+                    key="school"
+                    type="primary"
+                    disabled={!legalConsent}
+                    onClick={() => void handleSchoolCodeAuth()}
+                  >
+                    Войти по коду
+                  </Button>
+                ]
         }
       >
         <Tabs
           activeKey={authLoginTab}
-          onChange={(k) => setAuthLoginTab(k as "email" | "yandex")}
+          onChange={(k) => {
+            const key = k as "email" | "yandex" | "school";
+            setAuthLoginTab(key);
+            if (key === "school") {
+              setIsRegister(false);
+            }
+          }}
           items={[
             {
               key: "email",
@@ -762,6 +809,66 @@ export function App() {
                       </Text>
                     </Space>
                   ) : null}
+                </Space>
+              )
+            },
+            {
+              key: "school",
+              label: "Код класса",
+              children: (
+                <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Вход для ученика школы: код приглашения от учителя и ваш ник (придумайте при первом входе,
+                    затем используйте те же код и ник снова). Почта по желанию — тогда на неё смогут приходить
+                    уведомления о заданиях и оценках.
+                  </Paragraph>
+                  <Input
+                    value={schoolClassCode}
+                    onChange={(e) => setSchoolClassCode(e.target.value)}
+                    placeholder="Код приглашения в класс"
+                  />
+                  <Input
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="Ник (уникальный, как вас видит учитель)"
+                  />
+                  <Input
+                    value={schoolOptionalEmail}
+                    onChange={(e) => setSchoolOptionalEmail(e.target.value)}
+                    placeholder="Email (необязательно)"
+                    type="email"
+                    autoComplete="email"
+                  />
+                  <Space align="start" style={{ width: "100%" }}>
+                    <Checkbox checked={legalConsent} onChange={(e) => setLegalConsent(e.target.checked)} />
+                    <Text style={{ fontSize: 13, lineHeight: 1.5 }}>
+                      Согласен с{" "}
+                      <a
+                        href={legalPdfFetchUrl(LEGAL_PRIVACY_POLICY_FILE)}
+                        className="app-legal-doc-link"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void downloadLegalPdf(LEGAL_PRIVACY_POLICY_FILE);
+                        }}
+                      >
+                        политикой конфиденциальности
+                      </a>{" "}
+                      и{" "}
+                      <a
+                        href={legalPdfFetchUrl(LEGAL_USER_AGREEMENT_FILE)}
+                        className="app-legal-doc-link"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void downloadLegalPdf(LEGAL_USER_AGREEMENT_FILE);
+                        }}
+                      >
+                        пользовательским соглашением
+                      </a>
+                      .
+                    </Text>
+                  </Space>
                 </Space>
               )
             }
