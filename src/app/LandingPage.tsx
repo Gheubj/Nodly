@@ -281,6 +281,12 @@ function GuestLanding() {
           <div className="landing-v2__orb landing-v2__orb--one" />
           <div className="landing-v2__orb landing-v2__orb--two" />
           <div className="landing-v2__orb landing-v2__orb--three" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l1" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l2" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--l3" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r1" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r2" />
+          <div className="landing-v2__side-bubble landing-v2__side-bubble--r3" />
         </div>
 
         <section className="landing-v2__hero" aria-labelledby="landing-v2-title">
@@ -417,33 +423,15 @@ function GuestLanding() {
           ))}
         </section>
 
-        <section className="landing-v2__paths" aria-label="Сценарии использования">
-          {PATHS.map((path) => (
-            <article
-              key={path.title}
-              className="landing-v2__path"
-              onMouseMove={onReactiveCardMove}
-            >
-              <div className="landing-v2__path-tag">
-                <span className="landing-v2__path-tag-icon" aria-hidden>
-                  {path.icon}
-                </span>
-                {path.tag}
-              </div>
-              <h3 className="landing-v2__path-title">{path.title}</h3>
-              <p className="landing-v2__path-text">{path.text}</p>
-              <div className="landing-v2__path-actions">
-                <Button type="primary" ghost onClick={openAuthModal} className="landing-v2__path-cta">
-                  Войти или зарегистрироваться
-                </Button>
-                <span className="landing-v2__path-hint">{path.hint}</span>
-              </div>
-            </article>
-          ))}
-        </section>
-
+        <div className="landing-v2__section-intro">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            Как проходит обучение
+          </div>
+          <h2 className="landing-v2__section-title">Один экран, полный цикл AI-разработки</h2>
+        </div>
         <section
-          className={`landing-v2__showcase${htmlTheme === "light" ? " landing-v2__showcase--light" : ""}`}
+          className={`landing-v2__showcase landing-v2__showcase--integrated${htmlTheme === "light" ? " landing-v2__showcase--light" : ""}`}
           onMouseMove={onReactiveCardMove}
           aria-labelledby="landing-v2-showcase-title"
         >
@@ -451,15 +439,21 @@ function GuestLanding() {
           <div className="landing-v2__showcase-inner">
             <div className="landing-v2__showcase-copy">
               <div className="landing-v2__showcase-badge">
-                <ThunderboltOutlined /> Единый рабочий поток
+                <ThunderboltOutlined /> Формат «от идеи до результата»
               </div>
               <h2 id="landing-v2-showcase-title" className="landing-v2__showcase-title">
-                Урок, практика и проверка — без&nbsp;переключения контекста.
+                Теория, практика и проверка объединены в один рабочий процесс.
               </h2>
               <p className="landing-v2__showcase-text">
-                Ученики проходят урок, пробуют идею в мини-разработке и отправляют
-                результат учителю. Прогресс и сдача живут вместе с проектом, а не в&nbsp;чате.
+                Ученик не переключается между десятком сервисов: получает задачу, собирает
+                решение, обучает модель, анализирует метрики и отправляет результат на проверку.
               </p>
+              <ul className="landing-v2__showcase-flow" role="list">
+                <li>1) Разбор задачи и логики модели</li>
+                <li>2) Практика в визуальном программировании</li>
+                <li>3) Обучение модели и анализ графиков</li>
+                <li>4) Сдача работы и обратная связь</li>
+              </ul>
               <div className="landing-v2__showcase-stats">
                 <div className="landing-v2__stat">
                   <div className="landing-v2__stat-k">Формат</div>
@@ -499,6 +493,31 @@ function GuestLanding() {
               <NodlyPromoMetrics />
             </div>
           </div>
+        </section>
+
+        <section className="landing-v2__paths" aria-label="Сценарии использования">
+          {PATHS.map((path) => (
+            <article
+              key={path.title}
+              className="landing-v2__path"
+              onMouseMove={onReactiveCardMove}
+            >
+              <div className="landing-v2__path-tag">
+                <span className="landing-v2__path-tag-icon" aria-hidden>
+                  {path.icon}
+                </span>
+                {path.tag}
+              </div>
+              <h3 className="landing-v2__path-title">{path.title}</h3>
+              <p className="landing-v2__path-text">{path.text}</p>
+              <div className="landing-v2__path-actions">
+                <Button type="primary" ghost onClick={openAuthModal} className="landing-v2__path-cta">
+                  Войти или зарегистрироваться
+                </Button>
+                <span className="landing-v2__path-hint">{path.hint}</span>
+              </div>
+            </article>
+          ))}
         </section>
       </div>
       <LandingFooter />
