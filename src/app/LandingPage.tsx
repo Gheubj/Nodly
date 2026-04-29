@@ -53,7 +53,7 @@ function openAuthModal() {
 }
 
 function scrollToRoles() {
-  const target = document.getElementById("roles");
+  const target = document.getElementById("roles-intro") ?? document.getElementById("roles");
   if (target) {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -268,7 +268,7 @@ const PATHS: GuestPath[] = [
     hint: "Роль «Ученик» · режим «Школа»"
   },
   {
-    tag: "Self-paced",
+    tag: "Самостоятельно",
     icon: <ExperimentOutlined />,
     title: "Учусь сам",
     text: "Каталог уроков и свободные проекты в визуальном программировании без привязки к школе.",
@@ -655,7 +655,18 @@ function GuestLanding() {
           </div>
         </section>
 
-        <section className="landing-v2__paths" id="roles" aria-label="Сценарии использования">
+        <div className="landing-v2__section-intro" id="roles-intro">
+          <div className="landing-v2__eyebrow">
+            <span className="landing-v2__dot" aria-hidden />
+            Начните бесплатно
+          </div>
+          <h2 className="landing-v2__section-title">Выберите свой сценарий и войдите в Nodly</h2>
+          <p className="landing-v2__section-sub">
+            Три роли — учитель, ученик в классе и самостоятельный ученик. Регистрация занимает минуту, модуль A открыт сразу.
+          </p>
+        </div>
+
+        <section className="landing-v2__paths" id="roles" aria-label="Выбор роли для входа">
           {PATHS.map((path) => (
             <article
               key={path.title}
