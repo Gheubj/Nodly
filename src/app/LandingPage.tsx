@@ -588,21 +588,21 @@ function GuestLanding() {
                 <div className="landing-v2__lms-journal-row">
                   <span className="landing-v2__lms-journal-name">Алиса К.</span>
                   <span className="landing-v2__lms-journal-marks">
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--review">…</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                    <em className="lms-mark lms-mark--5">5</em>
+                    <em className="lms-mark lms-mark--4">4</em>
+                    <em className="lms-mark lms-mark--5">5</em>
+                    <em className="lms-mark lms-mark--review">…</em>
+                    <em className="lms-mark lms-mark--5">5</em>
                   </span>
                 </div>
                 <div className="landing-v2__lms-journal-row">
                   <span className="landing-v2__lms-journal-name">Игорь П.</span>
                   <span className="landing-v2__lms-journal-marks">
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--review">…</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--4">4</em>
-                    <em className="landing-v2__lms-mark landing-v2__lms-mark--5">5</em>
+                    <em className="lms-mark lms-mark--4">4</em>
+                    <em className="lms-mark lms-mark--5">5</em>
+                    <em className="lms-mark lms-mark--review">…</em>
+                    <em className="lms-mark lms-mark--4">4</em>
+                    <em className="lms-mark lms-mark--5">5</em>
                   </span>
                 </div>
               </div>
@@ -620,46 +620,28 @@ function GuestLanding() {
               </p>
               <div className="landing-v2__lms-features">
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><CalendarOutlined /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Расписание</div>
-                    <div className="landing-v2__lms-feature-text">Недельный календарь и темы уроков</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Расписание</div>
+                  <div className="landing-v2__lms-feature-text">Недельный календарь и темы уроков</div>
                 </div>
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><FileTextOutlined /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Задания и ДЗ</div>
-                    <div className="landing-v2__lms-feature-text">Дедлайны и уведомления о просрочке</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Задания и ДЗ</div>
+                  <div className="landing-v2__lms-feature-text">Дедлайны и уведомления о просрочке</div>
                 </div>
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><CheckCircleFilled /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Проверка</div>
-                    <div className="landing-v2__lms-feature-text">Статусы и комментарии учителя</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Проверка</div>
+                  <div className="landing-v2__lms-feature-text">Статусы и комментарии учителя</div>
                 </div>
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><LineChartOutlined /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Журнал</div>
-                    <div className="landing-v2__lms-feature-text">Ученики × задания, прогресс по модулям</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Журнал</div>
+                  <div className="landing-v2__lms-feature-text">Ученики × задания, прогресс по модулям</div>
                 </div>
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><TeamOutlined /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Класс по коду</div>
-                    <div className="landing-v2__lms-feature-text">Ученик подключается за минуту</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Класс по коду</div>
+                  <div className="landing-v2__lms-feature-text">Ученик подключается за минуту</div>
                 </div>
                 <div className="landing-v2__lms-feature">
-                  <span className="landing-v2__lms-feature-icon"><BookOutlined /></span>
-                  <div>
-                    <div className="landing-v2__lms-feature-title">Готовая программа</div>
-                    <div className="landing-v2__lms-feature-text">Шаблоны уроков, можно адаптировать</div>
-                  </div>
+                  <div className="landing-v2__lms-feature-title">Готовая программа</div>
+                  <div className="landing-v2__lms-feature-text">Шаблоны уроков, можно адаптировать</div>
                 </div>
               </div>
             </div>
