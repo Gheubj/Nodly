@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Alert, Button, Layout, Space, Spin } from "antd";
+import { Button, Layout, Spin } from "antd";
 import {
   ArrowRightOutlined,
   BookOutlined,
@@ -20,13 +20,6 @@ import {
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { useSessionStore, type SessionUser } from "@/store/useSessionStore";
-import {
-  getOnboardingPersona,
-  NODLY_ONBOARDING_STORAGE_EVENT,
-  NODLY_START_ONBOARDING_EVENT,
-  readOnboardingState,
-  writeOnboardingState
-} from "@/onboarding";
 import { apiClient } from "@/shared/api/client";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useHomeSchoolAssignments } from "@/hooks/useHomeSchoolAssignments";
@@ -707,23 +700,6 @@ interface QuickLink {
 }
 
 function AuthedHome({ user }: { user: SessionUser }) {
-  const onboardingPersona = getOnboardingPersona(user);
-  const [onboardingStorageEpoch, setOnboardingStorageEpoch] = useState(0);
-
-  useEffect(() => {
-    const bump = () => setOnboardingStorageEpoch((n) => n + 1);
-    window.addEventListener(NODLY_ONBOARDING_STORAGE_EVENT, bump);
-    return () => window.removeEventListener(NODLY_ONBOARDING_STORAGE_EVENT, bump);
-  }, []);
-
-  const onboardingBannerVisible = useMemo(() => {
-    if (!onboardingPersona) {
-      return false;
-    }
-    const s = readOnboardingState(user.id, onboardingPersona);
-    return !s.tourCompletedAt && !s.homePromptDismissedAt;
-  }, [user.id, onboardingPersona, onboardingStorageEpoch]);
-
   const schoolStudent = user.role === "student" && user.studentMode === "school";
   const directStudent = user.role === "student" && user.studentMode === "direct";
   const teacher = user.role === "teacher";
@@ -873,59 +849,6 @@ function AuthedHome({ user }: { user: SessionUser }) {
             Короткая сводка и быстрый вход в разделы.&nbsp;Всё, что нужно — на одном экране.
           </p>
         </header>
-
-        {onboardingPersona && onboardingBannerVisible ? (
-          <Alert
-            className="home-v2__onboarding-prompt"
-            type="info"
-            showIcon
-            closable
-            message="Краткая экскурсия по платформе"
-            description="Покажем основные разделы с подсветкой — можно закрыть в любой момент."
-            action={
-              <Space direction="vertical" size="small">
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => {
-                    if (onboardingPersona) {
-                      writeOnboardingState(user.id, onboardingPersona, {
-                        homePromptDismissedAt: new Date().toISOString()
-                      });
-                      window.dispatchEvent(new Event(NODLY_ONBOARDING_STORAGE_EVENT));
-                    }
-                    window.dispatchEvent(new CustomEvent(NODLY_START_ONBOARDING_EVENT, { detail: {} }));
-                  }}
-                >
-                  Начать
-                </Button>
-                <Button
-                  size="small"
-                  type="link"
-                  onClick={() => {
-                    if (onboardingPersona) {
-                      writeOnboardingState(user.id, onboardingPersona, {
-                        homePromptDismissedAt: new Date().toISOString()
-                      });
-                      window.dispatchEvent(new Event(NODLY_ONBOARDING_STORAGE_EVENT));
-                    }
-                  }}
-                >
-                  Не сейчас
-                </Button>
-              </Space>
-            }
-            onClose={() => {
-              if (onboardingPersona) {
-                writeOnboardingState(user.id, onboardingPersona, {
-                  homePromptDismissedAt: new Date().toISOString()
-                });
-                window.dispatchEvent(new Event(NODLY_ONBOARDING_STORAGE_EVENT));
-              }
-            }}
-            style={{ marginBottom: 16 }}
-          />
-        ) : null}
 
         <nav className="home-v2__quicklinks" aria-label="Быстрые разделы" data-onboarding="home-quicklinks">
           {quickLinks.map((ql) => (

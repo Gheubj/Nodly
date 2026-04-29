@@ -35,7 +35,15 @@ import { AdminLessonTemplateEditorPage } from "@/app/AdminLessonTemplateEditorPa
 import { ResetPasswordPage } from "@/app/ResetPasswordPage";
 import { ShareImportPage } from "@/app/ShareImportPage";
 import { SettingsPanel } from "@/app/SettingsPanel";
-import { OnboardingTourHost } from "@/onboarding";
+import {
+  getOnboardingPersona,
+  NODLY_ONBOARDING_STORAGE_EVENT,
+  NODLY_START_ONBOARDING_EVENT,
+  OnboardingTourHost,
+  readOnboardingState,
+  writeOnboardingState,
+  type OnboardingPersona
+} from "@/onboarding";
 import { useSessionStore } from "@/store/useSessionStore";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import { useIsPhone } from "@/hooks/useViewportNarrow";
@@ -105,6 +113,8 @@ export function App() {
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const [schoolClassCode, setSchoolClassCode] = useState("");
   const [schoolOptionalEmail, setSchoolOptionalEmail] = useState("");
+  const [onboardingInviteOpen, setOnboardingInviteOpen] = useState(false);
+  const [onboardingInvitePersona, setOnboardingInvitePersona] = useState<OnboardingPersona | null>(null);
   const { user, register, login, requestRegistrationCode, requestForgotPassword, loginWithSchoolCode } =
     useSessionStore();
   const [meSummary, setMeSummary] = useState<{
@@ -120,6 +130,7 @@ export function App() {
     pastMarkedSlotsCount?: number;
   }>({});
   const prevPathRef = useRef<string | null>(null);
+  const onboardingInviteShownRef = useRef<string | null>(null);
 
   const fetchSummary = useCallback(async () => {
     if (!user) {
@@ -210,6 +221,32 @@ export function App() {
   useEffect(() => {
     void useSessionStore.getState().restoreSession();
   }, []);
+
+  useEffect(() => {
+    if (!user || isMiniStudioEmbed) {
+      setOnboardingInviteOpen(false);
+      setOnboardingInvitePersona(null);
+      onboardingInviteShownRef.current = null;
+      return;
+    }
+    const persona = getOnboardingPersona(user);
+    if (!persona) {
+      setOnboardingInviteOpen(false);
+      setOnboardingInvitePersona(null);
+      return;
+    }
+    const key = `${user.id}:${persona}`;
+    if (onboardingInviteShownRef.current === key) {
+      return;
+    }
+    const state = readOnboardingState(user.id, persona);
+    onboardingInviteShownRef.current = key;
+    if (state.tourCompletedAt || state.homePromptDismissedAt) {
+      return;
+    }
+    setOnboardingInvitePersona(persona);
+    setOnboardingInviteOpen(true);
+  }, [user, isMiniStudioEmbed]);
 
   useEffect(() => {
     const openAuth = (ev: Event) => {
@@ -817,11 +854,6 @@ export function App() {
               label: "Код класса",
               children: (
                 <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
-                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Вход для ученика школы: код приглашения от учителя и ваш ник (придумайте при первом входе,
-                    затем используйте те же код и ник снова). Почта по желанию — тогда на неё смогут приходить
-                    уведомления о заданиях и оценках.
-                  </Paragraph>
                   <Input
                     value={schoolClassCode}
                     onChange={(e) => setSchoolClassCode(e.target.value)}
@@ -875,6 +907,37 @@ export function App() {
           ]}
         />
       </Modal>
+      {onboardingInvitePersona ? (
+        <Modal
+          open={onboardingInviteOpen}
+          title="Краткая экскурсия по платформе"
+          okText="Начать"
+          cancelText="Не сейчас"
+          onOk={() => {
+            if (user) {
+              writeOnboardingState(user.id, onboardingInvitePersona, {
+                homePromptDismissedAt: new Date().toISOString()
+              });
+              window.dispatchEvent(new Event(NODLY_ONBOARDING_STORAGE_EVENT));
+            }
+            setOnboardingInviteOpen(false);
+            window.dispatchEvent(new CustomEvent(NODLY_START_ONBOARDING_EVENT, { detail: {} }));
+          }}
+          onCancel={() => {
+            if (user) {
+              writeOnboardingState(user.id, onboardingInvitePersona, {
+                homePromptDismissedAt: new Date().toISOString()
+              });
+              window.dispatchEvent(new Event(NODLY_ONBOARDING_STORAGE_EVENT));
+            }
+            setOnboardingInviteOpen(false);
+          }}
+        >
+          <Paragraph style={{ marginBottom: 0 }}>
+            Покажем основные разделы с подсветкой. Экскурсию можно закрыть в любой момент.
+          </Paragraph>
+        </Modal>
+      ) : null}
       <OnboardingTourHost user={user} disabled={isMiniStudioEmbed} />
       <Modal
         open={forgotOpen}
