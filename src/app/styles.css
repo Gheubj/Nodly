@@ -60,17 +60,15 @@ html,
 body,
 #root {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
   margin: 0;
   background: var(--app-gradient-top), var(--app-bg);
   color: var(--app-text);
 }
 
 /* Глобальная защита от случайного горизонтального сдвига страницы.
-   Используем `overflow-x: clip` на html, а НЕ `overflow-x: hidden` на body:
-   `clip` не превращает элемент в скролл-контейнер, поэтому вертикальный
-   скролл `.ant-layout-content` продолжает работать (особенно на iOS, где
-   двойной overflow:auto-контейнер съедает touch-скролл). */
+   `overflow-x: clip` на html не создаёт отдельный скроллпорт по вертикали. */
 html {
   overflow-x: clip;
 }
@@ -91,7 +89,8 @@ body {
 }
 
 .app-layout {
-  min-height: 100%;
+  min-height: 100dvh;
+  height: auto;
   display: flex;
   flex-direction: column;
 }
@@ -101,7 +100,7 @@ body {
 }
 
 .app-layout-body {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -118,12 +117,20 @@ body {
   flex-direction: column;
 }
 
-/* flex-basis: 0% — иначе при `auto` контент «раздувает» колонку, скролл
-   уезжает на document/window: ползунок работает, колесо над main — нет. */
+/* Не-workspace: скролл окна (document), не вложенный overflow на main —
+   иначе на части десктопов (Linux/Wayland и др.) колесо не цепляет скролл,
+   а ползунок у края экрана работает. */
 .app-layout-body > .ant-layout-content:not(.app-content--workspace) {
-  flex: 1 1 0%;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow: auto;
+  height: auto;
+  overflow: visible;
+}
+
+.app-layout > .ant-layout-header.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 /* Лого слева; align-items: center — по вертикали относительно строки шапки */
@@ -579,6 +586,15 @@ html[data-theme="light"] .header-user-btn.ant-btn:hover {
   line-height: 1.5;
 }
 
+/* Поверх базового .app-content: длинные страницы без внутреннего скроллпорта */
+.app-content:not(.app-content--workspace) {
+  overflow: visible;
+  height: auto;
+  min-height: 0;
+  touch-action: auto;
+  overscroll-behavior-y: auto;
+}
+
 .app-content:not(.app-content--workspace) .ant-card {
   border-radius: 14px;
   border: 1px solid var(--app-border-soft);
@@ -624,7 +640,7 @@ html[data-theme="dark"] .app-content--workspace {
   min-height: calc(100dvh - var(--app-header-height));
   max-height: none;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 .placeholder-text.ant-typography {
@@ -6273,74 +6289,16 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
 }
 
 /* =========================================================================
-   1.5  PAGE-LEVEL SCROLL  (мобильные/планшетные браузеры)
+   1.5  PAGE-LEVEL SCROLL
    ----------------------------------------------------------------------
-   На десктопе скролл идёт ВНУТРИ `.ant-layout-content { overflow: auto }`,
-   при этом у не-workspace контента `flex: 1 1 0%` (см. выше), иначе
-   `flex-basis: auto` раздувает колонку, скролл оказывается на window, и
-   колесо над main не двигает страницу (ползунок у края экрана всё ещё работает).
-   Заголовок остаётся «приклеенным» через flex-shrink. Это удобно для
-   мыши, но iOS/Android считают такой контейнер «desktop scrollbar» и
-   часто пропускают touch-жесты — пользователь может прокручивать только
-   тягой за полосу прокрутки.
+   Для страниц без `.app-content--workspace` скролл идёт на уровне окна
+   (document), а не во вложенном `main { overflow: auto }`. Так колесо
+   и трекпад ведут себя предсказуемо на десктопе (в т.ч. Linux/Wayland),
+   а шапка закреплена через `position: sticky`.
 
-   На мобиле переходим к естественной модели: страница (window) скроллится
-   как обычный документ, а шапка становится `position: sticky`.
-   Студия (`.app-content--workspace` с фиксированной высотой Blockly) и
-   её мини-режим — исключения, остаются с внутренним overflow.
+   Студия и прочие workspace-страницы — отдельно: фиксированная высота и
+   внутренний overflow.
    ========================================================================= */
-@media (max-width: 960px) {
-  html,
-  body,
-  #root {
-    height: auto;
-    min-height: 100%;
-  }
-
-  .app-layout {
-    min-height: 100dvh;
-    height: auto;
-  }
-
-  .app-layout-body {
-    flex: 0 0 auto;
-    min-height: 0;
-  }
-
-  /* Страницы НЕ-workspace: без вложенного скролл-контейнера, контент
-     течёт по высоте, скроллит вся страница. */
-  .app-layout-body > .ant-layout-content:not(.app-content--workspace) {
-    overflow: visible;
-    height: auto;
-    min-height: 0;
-  }
-
-  .app-content:not(.app-content--workspace) {
-    overflow: visible;
-    height: auto;
-    min-height: 0;
-    touch-action: auto;
-    overscroll-behavior-y: auto;
-  }
-
-  /* Lesson player исторически использует .app-content--workspace,
-     но по сути это длинная скроллируемая лента. На мобиле делаем
-     page-scroll. */
-  .lesson-player-page.app-content--workspace {
-    overflow: visible;
-    height: auto;
-    max-height: none;
-    min-height: 0;
-  }
-
-  /* Шапка остаётся доступной при скролле. */
-  .app-layout > .ant-layout-header.app-header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-}
-
 /* =========================================================================
    2. SETTINGS / DRAWERS / MODALS  (мобильное полноэкранное поведение)
    ========================================================================= */
