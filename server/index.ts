@@ -400,7 +400,8 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
   const parsed = z
     .object({
       code: z.string().trim().min(4),
-      nickname: nicknameField
+      nickname: nicknameField,
+      password: z.string().min(8)
     })
     .safeParse(req.body);
   if (!parsed.success) {
@@ -428,6 +429,7 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
   }
 
   const nick = parsed.data.nickname;
+  const schoolPassword = parsed.data.password;
   const existing = await prisma.user.findUnique({ where: { nickname: nick } });
 
   if (existing) {
@@ -446,6 +448,17 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
       });
       return;
     }
+    const passwordUpdate: { passwordHash?: string } = {};
+    if (existing.passwordHash) {
+      const ok = await verifyPassword(schoolPassword, existing.passwordHash);
+      if (!ok) {
+        res.status(401).json({ error: "Неверный ник или пароль" });
+        return;
+      }
+    } else {
+      passwordUpdate.passwordHash = await hashPassword(schoolPassword);
+    }
+
     if (emailLower && !existing.email) {
       const taken = await prisma.user.findFirst({
         where: { email: emailLower, NOT: { id: existing.id } }
@@ -454,10 +467,6 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
         res.status(409).json({ error: "Этот email уже занят" });
         return;
       }
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: { email: emailLower }
-      });
     } else if (emailLower && existing.email && emailLower !== existing.email) {
       res.status(400).json({ error: "Почта в аккаунте уже указана — сменить её нельзя отсюда" });
       return;
@@ -483,7 +492,11 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
     });
     const user = await prisma.user.update({
       where: { id: existing.id },
-      data: { studentMode: "school" },
+      data: {
+        studentMode: "school",
+        ...(emailLower && !existing.email ? { email: emailLower } : {}),
+        ...passwordUpdate
+      },
       select: {
         id: true,
         email: true,
@@ -536,10 +549,12 @@ app.post("/api/auth/school-code", authLimiter, async (req, res) => {
     }
   }
 
+  const passwordHash = await hashPassword(schoolPassword);
   const user = await prisma.user.create({
     data: {
       email: emailLower ?? null,
       nickname: nick,
+      passwordHash,
       provider: AuthProvider.school_code,
       role: "student",
       studentMode: "school",

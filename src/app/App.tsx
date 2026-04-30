@@ -112,6 +112,7 @@ export function App() {
   const [yandexRole, setYandexRole] = useState<"teacher" | "student">("student");
   const [yandexStudentMode, setYandexStudentMode] = useState<"school" | "direct">("direct");
   const [schoolClassCode, setSchoolClassCode] = useState("");
+  const [schoolPassword, setSchoolPassword] = useState("");
   const [schoolOptionalEmail, setSchoolOptionalEmail] = useState("");
   const [onboardingInviteOpen, setOnboardingInviteOpen] = useState(false);
   const [onboardingInvitePersona, setOnboardingInvitePersona] = useState<OnboardingPersona | null>(null);
@@ -328,6 +329,7 @@ export function App() {
     }
     const code = schoolClassCode.trim();
     const nick = nickname.trim();
+    const pwd = schoolPassword.trim();
     if (!code) {
       messageApi.error("Введите код приглашения");
       return;
@@ -336,10 +338,15 @@ export function App() {
       messageApi.error("Ник не короче 3 символов");
       return;
     }
+    if (pwd.length < 8) {
+      messageApi.error("Пароль не короче 8 символов");
+      return;
+    }
     try {
       await loginWithSchoolCode({
         code,
         nickname: nick,
+        password: pwd,
         email: schoolOptionalEmail.trim() || undefined
       });
       resetAuthModal();
@@ -355,6 +362,7 @@ export function App() {
     setAuthLoginTab("email");
     setLegalConsent(false);
     setSchoolClassCode("");
+    setSchoolPassword("");
     setSchoolOptionalEmail("");
   };
 
@@ -862,7 +870,12 @@ export function App() {
                   <Input
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
-                    placeholder="Ник (уникальный, как вас видит учитель)"
+                    placeholder="Ник"
+                  />
+                  <Input.Password
+                    value={schoolPassword}
+                    onChange={(e) => setSchoolPassword(e.target.value)}
+                    placeholder="Пароль (минимум 8 символов)"
                   />
                   <Input
                     value={schoolOptionalEmail}
