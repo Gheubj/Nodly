@@ -6303,7 +6303,7 @@ html[data-theme="light"] .landing-v2__showcase--light .nodly-promo-metrics__loss
    2. SETTINGS / DRAWERS / MODALS  (мобильное полноэкранное поведение)
    ========================================================================= */
 
-/* Settings drawer: на узких экранах — bottom-sheet с округлым верхом */
+/* Settings drawer: на узких экранах — bottom-sheet с округлым верхом*/
 @media (max-width: 720px) {
   .app-settings-drawer .ant-drawer-content-wrapper {
     max-width: 100vw !important;
