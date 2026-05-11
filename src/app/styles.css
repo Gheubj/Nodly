@@ -4911,6 +4911,102 @@ html[data-theme="dark"] .studio-metrics-chart-shell {
   color: var(--app-muted);
 }
 
+/* Коротко: что такое обучение — для школьников и взрослых */
+.studio-training-concept {
+  margin-bottom: 10px;
+  padding: 10px 11px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--surface-stroke) 52%, transparent);
+  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+}
+
+.studio-training-concept--compact {
+  margin-bottom: 8px;
+  padding: 8px 9px 10px;
+  border-radius: 12px;
+}
+
+.studio-training-concept__intro {
+  margin-bottom: 10px;
+}
+
+.studio-training-concept--compact .studio-training-concept__intro {
+  margin-bottom: 8px;
+}
+
+.studio-training-concept__lead {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+.studio-training-concept--compact .studio-training-concept__lead {
+  font-size: 12px;
+}
+
+.studio-training-concept__sub {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.studio-training-concept--compact .studio-training-concept__sub {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.studio-training-concept__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.studio-training-concept--compact .studio-training-concept__grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.studio-training-concept__item {
+  padding: 8px 9px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--surface-stroke) 42%, transparent);
+  background: color-mix(in srgb, var(--surface-floating) 52%, transparent);
+  min-width: 0;
+}
+
+.studio-training-concept__icon {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 17px;
+  color: color-mix(in srgb, var(--ant-color-primary, #1677ff) 82%, var(--app-muted));
+}
+
+.studio-training-concept__item-title {
+  display: block !important;
+  font-size: 12px !important;
+  margin-bottom: 4px !important;
+  line-height: 1.25 !important;
+}
+
+.studio-training-concept__item-body {
+  display: block !important;
+  font-size: 11px !important;
+  line-height: 1.42 !important;
+}
+
+.studio-training-concept--compact .studio-training-concept__item-body {
+  font-size: 10.5px !important;
+}
+
+@media (max-width: 520px) {
+  .studio-training-concept__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Живые графики обучения на сцене (tabular fit) */
 .studio-training-live {
   width: 100%;
@@ -5045,11 +5141,11 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
   display: block;
   width: 100%;
   height: auto;
-  min-height: 64px;
+  min-height: 72px;
 }
 
 .studio-training-viz--compact .studio-training-viz__svg {
-  min-height: 56px;
+  min-height: 64px;
 }
 
 .studio-training-viz__edge {
@@ -5093,6 +5189,37 @@ html[data-theme="dark"] .studio-training-live__epoch-track-fill {
 
 .studio-training-viz__spark-area {
   pointer-events: none;
+}
+
+.studio-training-viz__svg-caption {
+  fill: var(--app-muted);
+  stroke: none;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.studio-training-viz__svg-caption--lane {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.studio-training-viz__svg-caption--spark {
+  font-size: 7.75px;
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+.studio-training-viz__svg-caption--waiting {
+  opacity: 0.72;
+  font-style: italic;
+}
+
+.studio-training-viz--compact .studio-training-viz__svg-caption--lane {
+  font-size: 8.25px;
+}
+
+.studio-training-viz--compact .studio-training-viz__svg-caption--spark {
+  font-size: 7.25px;
 }
 
 .studio-training-viz__node {

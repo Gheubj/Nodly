@@ -205,13 +205,19 @@ export function StudioTrainingProcessViz({ modelType, epochHistory, warming, com
     prevLen.current = n;
   }, [epochHistory.length]);
 
-  const vb = compact ? "0 0 300 88" : "0 0 340 104";
-  const top = compact ? 12 : 16;
-  const bottom = compact ? 54 : 66;
-  const sparkY0 = compact ? 62 : 74;
-  const sparkY1 = compact ? 82 : 94;
+  const vb = compact ? "0 0 300 102" : "0 0 340 122";
+  const top = compact ? 22 : 26;
+  const bottom = compact ? 62 : 74;
+  const sparkY0 = compact ? 72 : 84;
+  const sparkY1 = compact ? 92 : 106;
   const sparkX0 = compact ? 18 : 22;
   const sparkX1 = compact ? 282 : 318;
+  const laneTitle = compact ? "Примеры → модель → ответ" : "Строки таблицы → счёт в модели → ответ";
+  const sparkCaption = compact ? "Тот же loss, что на графике ниже" : "Ошибка по эпохам — как на первом графике ниже";
+  const cxTitle = compact ? 150 : 170;
+  const cxSparkCap = compact ? 150 : 170;
+  const yTitle = compact ? 13 : 14;
+  const ySparkCap = compact ? 99 : 118;
 
   const spark = useMemo(
     () => sparklineFromPts(pts, sparkX0, sparkX1, sparkY0, sparkY1),
@@ -346,13 +352,14 @@ export function StudioTrainingProcessViz({ modelType, epochHistory, warming, com
   } else if (modelType === "tabular_orchestrator") {
     const xB = compact ? 100 : 108;
     const xU = compact ? 128 : 142;
-    const yU = compact ? 24 : 28;
-    const yB = compact ? 44 : 54;
+    const mid = (top + bottom) / 2;
+    const yU = mid - (compact ? 10 : 12);
+    const yB = mid + (compact ? 10 : 12);
     const xM = compact ? 188 : 208;
     const xO = compact ? 268 : 300;
-    const upper = { x: xM, y: (top + bottom) / 2 - (compact ? 7 : 9) };
-    const lower = { x: xM, y: (top + bottom) / 2 + (compact ? 7 : 9) };
-    const out = { x: xO, y: (top + bottom) / 2 };
+    const upper = { x: xM, y: mid - (compact ? 7 : 9) };
+    const lower = { x: xM, y: mid + (compact ? 7 : 9) };
+    const out = { x: xO, y: mid };
     body = (
       <>
         {inPos.map((p, i) => (
@@ -423,8 +430,8 @@ export function StudioTrainingProcessViz({ modelType, epochHistory, warming, com
   const sparkFillGradientId = `stv-spark-${sparkFillId}`;
 
   return (
-    <div className={rootClass} style={rootStyle} aria-hidden>
-      <svg className="studio-training-viz__svg" viewBox={vb} preserveAspectRatio="xMidYMid meet">
+    <div className={rootClass} style={rootStyle}>
+      <svg className="studio-training-viz__svg" viewBox={vb} preserveAspectRatio="xMidYMid meet" aria-hidden>
         <defs>
           <linearGradient id={sparkFillGradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6aa3ff" stopOpacity="0.35" />
@@ -444,6 +451,35 @@ export function StudioTrainingProcessViz({ modelType, epochHistory, warming, com
             />
           </g>
         ) : null}
+        <g className="studio-training-viz__captions">
+          <text
+            x={cxTitle}
+            y={yTitle}
+            textAnchor="middle"
+            className="studio-training-viz__svg-caption studio-training-viz__svg-caption--lane"
+          >
+            {laneTitle}
+          </text>
+          {spark ? (
+            <text
+              x={cxSparkCap}
+              y={ySparkCap}
+              textAnchor="middle"
+              className="studio-training-viz__svg-caption studio-training-viz__svg-caption--spark"
+            >
+              {sparkCaption}
+            </text>
+          ) : (
+            <text
+              x={cxSparkCap}
+              y={ySparkCap}
+              textAnchor="middle"
+              className="studio-training-viz__svg-caption studio-training-viz__svg-caption--spark studio-training-viz__svg-caption--waiting"
+            >
+              После 1-й эпохи — мини-график ошибки (loss)
+            </text>
+          )}
+        </g>
       </svg>
     </div>
   );
