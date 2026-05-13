@@ -496,11 +496,21 @@ export function LessonPlayerPage() {
   const review = bootstrap?.review;
 
   return (
-    <Content className="app-content app-content--workspace lesson-player-page">
+    <Content
+      className={`app-content app-content--workspace lesson-player-page${useDeckPlayer ? " lesson-player-page--deck" : ""}`}
+    >
       {holder}
       <Spin spinning={loading}>
-        <div data-onboarding="lesson-player-flow">
-        <Space direction="vertical" size="large" style={{ width: "100%" }} className="lesson-player-page__stack">
+        <div
+          data-onboarding="lesson-player-flow"
+          className={useDeckPlayer ? "lesson-player-page__flow--deck" : undefined}
+        >
+        <Space
+          direction="vertical"
+          size="large"
+          style={{ width: "100%" }}
+          className={`lesson-player-page__stack${useDeckPlayer ? " lesson-player-page__stack--deck" : ""}`}
+        >
           <div className="lesson-player-page__head">
             <Title level={4} style={{ marginTop: 0 }} className="lesson-player-page__title">
               {bootstrap?.title ?? "Урок"}

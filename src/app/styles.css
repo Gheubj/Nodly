@@ -2692,29 +2692,43 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
 }
 
-/* --- Плеер урока: режим слайдов (deck) --- */
-.lesson-deck-player {
+/* --- Плеер урока: режим слайдов (deck), почти на весь экран --- */
+.lesson-deck-player.lesson-deck-player--fullscreen {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
+  flex: 1;
+  min-height: min(calc(100dvh - var(--app-header-height, 56px) - 120px), 900px);
 }
 
 .lesson-deck-player__nav {
   width: 100%;
+  flex-shrink: 0;
 }
 
 .lesson-deck-player__stage-wrap {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
 }
 
-.lesson-deck-player__stage {
+.lesson-deck-player__stage.lesson-deck-player__stage--fullscreen {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   box-shadow: var(--app-shadow-soft);
+  width: min(96vw, calc((100dvh - var(--app-header-height, 56px) - 160px) * 16 / 9));
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  max-height: min(calc(100dvh - var(--app-header-height, 56px) - 140px), 92vh);
 }
 
 .lesson-deck-player__abs {
@@ -2778,13 +2792,15 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   flex-direction: column;
   gap: 8px;
   height: 100%;
+  min-height: 0;
 }
 
-.lesson-deck-player__mini-frame {
+.lesson-deck-player--fullscreen .lesson-deck-player__mini-frame {
   width: 100%;
-  flex: 1;
-  min-height: 160px;
-  height: min(42vh, 420px);
+  flex: 1 1 auto;
+  min-height: clamp(360px, 52vh, 640px);
+  height: clamp(360px, 52vh, 640px);
+  max-height: min(640px, 58vh);
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border-radius: 10px;
   display: block;
@@ -2811,11 +2827,19 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   line-height: 1.4;
 }
 
-/* --- Админ: редактор слайдов --- */
+/* --- Админ: редактор слайдов (inline WYSIWYG) --- */
 .admin-lesson-deck-editor__canvas {
   border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
   border-radius: 12px;
   overflow: hidden;
+}
+
+.admin-lesson-deck-editor__drag-handle {
+  cursor: grab;
+}
+
+.admin-lesson-deck-editor__drag-handle:active {
+  cursor: grabbing;
 }
 
 .admin-lesson-deck-editor__rnd {
@@ -2839,17 +2863,55 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .admin-lesson-deck-editor__rnd-toolbar {
   flex-shrink: 0;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
   background: color-mix(in srgb, var(--app-surface, #fff) 88%, transparent);
 }
 
-.admin-lesson-deck-editor__rnd-preview {
+.admin-lesson-deck-editor__rnd-body {
   flex: 1;
-  padding: 6px 8px;
+  min-height: 0;
   overflow: auto;
-  font-size: 12px;
-  line-height: 1.35;
+  padding: 4px 6px 8px;
+}
+
+.admin-lesson-deck-editor__rnd--studio .admin-lesson-deck-editor__rnd-body {
+  overflow: auto;
+}
+
+.lesson-player-page__stack.lesson-player-page__stack--deck {
+  width: min(1920px, calc(100vw - 16px)) !important;
+  max-width: 100% !important;
+}
+
+.lesson-player-page__stack--deck .lesson-deck-player {
+  width: 100%;
+}
+
+.lesson-player-page--deck .lesson-player-page__flow--deck {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.lesson-player-page--deck.app-content--workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - var(--app-header-height, 56px));
+}
+
+.lesson-player-page--deck .ant-spin-nested-loading,
+.lesson-player-page--deck .ant-spin-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lesson-player-page--deck .lesson-player-page__stack--deck.ant-space.ant-space-vertical {
+  flex: 1;
+  min-height: 0;
 }
 
 .studio-mini-host.app-content--workspace {
@@ -3059,8 +3121,63 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   gap: 10px !important;
 }
 
-.lesson-block-editor__card.ant-card {
-  border-radius: 12px;
+.lesson-block-editor--deck-single .ant-card-head {
+  min-height: 40px;
+  padding: 0 10px;
+}
+
+.lesson-block-editor--deck-single .ant-card-body {
+  padding: 10px 12px;
+}
+
+.lesson-block-editor--deck-single .ant-card-head-title {
+  padding: 8px 0;
+}
+
+.lesson-block-editor__deck-wysiwyg-preview {
+  max-height: 140px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.lesson-block-editor__deck-wysiwyg-preview .lesson-deck-player__markdown {
+  font-size: inherit;
+}
+
+.lesson-block-editor__deck-media-preview {
+  max-height: 120px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
+}
+
+.lesson-block-editor__deck-media-preview img {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.lesson-block-editor__studio-student-slot {
+  flex-shrink: 0;
+  height: 440px;
+  max-height: 48vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--ant-color-border, rgba(148, 163, 184, 0.55));
+  background: color-mix(in srgb, var(--app-surface, #fff) 88%, transparent);
 }
 
 /* 2026 premium redesign layer: tokens + component polish */

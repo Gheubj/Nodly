@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Card, Dropdown, Input, Select, Space, Typography, Upload, message } from "antd";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined, UploadOutlined } from "@ant-design/icons";
 import type { LessonContentBlock, StudioGoal } from "@/shared/types/lessonContent";
 import { apiClient } from "@/shared/api/client";
+import { markdownWithCustomEmojiImages } from "@/shared/emojiMarkdown";
+import { resolveLessonMediaUrl } from "@/shared/lessonMediaUrl";
 import { newLessonBlockId } from "@/shared/lessonContentBlocks";
 import { useSessionStore } from "@/store/useSessionStore";
 import { listProjects } from "@/features/project/projectRepository";
@@ -17,6 +21,8 @@ const BLOCK_TYPES: { value: LessonContentBlock["type"]; label: string }[] = [
   { value: "checkpoint", label: "Вопрос" },
   { value: "divider", label: "Разделитель (legacy)" }
 ];
+
+const BLOCK_TYPES_DECK: { value: LessonContentBlock["type"]; label: string }[] = BLOCK_TYPES.filter((t) => t.value !== "divider");
 
 const STUDIO_GOAL_TYPES: Array<{ value: StudioGoal["type"]; label: string }> = [
   { value: "add_block", label: "Добавить блок" },
@@ -74,9 +80,11 @@ export function createAdminLessonBlock(
 export type AdminLessonBlockEditorProps = {
   blocks: LessonContentBlock[];
   onChange: (next: LessonContentBlock[]) => void;
+  /** Режим слайда: один блок, без лишних кнопок; превью текста как у ученика */
+  deckSingleElement?: boolean;
 };
 
-export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEditorProps) {
+export function AdminLessonBlockEditor({ blocks, onChange, deckSingleElement = false }: AdminLessonBlockEditorProps) {
   const { user } = useSessionStore();
   const [uploadBusy, setUploadBusy] = useState<Record<string, boolean>>({});
   const [projectOptions, setProjectOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -257,16 +265,23 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
     [projectOptions]
   );
 
+  const typeOptions = deckSingleElement ? BLOCK_TYPES_DECK : BLOCK_TYPES;
+
   return (
-    <Space direction="vertical" size="middle" style={{ width: "100%" }} className="lesson-block-editor">
-      {blocks.length >= 2 ? (
+    <Space
+      direction="vertical"
+      size={deckSingleElement ? "small" : "middle"}
+      style={{ width: "100%" }}
+      className={`lesson-block-editor${deckSingleElement ? " lesson-block-editor--deck-single" : ""}`}
+    >
+      {!deckSingleElement && blocks.length >= 2 ? (
         <div className="lesson-block-editor__bulk-actions">
           <Button type="default" onClick={insertDividersBetweenAllBlocks}>
             Разделители между всеми блоками
           </Button>
         </div>
       ) : null}
-      {blocks.length === 0 ? (
+      {!deckSingleElement && blocks.length === 0 ? (
         <div className="lesson-block-editor__insert-row lesson-block-editor__insert-row--empty">
           <Dropdown
             menu={{
@@ -285,21 +300,23 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
       ) : null}
       {blocks.map((block, index) => (
         <div key={block.id}>
-          <div className="lesson-block-editor__insert-row">
-            <Dropdown
-              menu={{
-                items: BLOCK_TYPES.map((t) => ({
-                  key: t.value,
-                  label: t.label,
-                  onClick: () => insertBlockAt(index, t.value)
-                }))
-              }}
-            >
-              <Button size="small" type="text" icon={<PlusOutlined />}>
-                Добавить блок
-              </Button>
-            </Dropdown>
-          </div>
+          {!deckSingleElement ? (
+            <div className="lesson-block-editor__insert-row">
+              <Dropdown
+                menu={{
+                  items: BLOCK_TYPES.map((t) => ({
+                    key: t.value,
+                    label: t.label,
+                    onClick: () => insertBlockAt(index, t.value)
+                  }))
+                }}
+              >
+                <Button size="small" type="text" icon={<PlusOutlined />}>
+                  Добавить блок
+                </Button>
+              </Dropdown>
+            </div>
+          ) : null}
           <Card
             className={`lesson-block-editor__card lesson-block-editor__cell${
               block.type === "divider" ? " lesson-block-editor__card--divider" : ""
@@ -307,33 +324,60 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
             size="small"
             bordered={block.type !== "divider"}
             title={
-              <Space wrap>
-                <Text type="secondary">#{index + 1}</Text>
-                <Select
-                  size="small"
-                  style={{ width: 200 }}
-                  value={block.type}
-                  options={BLOCK_TYPES}
-                  onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
-                />
-                <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
-                <Button
-                  size="small"
-                  icon={<DownOutlined />}
-                  disabled={index === blocks.length - 1}
-                  onClick={() => move(index, 1)}
-                />
-                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
-              </Space>
+              deckSingleElement ? (
+                <Space wrap>
+                  <Text type="secondary">Тип</Text>
+                  <Select
+                    size="small"
+                    style={{ minWidth: 200 }}
+                    value={block.type}
+                    options={typeOptions}
+                    onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
+                  />
+                </Space>
+              ) : (
+                <Space wrap>
+                  <Text type="secondary">#{index + 1}</Text>
+                  <Select
+                    size="small"
+                    style={{ width: 200 }}
+                    value={block.type}
+                    options={BLOCK_TYPES}
+                    onChange={(v) => replaceBlockType(index, v as LessonContentBlock["type"])}
+                  />
+                  <Button size="small" icon={<UpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
+                  <Button
+                    size="small"
+                    icon={<DownOutlined />}
+                    disabled={index === blocks.length - 1}
+                    onClick={() => move(index, 1)}
+                  />
+                  <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(index)} />
+                </Space>
+              )
             }
           >
           {block.type === "text" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
-              <Input.TextArea rows={6} value={block.body} onChange={(e) => setBlock(index, { body: e.target.value })} />
+              {deckSingleElement ? (
+                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.body || "_пусто_")}</ReactMarkdown>
+                </div>
+              ) : null}
+              <Input.TextArea
+                rows={deckSingleElement ? 5 : 6}
+                value={block.body}
+                onChange={(e) => setBlock(index, { body: e.target.value })}
+              />
             </Space>
           ) : null}
           {block.type === "media" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
+              {deckSingleElement && block.kind === "image" && block.url ? (
+                <div className="lesson-block-editor__deck-media-preview">
+                  <img src={resolveLessonMediaUrl(block.url)} alt="" />
+                </div>
+              ) : null}
               <Select
                 value={block.kind}
                 options={[
@@ -379,6 +423,11 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
           ) : null}
           {block.type === "studio" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
+              {deckSingleElement && block.instruction.trim() ? (
+                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.instruction)}</ReactMarkdown>
+                </div>
+              ) : null}
               <Text type="secondary">Инструкция и параметры мини-разработки</Text>
               <Input.TextArea
                 rows={3}
@@ -499,11 +548,24 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
                     </Button>
                   </Space>
                 </Card>
+              {deckSingleElement ? (
+                <div className="lesson-block-editor__studio-student-slot">
+                  <Text type="secondary">У ученика: Blockly в iframe фиксированной высоты (как на слайде)</Text>
+                </div>
+              ) : null}
             </Space>
           ) : null}
           {block.type === "divider" ? <hr className="lesson-block-editor__divider-line" /> : null}
           {block.type === "checkpoint" ? (
             <Space direction="vertical" style={{ width: "100%" }} className="lesson-block-editor__section">
+              {deckSingleElement ? (
+                <div className="lesson-block-editor__deck-wysiwyg-preview lesson-deck-player__markdown">
+                  <Text strong style={{ display: "block", marginBottom: 4 }}>
+                    Вопрос
+                  </Text>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(block.question || "_пусто_")}</ReactMarkdown>
+                </div>
+              ) : null}
               <Input.TextArea
                 rows={2}
                 value={block.question}
@@ -567,7 +629,7 @@ export function AdminLessonBlockEditor({ blocks, onChange }: AdminLessonBlockEdi
             </Space>
           ) : null}
           </Card>
-          {index === blocks.length - 1 ? (
+          {!deckSingleElement && index === blocks.length - 1 ? (
             <div className="lesson-block-editor__insert-row">
               <Dropdown
                 menu={{

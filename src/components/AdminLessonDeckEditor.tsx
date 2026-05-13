@@ -1,16 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  Button,
-  Card,
-  Drawer,
-  Dropdown,
-  Input,
-  Modal,
-  Space,
-  Typography,
-  Upload,
-  message
-} from "antd";
+import { Button, Card, Dropdown, Input, Modal, Space, Typography, Upload, message } from "antd";
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -79,7 +68,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 960, h: 540 });
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
 
   useLayoutEffect(() => {
@@ -106,18 +94,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
 
   const totalElements = useMemo(() => slides.reduce((acc, s) => acc + s.elements.length, 0), [slides]);
 
-  const selectedElement = useMemo(() => {
-    if (!slide || !selectedElementId) {
-      return null;
-    }
-    return slide.elements.find((e) => e.id === selectedElementId) ?? null;
-  }, [slide, selectedElementId]);
-
-  const openEditor = (elementId: string) => {
-    setSelectedElementId(elementId);
-    setDrawerOpen(true);
-  };
-
   const addElement = (type: (typeof ADD_TYPES)[number]["key"]) => {
     if (!slide) {
       return;
@@ -127,16 +103,21 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
       return;
     }
     const block = createAdminLessonBlock(type);
-    const y = Math.min(70, 8 + slide.elements.length * 6);
+    const y = Math.min(58, 8 + slide.elements.length * 5);
+    const isStudio = type === "studio";
     const el: LessonDeckElement = {
       id: newLessonBlockId(),
-      layout: { x: 8, y, w: type === "studio" ? 88 : 84, h: type === "studio" ? 42 : 18 },
+      layout: {
+        x: 6,
+        y,
+        w: isStudio ? 88 : 84,
+        h: isStudio ? 58 : 20
+      },
       zIndex: slide.elements.length,
       block
     };
     setSlides(updateSlide(slides, safeIndex, { elements: [...slide.elements, el] }));
     setSelectedElementId(el.id);
-    setDrawerOpen(true);
   };
 
   const applyLayout = (elementId: string, layout: LessonDeckElement["layout"]) => {
@@ -221,7 +202,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
         setSlides(next);
         setSlideIndex(Math.min(safeIndex, next.length - 1));
         setSelectedElementId(null);
-        setDrawerOpen(false);
       }
     });
   };
@@ -318,7 +298,7 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
         </Space>
       </Card>
 
-      <Card size="small" title="Канвас 16:9 — перетаскивание и углы для размера">
+      <Card size="small" title="Канвас 16:9 — как у ученика; тяните за серую полоску сверху элемента">
         <Space wrap style={{ marginBottom: 8 }}>
           <Dropdown
             menu={{
@@ -333,7 +313,9 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
               Добавить элемент
             </Button>
           </Dropdown>
-          <Text type="secondary">Клик по элементу — выбор; двойной клик — правка; углы рамки — размер</Text>
+          <Text type="secondary">
+            Редактирование на слайде. Мини-разработка: фиксированный размер рамки (без растягивания углов).
+          </Text>
         </Space>
         <div
           ref={canvasRef}
@@ -360,57 +342,72 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
             const pxX = (el.layout.x / 100) * cw;
             const pxY = (el.layout.y / 100) * ch;
             const selected = el.id === selectedElementId;
+            const isStudio = el.block.type === "studio";
             return (
               <Rnd
                 key={el.id}
                 bounds="parent"
                 size={{ width: pxW, height: pxH }}
                 position={{ x: pxX, y: pxY }}
+                dragHandleClassName="admin-lesson-deck-editor__drag-handle"
+                enableResizing={!isStudio}
                 onDragStop={(_e, d) => onDragStop(el.id, d)}
-                onResizeStop={(_e, _dir, ref, _delta, position) => onResizeStop(el.id, ref, position)}
+                onResizeStop={!isStudio ? (_e, _dir, ref, _delta, position) => onResizeStop(el.id, ref, position) : undefined}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setSelectedElementId(el.id);
                 }}
-                onDoubleClick={() => openEditor(el.id)}
-                className={`admin-lesson-deck-editor__rnd${selected ? " admin-lesson-deck-editor__rnd--selected" : ""}`}
+                className={`admin-lesson-deck-editor__rnd${selected ? " admin-lesson-deck-editor__rnd--selected" : ""}${isStudio ? " admin-lesson-deck-editor__rnd--studio" : ""}`}
                 style={{ zIndex: 10 + (el.zIndex ?? 0) }}
               >
                 <div className="admin-lesson-deck-editor__rnd-inner">
-                  <Space size={4} wrap className="admin-lesson-deck-editor__rnd-toolbar">
-                    <Text type="secondary" ellipsis style={{ maxWidth: 120 }}>
-                      {el.block.type}
-                    </Text>
-                    <Button size="small" type="link" onClick={() => openEditor(el.id)}>
-                      Править
-                    </Button>
-                    <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => zOrder(el.id, -1)} />
-                    <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => zOrder(el.id, 1)} />
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => {
-                        Modal.confirm({
-                          title: "Удалить элемент?",
-                          onOk: () => {
-                            setSlides(removeElement(slides, safeIndex, el.id));
-                            if (selectedElementId === el.id) {
-                              setSelectedElementId(null);
-                              setDrawerOpen(false);
+                  <div
+                    className="admin-lesson-deck-editor__drag-handle admin-lesson-deck-editor__rnd-toolbar"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <Space size={4} wrap>
+                      <Text type="secondary" ellipsis style={{ maxWidth: 100 }}>
+                        {el.block.type}
+                      </Text>
+                      <Button size="small" icon={<VerticalAlignBottomOutlined />} onClick={() => zOrder(el.id, -1)} />
+                      <Button size="small" icon={<VerticalAlignTopOutlined />} onClick={() => zOrder(el.id, 1)} />
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => {
+                          Modal.confirm({
+                            title: "Удалить элемент?",
+                            onOk: () => {
+                              setSlides(removeElement(slides, safeIndex, el.id));
+                              if (selectedElementId === el.id) {
+                                setSelectedElementId(null);
+                              }
                             }
-                          }
-                        });
+                          });
+                        }}
+                      />
+                    </Space>
+                  </div>
+                  <div
+                    className="admin-lesson-deck-editor__rnd-body"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <AdminLessonBlockEditor
+                      deckSingleElement
+                      blocks={[el.block]}
+                      onChange={(next) => {
+                        const b = next[0];
+                        if (!b || b.type === "divider") {
+                          return;
+                        }
+                        const preservedId = el.block.id;
+                        const merged = { ...b, id: preservedId } as typeof b;
+                        setSlides(updateElement(slides, safeIndex, el.id, { block: merged }));
                       }}
                     />
-                  </Space>
-                  <div className="admin-lesson-deck-editor__rnd-preview">
-                    {el.block.type === "text" ? (
-                      <Text ellipsis>{(el.block.body || "").slice(0, 120) || "…"}</Text>
-                    ) : null}
-                    {el.block.type === "media" ? <Text type="secondary">{el.block.kind}</Text> : null}
-                    {el.block.type === "studio" ? <Text type="secondary">мини-студия</Text> : null}
-                    {el.block.type === "checkpoint" ? <Text type="secondary">вопрос</Text> : null}
                   </div>
                 </div>
               </Rnd>
@@ -418,23 +415,6 @@ export function AdminLessonDeckEditor({ deck, onChange }: AdminLessonDeckEditorP
           })}
         </div>
       </Card>
-
-      <Drawer title="Содержимое элемента" width={520} open={drawerOpen} onClose={() => setDrawerOpen(false)} destroyOnClose={false}>
-        {selectedElement ? (
-          <AdminLessonBlockEditor
-            blocks={[selectedElement.block]}
-            onChange={(next) => {
-              const b = next[0];
-              if (!b || b.type === "divider") {
-                return;
-              }
-              const preservedId = selectedElement.block.id;
-              const merged = { ...b, id: preservedId } as typeof b;
-              setSlides(updateElement(slides, safeIndex, selectedElement.id, { block: merged }));
-            }}
-          />
-        ) : null}
-      </Drawer>
     </Space>
   );
 }

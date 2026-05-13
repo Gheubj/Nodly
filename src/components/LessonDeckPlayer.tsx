@@ -241,7 +241,6 @@ export function LessonDeckPlayer({
   const stageStyle: CSSProperties = {
     position: "relative",
     width: "100%",
-    aspectRatio: "16 / 9",
     backgroundColor: "var(--ant-color-fill-quaternary, #f5f5f5)",
     ...(bg
       ? {
@@ -253,7 +252,7 @@ export function LessonDeckPlayer({
   };
 
   return (
-    <div className="lesson-deck-player">
+    <div className="lesson-deck-player lesson-deck-player--fullscreen">
       <Card size="small" className="lesson-deck-player__nav">
         <Space wrap>
           <Button disabled={safeIndex <= 0} onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}>
@@ -269,7 +268,7 @@ export function LessonDeckPlayer({
         </Space>
       </Card>
       <div className="lesson-deck-player__stage-wrap">
-        <div className="lesson-deck-player__stage" style={stageStyle}>
+        <div className="lesson-deck-player__stage lesson-deck-player__stage--fullscreen" style={stageStyle}>
           {sortedElements.map((el) => (
             <div
               key={el.id}
