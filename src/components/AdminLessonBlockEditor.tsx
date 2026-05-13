@@ -65,6 +65,12 @@ function defaultBlock(type: LessonContentBlock["type"]): LessonContentBlock {
   }
 }
 
+export function createAdminLessonBlock(
+  type: "text" | "media" | "studio" | "checkpoint"
+): import("@/shared/types/lessonContent").LessonDeckInnerBlock {
+  return defaultBlock(type) as import("@/shared/types/lessonContent").LessonDeckInnerBlock;
+}
+
 export type AdminLessonBlockEditorProps = {
   blocks: LessonContentBlock[];
   onChange: (next: LessonContentBlock[]) => void;

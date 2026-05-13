@@ -13,7 +13,7 @@ const LessonPdfReader = lazy(() =>
 const { Text } = Typography;
 
 /** URL встроенной студии: урок → полная разработка с `embed=lesson`; проверка сдачи → прежний `mini=1`. */
-function studioLessonFrameSrc(
+export function studioLessonFrameSrc(
   projectId: string,
   blockId: string,
   opts: { lessonId?: string; teacherReviewId?: string | null; readOnly: boolean }
@@ -41,7 +41,7 @@ function studioLessonFrameSrc(
 }
 
 /** Кладёт инструкцию и цели в sessionStorage — мини-студия в iframe читает их на «сцене». */
-function MiniStudioSessionStore(props: {
+export function MiniStudioSessionStore(props: {
   lessonId?: string;
   blockId: string;
   instruction: string;
@@ -63,7 +63,7 @@ function MiniStudioSessionStore(props: {
   return null;
 }
 
-function isStudioCta(cta: string | null | undefined): boolean {
+export function isStudioCta(cta: string | null | undefined): boolean {
   if (!cta) {
     return false;
   }

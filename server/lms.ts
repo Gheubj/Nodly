@@ -514,15 +514,77 @@ const lessonBlockZ = z.discriminatedUnion("type", [
   dividerBlockZ
 ]);
 
-const lessonContentZ = z.object({
-  schemaVersion: z.number().int().min(1).max(10).optional(),
-  blocks: z.array(lessonBlockZ).max(100).optional(),
-  presentationPdfUrl: presentationPdfUrlZ,
-  slides: z.array(lessonContentSlideZ).default([]),
-  practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
-  checkpoints: z.array(lessonContentCheckpointZ).default([]),
-  hints: z.array(lessonContentHintZ).default([])
+const deckInnerBlockZ = z.discriminatedUnion("type", [
+  textBlockZ,
+  mediaBlockZ,
+  imageBlockZ,
+  pdfBlockZ,
+  studioBlockZ,
+  checkpointBlockZ
+]);
+
+const deckLayoutZ = z.object({
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+  w: z.number().min(4).max(100),
+  h: z.number().min(4).max(100)
 });
+
+const deckElementZ = z.object({
+  id: lessonBlockIdZ,
+  layout: deckLayoutZ,
+  zIndex: z.number().int().min(0).max(2000).optional(),
+  block: deckInnerBlockZ
+});
+
+const deckSlideZ = z.object({
+  id: lessonBlockIdZ,
+  title: z.string().max(200).optional(),
+  backgroundImageUrl: z
+    .union([z.string().max(2048), z.null()])
+    .optional()
+    .refine(
+      (s) =>
+        s === undefined ||
+        s === null ||
+        s === "" ||
+        s.startsWith("/") ||
+        /^https?:\/\//i.test(s),
+      { message: "deck slide background: https или путь с /" }
+    ),
+  elements: z.array(deckElementZ).max(20)
+});
+
+const lessonContentDeckZ = z.object({
+  schemaVersion: z.literal(1),
+  slides: z.array(deckSlideZ).max(35)
+});
+
+const lessonContentZ = z
+  .object({
+    schemaVersion: z.number().int().min(1).max(10).optional(),
+    blocks: z.array(lessonBlockZ).max(100).optional(),
+    deck: lessonContentDeckZ.optional(),
+    presentationPdfUrl: presentationPdfUrlZ,
+    slides: z.array(lessonContentSlideZ).default([]),
+    practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
+    checkpoints: z.array(lessonContentCheckpointZ).default([]),
+    hints: z.array(lessonContentHintZ).default([])
+  })
+  .superRefine((data, ctx) => {
+    if (data.deck?.slides?.length) {
+      let n = 0;
+      for (const s of data.deck.slides) {
+        n += s.elements.length;
+      }
+      if (n > 100) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "В режиме слайдов суммарно не больше 100 элементов (блоков)."
+        });
+      }
+    }
+  });
 
 async function assertTeacherClassroom(teacherId: string, classroomId: string) {
   const c = await prisma.classroom.findFirst({

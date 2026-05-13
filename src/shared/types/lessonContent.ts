@@ -66,9 +66,43 @@ export type LessonContentBlock =
     }
   | { id: string; type: "divider" };
 
+/** Блок внутри слайда дека (без разделителя). */
+export type LessonDeckInnerBlock = Exclude<LessonContentBlock, { type: "divider" }>;
+
+/** Позиция элемента на слайде, в процентах (0–100) относительно канваса 16:9. */
+export type DeckLayout = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export interface LessonDeckElement {
+  /** Идентификатор элемента на слайде (для UI); `block.id` — для прогресса и мини-студии. */
+  id: string;
+  layout: DeckLayout;
+  zIndex?: number;
+  block: LessonDeckInnerBlock;
+}
+
+export interface LessonDeckSlide {
+  id: string;
+  title?: string;
+  backgroundImageUrl?: string | null;
+  elements: LessonDeckElement[];
+}
+
+/** Режим «презентация»: слайды с произвольной раскладкой блоков. */
+export interface LessonContentDeck {
+  schemaVersion: 1;
+  slides: LessonDeckSlide[];
+}
+
 export interface LessonContent {
   schemaVersion?: number;
   blocks?: LessonContentBlock[];
+  /** Если задан и не пуст — плеер «книжка»; `blocks` дублируют порядок для LMS. */
+  deck?: LessonContentDeck;
   presentationPdfUrl?: string | null;
   slides: LessonContentSlide[];
   practiceSteps: LessonContentPracticeStep[];

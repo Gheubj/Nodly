@@ -17,8 +17,9 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { ApiError, apiClient } from "@/shared/api/client";
 import { LessonFlowView } from "@/components/LessonFlowView";
+import { LessonDeckPlayer } from "@/components/LessonDeckPlayer";
 import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
-import { expandLessonContentToBlocks } from "@/shared/lessonContentBlocks";
+import { expandLessonContentToBlocks, lessonHasRenderableDeck } from "@/shared/lessonContentBlocks";
 import {
   normalizeCheckpointAnswer,
   parseLessonPlayerState,
@@ -112,6 +113,8 @@ export function LessonPlayerPage() {
     }
     return { ...EMPTY_LESSON_CONTENT, ...(bootstrap.lessonContent as LessonContent) };
   }, [bootstrap]);
+
+  const useDeckPlayer = lessonHasRenderableDeck(lessonContent) && Boolean(lessonContent.deck);
 
   const flowBlocks = useMemo(() => expandLessonContentToBlocks(lessonContent), [lessonContent]);
 
@@ -542,24 +545,43 @@ export function LessonPlayerPage() {
                   description="Администратору нужно добавить блоки в конструкторе или заполнить JSON материалов."
                 />
               ) : null}
-              <LessonFlowView
-                lessonId={lessonId}
-                blocks={flowBlocks}
-                checkpointOk={checkpointsOk}
-                miniDevDone={miniDevDone}
-                miniDevProjectId={miniDevProjectId}
-                miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
-                draftAnswers={draftAnswers}
-                onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
-                onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
-                onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
-                onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
-                saving={saving}
-                bareMiniStudio
-                variant="colab"
-                readOnly={isTeacherReview}
-                teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
-              />
+              {useDeckPlayer && lessonContent.deck ? (
+                <LessonDeckPlayer
+                  deck={lessonContent.deck}
+                  lessonId={lessonId}
+                  checkpointOk={checkpointsOk}
+                  miniDevDone={miniDevDone}
+                  miniDevProjectId={miniDevProjectId}
+                  miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
+                  draftAnswers={draftAnswers}
+                  onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
+                  onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
+                  onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
+                  onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
+                  saving={saving}
+                  readOnly={isTeacherReview}
+                  teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
+                />
+              ) : (
+                <LessonFlowView
+                  lessonId={lessonId}
+                  blocks={flowBlocks}
+                  checkpointOk={checkpointsOk}
+                  miniDevDone={miniDevDone}
+                  miniDevProjectId={miniDevProjectId}
+                  miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
+                  draftAnswers={draftAnswers}
+                  onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
+                  onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
+                  onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
+                  onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
+                  saving={saving}
+                  bareMiniStudio
+                  variant="colab"
+                  readOnly={isTeacherReview}
+                  teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
+                />
+              )}
               {allCheckpointsDone && checkpointBlockIds.length > 0 && !isTeacherReview ? (
                 <Alert className="lesson-player-page__checkpoint-status" type="success" showIcon message="Все вопросы пройдены" />
               ) : null}

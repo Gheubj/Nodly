@@ -2692,6 +2692,166 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   background: color-mix(in srgb, var(--app-surface, #fff) 92%, transparent);
 }
 
+/* --- Плеер урока: режим слайдов (deck) --- */
+.lesson-deck-player {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.lesson-deck-player__nav {
+  width: 100%;
+}
+
+.lesson-deck-player__stage-wrap {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.lesson-deck-player__stage {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  box-shadow: var(--app-shadow-soft);
+}
+
+.lesson-deck-player__abs {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.lesson-deck-player__abs-inner {
+  height: 100%;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+}
+
+.lesson-deck-player__segment {
+  min-height: 0;
+}
+
+.lesson-deck-player__segment--text .lesson-deck-player__markdown {
+  font-size: clamp(12px, 1.1vw, 15px);
+  line-height: 1.45;
+}
+
+.lesson-deck-player__segment--text .lesson-deck-player__markdown h1,
+.lesson-deck-player__segment--text .lesson-deck-player__markdown h2 {
+  margin-top: 0.35em;
+  margin-bottom: 0.25em;
+  font-size: 1.1em;
+}
+
+.lesson-deck-player__image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+}
+
+.lesson-deck-player__caption {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.lesson-deck-player__caption--bordered {
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--ant-color-border);
+}
+
+.lesson-deck-player__pdf-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.lesson-deck-player__segment--studio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+
+.lesson-deck-player__mini-frame {
+  width: 100%;
+  flex: 1;
+  min-height: 160px;
+  height: min(42vh, 420px);
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 10px;
+  display: block;
+  background: #0b1220;
+}
+
+.lesson-deck-player__mini-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  border: 1px dashed var(--ant-color-border);
+  border-radius: 8px;
+}
+
+.lesson-deck-player__segment--checkpoint {
+  font-size: clamp(12px, 1vw, 15px);
+}
+
+.lesson-deck-player__checkpoint-prompt {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* --- Админ: редактор слайдов --- */
+.admin-lesson-deck-editor__canvas {
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-lesson-deck-editor__rnd {
+  box-sizing: border-box;
+}
+
+.admin-lesson-deck-editor__rnd--selected .admin-lesson-deck-editor__rnd-inner {
+  outline: 2px solid var(--ant-color-primary, #1677ff);
+  outline-offset: 0;
+}
+
+.admin-lesson-deck-editor__rnd-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--app-surface, #fff) 96%, transparent);
+  border-radius: 6px;
+  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.4));
+  overflow: hidden;
+}
+
+.admin-lesson-deck-editor__rnd-toolbar {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  background: color-mix(in srgb, var(--app-surface, #fff) 88%, transparent);
+}
+
+.admin-lesson-deck-editor__rnd-preview {
+  flex: 1;
+  padding: 6px 8px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .studio-mini-host.app-content--workspace {
   padding: 0 !important;
   margin: 0 !important;

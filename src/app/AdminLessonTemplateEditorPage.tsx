@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Space, Spin, Typography, message } from "antd";
+import { Alert, Button, Card, Modal, Segmented, Space, Spin, Typography, message } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 import { AdminLessonBlockEditor } from "@/components/AdminLessonBlockEditor";
-import { expandLessonContentToBlocks, lessonContentFromBlocks } from "@/shared/lessonContentBlocks";
-import { EMPTY_LESSON_CONTENT, type LessonContentBlock } from "@/shared/types/lessonContent";
+import { AdminLessonDeckEditor } from "@/components/AdminLessonDeckEditor";
+import {
+  emptyLessonContentDeck,
+  expandLessonContentToBlocks,
+  flattenDeckToBlocks,
+  lessonContentFromBlocks,
+  lessonContentFromDeck,
+  lessonHasRenderableDeck,
+  linearBlocksToDeck
+} from "@/shared/lessonContentBlocks";
+import { EMPTY_LESSON_CONTENT, type LessonContent, type LessonContentBlock, type LessonContentDeck } from "@/shared/types/lessonContent";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -20,6 +29,13 @@ type TemplateContentPayload = {
   lessonContent: unknown;
 };
 
+function parseLessonContent(raw: unknown): LessonContent {
+  if (!raw || typeof raw !== "object") {
+    return { ...EMPTY_LESSON_CONTENT };
+  }
+  return { ...EMPTY_LESSON_CONTENT, ...(raw as LessonContent) };
+}
+
 export function AdminLessonTemplateEditorPage() {
   const { user } = useSessionStore();
   const navigate = useNavigate();
@@ -29,6 +45,8 @@ export function AdminLessonTemplateEditorPage() {
   const [saving, setSaving] = useState(false);
   const [template, setTemplate] = useState<TemplateContentPayload | null>(null);
   const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
+  const [deck, setDeck] = useState<LessonContentDeck>(emptyLessonContentDeck());
+  const [editorMode, setEditorMode] = useState<"flow" | "deck">("flow");
 
   const title = useMemo(() => template?.title ?? "Шаблон урока", [template?.title]);
 
@@ -47,11 +65,11 @@ export function AdminLessonTemplateEditorPage() {
           return;
         }
         setTemplate(data);
-        const content =
-          data.lessonContent && typeof data.lessonContent === "object"
-            ? (data.lessonContent as { blocks?: unknown[] })
-            : EMPTY_LESSON_CONTENT;
-        setBlocks(expandLessonContentToBlocks(content as any));
+        const lc = parseLessonContent(data.lessonContent);
+        const useDeck = lessonHasRenderableDeck(lc) && Boolean(lc.deck);
+        setEditorMode(useDeck ? "deck" : "flow");
+        setDeck(useDeck && lc.deck ? lc.deck : emptyLessonContentDeck());
+        setBlocks(expandLessonContentToBlocks(lc));
       } catch (e) {
         if (!cancelled) {
           messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить шаблон");
@@ -67,6 +85,39 @@ export function AdminLessonTemplateEditorPage() {
       cancelled = true;
     };
   }, [templateId, messageApi]);
+
+  const requestModeChange = (next: "flow" | "deck") => {
+    if (next === editorMode) {
+      return;
+    }
+    if (next === "deck") {
+      Modal.confirm({
+        title: "Режим слайдов",
+        content:
+          "Текущая лента будет преобразована в слайды (по несколько блоков на слайд). Продолжить?",
+        okText: "Да",
+        cancelText: "Отмена",
+        onOk: () => {
+          setDeck(linearBlocksToDeck(blocks));
+          setEditorMode("deck");
+          messageApi.success("Лента перенесена в дек. При необходимости подправьте раскладку.");
+        }
+      });
+      return;
+    }
+    Modal.confirm({
+      title: "Режим ленты",
+      content:
+        "Слайды будут свернуты в линейную ленту блоков (позиции на слайдах не сохранятся в этом режиме). Продолжить?",
+      okText: "Да",
+      cancelText: "Отмена",
+      onOk: () => {
+        setBlocks(flattenDeckToBlocks(deck));
+        setEditorMode("flow");
+        messageApi.info("Редактор ленты: сохраните, чтобы в JSON не осталось поля deck.");
+      }
+    });
+  };
 
   if (user?.role !== "admin") {
     return (
@@ -104,7 +155,20 @@ export function AdminLessonTemplateEditorPage() {
           </div>
 
           <div className="admin-lesson-editor__panel">
-            <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
+            <Segmented
+              value={editorMode}
+              onChange={(v) => void requestModeChange(v as "flow" | "deck")}
+              options={[
+                { label: "Лента", value: "flow" },
+                { label: "Слайды (канвас)", value: "deck" }
+              ]}
+              style={{ marginBottom: 12 }}
+            />
+            {editorMode === "flow" ? (
+              <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
+            ) : (
+              <AdminLessonDeckEditor deck={deck} onChange={setDeck} />
+            )}
           </div>
 
           <Space className="admin-lesson-editor__footer-actions">
@@ -116,9 +180,11 @@ export function AdminLessonTemplateEditorPage() {
                 }
                 setSaving(true);
                 try {
+                  const lessonContent =
+                    editorMode === "deck" ? lessonContentFromDeck(deck) : lessonContentFromBlocks(blocks);
                   await apiClient.patch(`/api/admin/lesson-templates/${encodeURIComponent(templateId)}/content`, {
                     studentSummary: template?.studentSummary ?? null,
-                    lessonContent: lessonContentFromBlocks(blocks)
+                    lessonContent
                   });
                   messageApi.success("Шаблон сохранен");
                 } catch (e) {
@@ -137,4 +203,3 @@ export function AdminLessonTemplateEditorPage() {
     </div>
   );
 }
-
