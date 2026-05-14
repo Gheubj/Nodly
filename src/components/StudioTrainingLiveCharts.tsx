@@ -8,7 +8,10 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { Typography } from "antd";
 import { useAppStore } from "@/store/useAppStore";
+
+const { Text } = Typography;
 
 type StudioTrainingLiveChartsProps = {
   className?: string;
@@ -60,6 +63,21 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
     >
       <div className="studio-training-live__charts studio-training-live__charts--loss-acc-only">
         <div className="studio-metrics-chart-shell studio-training-live__shell">
+          <div className="studio-training-live__chart-head">
+            <Text strong className="studio-training-live__chart-title">
+              {streamModelType === "tabular_regression" ? "Loss (MSE)" : "Loss"}
+            </Text>
+            <div className="studio-training-live__legend" aria-hidden>
+              <span className="studio-training-live__legend-item">
+                <span className="studio-training-live__swatch studio-training-live__swatch--train" />
+                <Text type="secondary">обучение</Text>
+              </span>
+              <span className="studio-training-live__legend-item">
+                <span className="studio-training-live__swatch studio-training-live__swatch--val" />
+                <Text type="secondary">валидация</Text>
+              </span>
+            </div>
+          </div>
           <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
             <ResponsiveContainer width="100%" height={chartHeight}>
               <LineChart data={chartRows} margin={margin}>
@@ -76,7 +94,16 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                 <CartesianGrid strokeDasharray="4 6" stroke={gridStroke} vertical={false} />
                 <XAxis dataKey="epoch" tick={axisTick} axisLine={false} tickLine={false} tickMargin={4} />
                 <YAxis tick={axisTick} width={32} axisLine={false} tickLine={false} tickMargin={2} />
-                <Tooltip contentStyle={tipStyle} />
+                <Tooltip
+                  contentStyle={tipStyle}
+                  labelFormatter={(epoch) => `Эпоха ${epoch}`}
+                  formatter={(value: number | string, name: string) => {
+                    const series = name === "train" ? "обучение" : name === "val" ? "валидация" : name;
+                    const v =
+                      typeof value === "number" && Number.isFinite(value) ? value.toFixed(4) : String(value);
+                    return [v, series];
+                  }}
+                />
                 <Line
                   isAnimationActive
                   animationDuration={280}
@@ -110,6 +137,21 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
 
         {hasAcc ? (
           <div className="studio-metrics-chart-shell studio-training-live__shell">
+            <div className="studio-training-live__chart-head">
+              <Text strong className="studio-training-live__chart-title">
+                Точность
+              </Text>
+              <div className="studio-training-live__legend" aria-hidden>
+                <span className="studio-training-live__legend-item">
+                  <span className="studio-training-live__swatch studio-training-live__swatch--train" />
+                  <Text type="secondary">обучение</Text>
+                </span>
+                <span className="studio-training-live__legend-item">
+                  <span className="studio-training-live__swatch studio-training-live__swatch--val" />
+                  <Text type="secondary">валидация</Text>
+                </span>
+              </div>
+            </div>
             <div className="studio-metrics-chart-shell__plot studio-metrics-line-chart">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <LineChart data={rows} margin={margin}>
@@ -128,7 +170,14 @@ export function StudioTrainingLiveCharts({ className, compact }: StudioTrainingL
                   <YAxis domain={[0, 1]} tick={axisTick} width={32} axisLine={false} tickLine={false} tickMargin={2} />
                   <Tooltip
                     contentStyle={tipStyle}
-                    formatter={(v: number | string) => [typeof v === "number" ? `${(v * 100).toFixed(1)}%` : v, ""]}
+                    labelFormatter={(epoch) => `Эпоха ${epoch}`}
+                    formatter={(v: number | string, name: string) => {
+                      const series = name === "train" ? "обучение" : name === "val" ? "валидация" : name;
+                      if (typeof v === "number") {
+                        return [`${(v * 100).toFixed(1)}%`, series];
+                      }
+                      return [String(v), series];
+                    }}
                   />
                   <Line
                     isAnimationActive

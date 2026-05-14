@@ -5587,6 +5587,43 @@ html[data-theme="dark"] .studio-training-live {
   min-width: 0;
 }
 
+.studio-training-live__chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.studio-training-live--compact .studio-training-live__chart-head {
+  margin-bottom: 4px;
+}
+
+.studio-training-live__chart-title {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.studio-training-live__legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.studio-training-live__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.studio-training-live__legend-item .ant-typography {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 .studio-training-live--compact .studio-training-live__charts {
   gap: 8px;
   margin-top: 6px;
