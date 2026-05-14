@@ -18,6 +18,7 @@ import { useSessionStore } from "@/store/useSessionStore";
 import { ApiError, apiClient } from "@/shared/api/client";
 import { LessonFlowView } from "@/components/LessonFlowView";
 import { LessonDeckPlayer } from "@/components/LessonDeckPlayer";
+import { LessonQuestPlayer } from "@/components/LessonQuestPlayer";
 import { EMPTY_LESSON_CONTENT, type LessonContent } from "@/shared/types/lessonContent";
 import { expandLessonContentToBlocks, lessonHasRenderableDeck } from "@/shared/lessonContentBlocks";
 import {
@@ -555,7 +556,25 @@ export function LessonPlayerPage() {
                   description="Администратору нужно добавить блоки в конструкторе или заполнить JSON материалов."
                 />
               ) : null}
-              {useDeckPlayer && lessonContent.deck ? (
+              {bootstrap.title === "Модуль A. Квест: Хранитель историй ИИ" ? (
+                <LessonQuestPlayer
+                  title={bootstrap.title}
+                  lessonId={lessonId}
+                  blocks={flowBlocks}
+                  checkpointOk={checkpointsOk}
+                  miniDevDone={miniDevDone}
+                  miniDevProjectId={miniDevProjectId}
+                  miniDevCreating={(id) => Boolean(autoCreatingMini[id])}
+                  draftAnswers={draftAnswers}
+                  onDraftChange={(id, v) => setDraftAnswers((d) => ({ ...d, [id]: v }))}
+                  onVerifyCheckpoint={(id, exp) => void verifyCheckpoint(id, exp)}
+                  onToggleMiniDevDone={(id) => void toggleMiniDevDone(id)}
+                  onEnsureMiniDevProject={(id) => void ensureMiniDevProject(id)}
+                  saving={saving}
+                  readOnly={isTeacherReview}
+                  teacherReviewSubmissionId={isTeacherReview ? reviewSubmissionId ?? undefined : undefined}
+                />
+              ) : useDeckPlayer && lessonContent.deck ? (
                 <LessonDeckPlayer
                   deck={lessonContent.deck}
                   lessonId={lessonId}
