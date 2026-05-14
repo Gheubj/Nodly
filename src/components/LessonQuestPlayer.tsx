@@ -147,12 +147,35 @@ export function LessonQuestPlayer({
     }
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
+      const url = block.url;
+      const questVisual = url.includes("iris-quest-hero")
+        ? "archive"
+        : url.includes("iris-quest-dossier")
+          ? "dossier"
+          : url.includes("iris-quest-lab")
+            ? "lab"
+            : null;
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--media">
-          {kind === "image" ? (
+          {kind === "image" && questVisual ? (
+            <div className={`lesson-quest-player__visual lesson-quest-player__visual--${questVisual}`}>
+              <div className="lesson-quest-player__visual-grid" />
+              <div className="lesson-quest-player__visual-orb" />
+              <div className="lesson-quest-player__visual-panel">
+                <span>{questVisual === "archive" ? "Noda Archive" : questVisual === "dossier" ? "Iris Dossier" : "Emergency Lab"}</span>
+                <strong>
+                  {questVisual === "archive"
+                    ? "Archive Incident"
+                    : questVisual === "dossier"
+                      ? "Setosa / Versicolor / Virginica"
+                      : "Train → Test → Predict"}
+                </strong>
+              </div>
+            </div>
+          ) : kind === "image" ? (
             <img
               className="lesson-quest-player__image"
-              src={resolveLessonMediaUrl(block.url)}
+              src={resolveLessonMediaUrl(url)}
               alt={block.caption ?? ""}
               onError={(e) => {
                 e.currentTarget.style.display = "none";

@@ -670,14 +670,17 @@ html[data-theme="dark"] .app-content--workspace {
 }
 
 .lesson-player-page.lesson-player-page--deck:has(.lesson-quest-player) {
-  height: auto;
-  max-height: none;
-  min-height: calc(100dvh - var(--app-header-height));
+  height: calc(100dvh - var(--app-header-height));
+  max-height: calc(100dvh - var(--app-header-height));
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
 }
 
 .lesson-player-page.lesson-player-page--deck:has(.lesson-quest-player) .lesson-player-page__stack.lesson-player-page__stack--deck.ant-space.ant-space-vertical {
+  flex: none;
   overflow: visible;
 }
 
@@ -3065,12 +3068,18 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__card {
   border-radius: 16px;
-  border: 1px solid color-mix(in srgb, #c7d7ee 58%, transparent);
+  border: 1px solid rgba(125, 211, 252, 0.22);
   background:
-    radial-gradient(80% 120% at 0% 0%, rgba(125, 211, 252, 0.14) 0%, transparent 60%),
-    linear-gradient(145deg, rgba(248, 251, 255, 0.95), rgba(226, 232, 240, 0.92));
-  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.1);
+    radial-gradient(80% 120% at 0% 0%, rgba(56, 189, 248, 0.14) 0%, transparent 60%),
+    radial-gradient(90% 120% at 100% 0%, rgba(167, 139, 250, 0.1) 0%, transparent 64%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.82));
+  box-shadow: 0 14px 26px rgba(2, 6, 23, 0.26);
+  color: #e5eefc;
   padding: 14px;
+}
+
+.lesson-quest-player__card .ant-typography {
+  color: inherit;
 }
 
 .lesson-quest-player__card--material {
@@ -3095,22 +3104,32 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .lesson-quest-player__card--checkpoint {
-  border-color: color-mix(in srgb, #7dd3fc 56%, transparent);
+  border-color: rgba(125, 211, 252, 0.34);
   background:
-    radial-gradient(70% 120% at 0% 0%, color-mix(in srgb, #bae6fd 30%, transparent) 0%, transparent 62%),
-    linear-gradient(145deg, color-mix(in srgb, #ffffff 92%, #e0f2fe 8%), color-mix(in srgb, #ffffff 96%, #dbeafe 4%));
+    radial-gradient(70% 120% at 0% 0%, rgba(14, 165, 233, 0.2) 0%, transparent 62%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.84));
 }
 
 .lesson-quest-player__card--studio {
-  border-color: color-mix(in srgb, #a78bfa 52%, transparent);
+  border-color: rgba(167, 139, 250, 0.34);
   background:
-    radial-gradient(80% 110% at 100% 0%, color-mix(in srgb, #ddd6fe 30%, transparent) 0%, transparent 60%),
-    linear-gradient(145deg, color-mix(in srgb, #ffffff 90%, #ede9fe 10%), color-mix(in srgb, #ffffff 96%, #e2e8f0 4%));
+    radial-gradient(80% 110% at 100% 0%, rgba(167, 139, 250, 0.22) 0%, transparent 60%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.84));
 }
 
 .lesson-quest-player__markdown {
   font-size: 15px;
   line-height: 1.55;
+  color: #e5eefc;
+}
+
+.lesson-quest-player__markdown p,
+.lesson-quest-player__markdown li,
+.lesson-quest-player__markdown strong,
+.lesson-quest-player__markdown h1,
+.lesson-quest-player__markdown h2,
+.lesson-quest-player__markdown h3 {
+  color: inherit;
 }
 
 .lesson-quest-player__markdown table {
@@ -3123,11 +3142,11 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-quest-player__markdown th,
 .lesson-quest-player__markdown td {
   padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, #c7d7ee 58%, transparent);
+  border: 1px solid rgba(125, 211, 252, 0.22);
 }
 
 .lesson-quest-player__markdown th {
-  background: color-mix(in srgb, #dbeafe 62%, transparent);
+  background: rgba(14, 165, 233, 0.16);
 }
 
 .lesson-quest-player__markdown h1,
@@ -3148,6 +3167,87 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   border-radius: 18px;
 }
 
+.lesson-quest-player__visual {
+  position: relative;
+  min-height: clamp(220px, 30vw, 420px);
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background:
+    radial-gradient(circle at 22% 20%, rgba(125, 211, 252, 0.32), transparent 26%),
+    radial-gradient(circle at 78% 26%, rgba(167, 139, 250, 0.28), transparent 30%),
+    linear-gradient(145deg, #07111f, #101827 56%, #111633);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.lesson-quest-player__visual--dossier {
+  background:
+    radial-gradient(circle at 25% 55%, rgba(34, 197, 94, 0.24), transparent 28%),
+    radial-gradient(circle at 75% 30%, rgba(168, 85, 247, 0.24), transparent 30%),
+    linear-gradient(145deg, #07111f, #101827 56%, #111633);
+}
+
+.lesson-quest-player__visual--lab {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(56, 189, 248, 0.3), transparent 28%),
+    radial-gradient(circle at 72% 70%, rgba(248, 113, 113, 0.18), transparent 28%),
+    linear-gradient(145deg, #07111f, #101827 56%, #111633);
+}
+
+.lesson-quest-player__visual-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.11) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
+}
+
+.lesson-quest-player__visual-orb {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  left: 50%;
+  top: 48%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.78), transparent 14%),
+    radial-gradient(circle, rgba(125, 211, 252, 0.4), rgba(59, 130, 246, 0.08) 58%, transparent 70%);
+  border: 1px solid rgba(125, 211, 252, 0.38);
+  box-shadow: 0 0 60px rgba(56, 189, 248, 0.24);
+}
+
+.lesson-quest-player__visual-panel {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 520px;
+  padding: 14px 16px;
+  border: 1px solid rgba(125, 211, 252, 0.26);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.lesson-quest-player__visual-panel span {
+  color: #93c5fd;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lesson-quest-player__visual-panel strong {
+  color: #f8fafc;
+  font-size: clamp(18px, 2.2vw, 28px);
+}
+
 .lesson-quest-player__checkpoint-title {
   display: flex;
   align-items: center;
@@ -3157,6 +3257,18 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-quest-player__checkpoint-q {
   margin-bottom: 10px;
+  color: #e5eefc;
+}
+
+.lesson-quest-player__card--checkpoint .ant-radio-wrapper,
+.lesson-quest-player__card--checkpoint .ant-checkbox-wrapper {
+  color: #e5eefc;
+}
+
+.lesson-quest-player__card--media .ant-typography {
+  display: block;
+  margin-top: 10px;
+  color: #bfdbfe;
 }
 
 .lesson-quest-player__mini-frame {
