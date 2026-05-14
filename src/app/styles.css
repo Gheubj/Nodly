@@ -2722,7 +2722,7 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-deck-player.lesson-deck-player--fullscreen {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -2731,6 +2731,26 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 .lesson-deck-player__nav {
   width: 100%;
   flex-shrink: 0;
+}
+
+.lesson-deck-player__nav.lesson-deck-player__nav--quest {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--surface-stroke, rgba(148, 163, 184, 0.45)) 88%, transparent);
+  background:
+    radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, #93c5fd 22%, transparent) 0%, transparent 48%),
+    radial-gradient(120% 150% at 100% 0%, color-mix(in srgb, #c4b5fd 20%, transparent) 0%, transparent 48%),
+    color-mix(in srgb, var(--surface-floating, #ffffff) 86%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.lesson-deck-player__nav-btn {
+  border-radius: 10px;
+}
+
+.lesson-deck-player__slide-counter {
+  font-weight: 600;
 }
 
 .lesson-deck-player__stage-wrap {
@@ -2742,43 +2762,56 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
+  padding: 0 4px 4px;
 }
 
 .lesson-deck-player__stage.lesson-deck-player__stage--fullscreen {
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
-  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.45));
-  box-shadow: var(--app-shadow-soft);
+  border: 1px solid color-mix(in srgb, #dbe6ff 56%, rgba(148, 163, 184, 0.2));
+  box-shadow:
+    0 26px 48px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   box-sizing: border-box;
   /* Без cqw/cqh: в части окружений контейнер давал 0×0 и слайд был пустым */
   width: 100%;
-  max-width: min(1200px, 96vw);
+  max-width: min(1320px, 97vw);
   aspect-ratio: 16 / 9;
   height: auto;
-  max-height: min(78dvh, calc(100vw * 9 / 16));
+  max-height: min(80dvh, calc(100vw * 9 / 16));
+  background:
+    radial-gradient(80% 90% at 8% 0%, color-mix(in srgb, #7dd3fc 24%, transparent) 0%, transparent 56%),
+    radial-gradient(80% 90% at 92% 8%, color-mix(in srgb, #c4b5fd 24%, transparent) 0%, transparent 58%),
+    linear-gradient(145deg, color-mix(in srgb, #f8fbff 88%, #e8eef9 12%), color-mix(in srgb, #eef3fb 90%, #dfe8f4 10%));
 }
 
 .lesson-deck-player__abs {
   position: absolute;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
+  transition: transform 180ms ease;
+}
+
+.lesson-deck-player__abs:hover {
+  transform: translateY(-2px);
 }
 
 .lesson-deck-player__abs-inner {
   height: 100%;
   overflow: auto;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--app-surface, #fff) 94%, transparent);
-  border: 1px solid var(--ant-color-border, rgba(148, 163, 184, 0.35));
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--app-surface, #fff) 82%, transparent);
+  border: 1px solid color-mix(in srgb, #c7d7ee 60%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 10px 26px rgba(15, 23, 42, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .lesson-deck-player__abs-inner--text {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  padding: 4px 6px;
+  padding: 10px 12px;
 }
 
 .lesson-deck-player__segment {
@@ -2786,8 +2819,9 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .lesson-deck-player__segment--text .lesson-deck-player__markdown {
-  font-size: clamp(12px, 1.1vw, 15px);
-  line-height: 1.45;
+  font-size: clamp(13px, 1.06vw, 16px);
+  line-height: 1.5;
+  color: #0f172a;
 }
 
 .lesson-deck-player__markdown--text-sm.lesson-deck-player__markdown,
@@ -2798,22 +2832,27 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 
 .lesson-deck-player__markdown--text-lg.lesson-deck-player__markdown,
 .lesson-deck-player__markdown--text-lg .lesson-deck-player__markdown {
-  font-size: clamp(14px, 1.35vw, 22px);
-  line-height: 1.48;
+  font-size: clamp(16px, 1.52vw, 24px);
+  line-height: 1.5;
 }
 
 .lesson-deck-player__segment--text .lesson-deck-player__markdown h1,
 .lesson-deck-player__segment--text .lesson-deck-player__markdown h2 {
-  margin-top: 0.35em;
-  margin-bottom: 0.25em;
-  font-size: 1.1em;
+  margin-top: 0.28em;
+  margin-bottom: 0.3em;
+  font-size: 1.13em;
+  letter-spacing: -0.01em;
 }
 
 .lesson-deck-player__image {
   max-width: 100%;
-  height: auto;
+  max-height: 100%;
+  width: auto;
+  object-fit: contain;
   display: block;
-  border-radius: 6px;
+  margin: 0 auto;
+  border-radius: 12px;
+  filter: drop-shadow(0 22px 32px rgba(15, 23, 42, 0.2));
 }
 
 .lesson-deck-player__caption {
@@ -2866,7 +2905,12 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
 }
 
 .lesson-deck-player__segment--checkpoint {
-  font-size: clamp(12px, 1vw, 15px);
+  font-size: clamp(13px, 1.02vw, 16px);
+}
+
+.lesson-deck-player__abs-inner--checkpoint {
+  background: color-mix(in srgb, #ffffff 90%, #dbeafe 10%);
+  border-color: color-mix(in srgb, #93c5fd 45%, transparent);
 }
 
 .lesson-deck-player__checkpoint-prompt {

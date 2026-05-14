@@ -45,6 +45,14 @@ function sortSlideElements(elements: LessonDeckElement[]): LessonDeckElement[] {
   });
 }
 
+function normalizeLessonText(value: string): string {
+  if (!value) {
+    return "";
+  }
+  // В старых seed-уроках встречаются экранированные переносы "\\n".
+  return value.replace(/\\n/g, "\n");
+}
+
 export function LessonDeckPlayer({
   deck,
   lessonId,
@@ -81,9 +89,17 @@ export function LessonDeckPlayer({
     return m;
   }, [slides]);
 
+  const checkpointIds = useMemo(() => [...checkpointOrdinalByBlockId.keys()], [checkpointOrdinalByBlockId]);
+  const solvedCheckpoints = useMemo(
+    () => checkpointIds.filter((id) => checkpointOk(id)).length,
+    [checkpointIds, checkpointOk]
+  );
+
   const renderMarkdown = (value: string, className?: string) => (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownWithCustomEmojiImages(value)}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {markdownWithCustomEmojiImages(normalizeLessonText(value))}
+      </ReactMarkdown>
     </div>
   );
 
@@ -194,7 +210,7 @@ export function LessonDeckPlayer({
       return (
         <div className="lesson-deck-player__segment lesson-deck-player__segment--checkpoint">
           <div className="lesson-deck-player__checkpoint-prompt">
-            <strong>Вопрос {ord}:</strong> {block.question}
+            <strong>Вопрос {ord}:</strong> {normalizeLessonText(block.question)}
           </div>
           {ok ? (
             <Tag color="success">Верно</Tag>
@@ -255,16 +271,20 @@ export function LessonDeckPlayer({
 
   return (
     <div className="lesson-deck-player lesson-deck-player--fullscreen">
-      <Card size="small" className="lesson-deck-player__nav">
+      <Card size="small" className="lesson-deck-player__nav lesson-deck-player__nav--quest">
         <Space wrap>
-          <Button disabled={safeIndex <= 0} onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}>
+          <Button className="lesson-deck-player__nav-btn" disabled={safeIndex <= 0} onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}>
             Назад
           </Button>
-          <Text type="secondary">
+          <Text type="secondary" className="lesson-deck-player__slide-counter">
             Слайд {safeIndex + 1} / {slides.length}
             {slide.title ? ` — ${slide.title}` : ""}
           </Text>
-          <Button disabled={safeIndex >= slides.length - 1} onClick={() => setSlideIndex((i) => Math.min(slides.length - 1, i + 1))}>
+          <Tag color="processing">Квест</Tag>
+          <Tag color={checkpointIds.length > 0 && solvedCheckpoints === checkpointIds.length ? "success" : "default"}>
+            Миссии: {solvedCheckpoints}/{checkpointIds.length}
+          </Tag>
+          <Button className="lesson-deck-player__nav-btn" disabled={safeIndex >= slides.length - 1} onClick={() => setSlideIndex((i) => Math.min(slides.length - 1, i + 1))}>
             Далее
           </Button>
         </Space>
