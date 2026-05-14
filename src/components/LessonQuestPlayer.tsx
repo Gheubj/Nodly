@@ -148,29 +148,18 @@ export function LessonQuestPlayer({
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
-      const questVisual = url.includes("iris-quest-hero")
-        ? "archive"
-        : url.includes("iris-quest-dossier")
-          ? "dossier"
-          : url.includes("iris-quest-lab")
-            ? "lab"
-            : null;
+      const isHeroShot = kind === "image" && url.includes("iris-quest-hero");
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--media">
-          {kind === "image" && questVisual ? (
-            <div className={`lesson-quest-player__visual lesson-quest-player__visual--${questVisual}`}>
-              <div className="lesson-quest-player__visual-grid" />
-              <div className="lesson-quest-player__visual-orb" />
-              <div className="lesson-quest-player__visual-panel">
-                <span>{questVisual === "archive" ? "Noda Archive" : questVisual === "dossier" ? "Iris Dossier" : "Emergency Lab"}</span>
-                <strong>
-                  {questVisual === "archive"
-                    ? "Archive Incident"
-                    : questVisual === "dossier"
-                      ? "Setosa / Versicolor / Virginica"
-                      : "Train → Test → Predict"}
-                </strong>
-              </div>
+          {isHeroShot ? (
+            <div className="lesson-quest-player__hero">
+              <img className="lesson-quest-player__hero-bg" src={resolveLessonMediaUrl(url)} alt="" />
+              <div className="lesson-quest-player__hero-scrim" aria-hidden />
+              <img
+                className="lesson-quest-player__hero-nodus"
+                src={resolveLessonMediaUrl("/api/coach/talking.png")}
+                alt="Нодус"
+              />
             </div>
           ) : kind === "image" ? (
             <img
@@ -287,17 +276,17 @@ export function LessonQuestPlayer({
     <div className="lesson-quest-player">
       <aside className="lesson-quest-player__map">
         <div className="lesson-quest-player__map-head">
-          <img src="/api/coach/talking.png" alt="Хранитель" className="lesson-quest-player__coach" />
+          <img src="/api/coach/talking.png" alt="Нодус" className="lesson-quest-player__coach" />
           <div>
             <Title level={5} style={{ margin: 0 }}>
               {title ?? "Квест по ИИ"}
             </Title>
-            <Text type="secondary">Хранитель — твой ментор в Архиве</Text>
+            <Text type="secondary">Нодус — твой ментор в Архиве</Text>
           </div>
         </div>
         <div className="lesson-quest-player__case-meta">
           <Tag color="error">Archive Incident</Tag>
-          <Text type="secondary">90 минут · стажировка детектива данных</Text>
+          <Text type="secondary">Стажировка детектива данных</Text>
         </div>
         <Progress percent={completionPct} size="small" />
         <Space direction="vertical" style={{ width: "100%" }} size="small">
