@@ -32,9 +32,11 @@ import {
   type AuthenticatedRequest
 } from "./auth.js";
 import { sendPasswordResetLink, sendRegistrationCode, sendTeacherNewStudentEmail } from "./email.js";
+import { isSafeUploadBasename } from "./uploadSafeBasename.js";
 import {
   COURSE_MODULE_HOURS,
   ensureLessonTemplateGuides,
+  ensureLessonTemplateSeedContent,
   ensureLessonTemplateSeed,
   registerLmsRoutes
 } from "./lms.js";
@@ -171,6 +173,32 @@ app.get("/api/legal/:filename", (req: Request, res: Response) => {
   res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "private, no-cache");
+  createReadStream(filePath).pipe(res);
+});
+
+/** Статичные изображения персонажа/референсов из `public/coach` для слайдов урока. */
+app.get("/api/coach/:filename", (req: Request, res: Response) => {
+  const filename = String(req.params.filename ?? "");
+  if (!isSafeUploadBasename(filename, [".png", ".jpg", ".jpeg", ".webp", ".gif"])) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const filePath = path.join(process.cwd(), "public", "coach", filename);
+  if (!existsSync(filePath)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const lower = filename.toLowerCase();
+  const type = lower.endsWith(".png")
+    ? "image/png"
+    : lower.endsWith(".webp")
+      ? "image/webp"
+      : lower.endsWith(".gif")
+        ? "image/gif"
+        : "image/jpeg";
+  res.setHeader("Content-Type", type);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "public, max-age=3600");
   createReadStream(filePath).pipe(res);
 });
 
@@ -1500,6 +1528,13 @@ app.listen(config.port, async () => {
     await ensureLessonTemplateGuides();
   } catch (error) {
     logger.warn("lesson_template_guides_skipped", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+  try {
+    await ensureLessonTemplateSeedContent();
+  } catch (error) {
+    logger.warn("lesson_template_seed_content_skipped", {
       error: error instanceof Error ? error.message : String(error)
     });
   }
