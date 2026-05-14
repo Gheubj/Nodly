@@ -271,7 +271,7 @@ export function LessonQuestPlayer({
             <Title level={5} style={{ margin: 0 }}>
               {title ?? "Квест по ИИ"}
             </Title>
-            <Text type="secondary">Хранитель ведет тебя по миссиям</Text>
+            <Text type="secondary">Хранитель — твой ментор в Архиве</Text>
           </div>
         </div>
         <Progress percent={completionPct} size="small" />
