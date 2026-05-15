@@ -3184,6 +3184,138 @@ html[data-theme="dark"] .lesson-flow__pdf-page-canvas {
   box-shadow: 0 18px 40px rgba(2, 6, 23, 0.35);
 }
 
+.lesson-quest-player__hero.lesson-quest-player__hero--split {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 12px 18px;
+  padding: 10px 12px 10px;
+  min-height: 0;
+}
+
+.lesson-quest-player__hero-visual {
+  position: relative;
+  flex: 1 1 56%;
+  min-width: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  max-height: clamp(200px, 32vh, 360px);
+}
+
+.lesson-quest-player__hero-nodus-column .lesson-quest-player__comic-bubble {
+  margin-top: 0;
+  margin-bottom: 2px;
+}
+
+.lesson-quest-player__card--text .lesson-quest-player__comic-bubble {
+  margin-top: 14px;
+}
+
+.lesson-quest-player__hero--split .lesson-quest-player__hero-bg {
+  width: 100%;
+  height: clamp(200px, 32vh, 360px);
+  object-fit: cover;
+  object-position: center center;
+}
+
+.lesson-quest-player__hero--split .lesson-quest-player__hero-scrim {
+  border-radius: 0;
+}
+
+.lesson-quest-player__hero--split .lesson-quest-player__hero-nodus {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: min(100%, 300px);
+  max-height: clamp(220px, 40vh, 440px);
+  object-position: bottom center;
+}
+
+.lesson-quest-player__media-caption {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  font-weight: 400;
+}
+
+.lesson-quest-player__comic-bubble {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 10px;
+  padding: 10px 14px 12px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 2px solid #0f172a;
+  border-radius: 18px 18px 10px 18px;
+  box-shadow: 6px 6px 0 rgba(15, 23, 42, 0.12);
+}
+
+.lesson-quest-player__comic-bubble-meta {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.lesson-quest-player__comic-bubble-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* «Хвост» облака к персонажу */
+.lesson-quest-player__comic-bubble::after {
+  content: "";
+  position: absolute;
+  right: 18%;
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-right: 2px solid #0f172a;
+  border-bottom: 2px solid #0f172a;
+  transform: rotate(45deg);
+}
+
+.lesson-quest-player__card--checkpoint .lesson-quest-player__comic-bubble {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 900px) {
+  .lesson-quest-player__hero--split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lesson-quest-player__hero-visual {
+    max-height: clamp(180px, 36vw, 280px);
+  }
+
+  .lesson-quest-player__hero-nodus-column {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    max-width: none;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .lesson-quest-player__hero-nodus-column .lesson-quest-player__comic-bubble {
+    flex: 1 1 auto;
+    max-width: none;
+    margin-top: 0;
+  }
+
+  .lesson-quest-player__hero--split .lesson-quest-player__hero-nodus {
+    flex: 0 0 auto;
+    width: min(44%, 220px);
+  }
+}
+
 .lesson-quest-player__hero-bg {
   display: block;
   width: 100%;
@@ -3400,6 +3532,10 @@ html[data-theme="light"] .lesson-quest-player__card--media .ant-typography {
   color: #334155;
 }
 
+html[data-theme="light"] .lesson-quest-player__media-caption {
+  color: #334155;
+}
+
 html[data-theme="light"] .lesson-quest-player__card--material::after {
   background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 70%);
 }
@@ -3416,10 +3552,6 @@ html[data-theme="light"] .lesson-quest-player__mini-frame {
   .lesson-quest-player__map {
     position: static;
     max-height: none;
-  }
-
-  .lesson-quest-player__hero-nodus {
-    width: min(52%, 260px);
   }
 }
 

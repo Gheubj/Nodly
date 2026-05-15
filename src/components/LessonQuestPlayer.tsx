@@ -13,6 +13,27 @@ const LessonPdfReader = lazy(() =>
 
 const { Text, Title } = Typography;
 
+function nodusSpeechOf(block: LessonContentBlock): string | null {
+  if (block.type === "divider") {
+    return null;
+  }
+  const raw = (block as { nodusSpeech?: unknown }).nodusSpeech;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const t = raw.trim();
+  return t ? t : null;
+}
+
+function NodusComicBubble({ text }: { text: string }) {
+  return (
+    <div className="lesson-quest-player__comic-bubble" role="note" aria-label="Реплика Нодуса">
+      <span className="lesson-quest-player__comic-bubble-meta">Нодус</span>
+      <p className="lesson-quest-player__comic-bubble-text">{text}</p>
+    </div>
+  );
+}
+
 type QuestScene = {
   id: string;
   title: string;
@@ -166,19 +187,23 @@ export function LessonQuestPlayer({
 
   const renderBlock = (block: LessonContentBlock) => {
     if (block.type === "text") {
+      const speech = nodusSpeechOf(block);
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--text lesson-quest-player__card--material">
           {renderMarkdown(block.body, "lesson-quest-player__markdown")}
+          {speech ? <NodusComicBubble text={speech} /> : null}
         </div>
       );
     }
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
-      const isHeroShot = kind === "image" && url.includes("iris-quest-hero");
+      const isHeroShot =
+        (block.type === "media" || block.type === "image") && block.id === "q00_hero" && kind === "image" && url.includes("iris-quest-hero");
       const diagramMat =
         kind === "image" &&
         (url.includes("iris-quest-dataset-split") || url.includes("iris-quest-overfit"));
+      const speech = nodusSpeechOf(block);
       return (
         <div
           className={`lesson-quest-player__card lesson-quest-player__card--media${
@@ -186,14 +211,19 @@ export function LessonQuestPlayer({
           }`}
         >
           {isHeroShot ? (
-            <div className="lesson-quest-player__hero">
-              <img className="lesson-quest-player__hero-bg" src={resolveLessonMediaUrl(url)} alt="" />
-              <div className="lesson-quest-player__hero-scrim" aria-hidden />
-              <img
-                className="lesson-quest-player__hero-nodus"
-                src={resolveLessonMediaUrl("/api/coach/idle.png")}
-                alt="Нодус"
-              />
+            <div className="lesson-quest-player__hero lesson-quest-player__hero--split">
+              <div className="lesson-quest-player__hero-visual">
+                <img className="lesson-quest-player__hero-bg" src={resolveLessonMediaUrl(url)} alt="" />
+                <div className="lesson-quest-player__hero-scrim" aria-hidden />
+              </div>
+              <div className="lesson-quest-player__hero-nodus-column">
+                {speech ? <NodusComicBubble text={speech} /> : null}
+                <img
+                  className="lesson-quest-player__hero-nodus"
+                  src={resolveLessonMediaUrl("/api/coach/idle.png")}
+                  alt="Нодус"
+                />
+              </div>
             </div>
           ) : kind === "image" ? (
             <img
@@ -215,7 +245,8 @@ export function LessonQuestPlayer({
               <LessonPdfReader src={block.url} caption={block.caption ?? null} />
             </Suspense>
           )}
-          {block.caption ? <Text type="secondary">{block.caption}</Text> : null}
+          {block.caption ? <p className="lesson-quest-player__media-caption">{block.caption}</p> : null}
+          {!isHeroShot && speech ? <NodusComicBubble text={speech} /> : null}
         </div>
       );
     }
@@ -227,6 +258,7 @@ export function LessonQuestPlayer({
       const displayOptions = shuffledStringsStable(block.id, options);
       const raw = draftAnswers[block.id] ?? "";
       const selected = raw.split("||").map((s) => s.trim()).filter(Boolean);
+      const speech = nodusSpeechOf(block);
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--checkpoint">
           <div className="lesson-quest-player__checkpoint-title">
@@ -234,6 +266,7 @@ export function LessonQuestPlayer({
             <strong>Вопрос {ord}</strong>
           </div>
           <div className="lesson-quest-player__checkpoint-q">{normalizeLessonText(block.question)}</div>
+          {speech ? <NodusComicBubble text={speech} /> : null}
           {ok ? (
             <Tag color="success">Верно</Tag>
           ) : readOnly ? (
@@ -275,9 +308,11 @@ export function LessonQuestPlayer({
             readOnly
           })
         : "";
+      const speech = nodusSpeechOf(block);
       return (
         <div className="lesson-quest-player__card lesson-quest-player__card--studio">
           {renderMarkdown(block.instruction, "lesson-quest-player__markdown")}
+          {speech ? <NodusComicBubble text={speech} /> : null}
           <MiniStudioSessionStore lessonId={lessonId} blockId={block.id} instruction={block.instruction} goals={block.goals ?? []} />
           {projectId ? (
             <iframe className="lesson-quest-player__mini-frame" title={`mini-dev-${block.id}`} src={frameSrc} />
