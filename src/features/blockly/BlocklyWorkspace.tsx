@@ -2413,7 +2413,7 @@ export function BlocklyWorkspace({
             <>
               <Button
                 type="default"
-                size="middle"
+                size="small"
                 className="blockly-root__mini-toolbar-btn"
                 icon={<DatabaseOutlined />}
                 onClick={() => onOpenDataLibrary?.()}
@@ -2422,7 +2422,7 @@ export function BlocklyWorkspace({
               </Button>
               <Button
                 type="primary"
-                size="middle"
+                size="small"
                 className="blockly-root__mini-toolbar-btn"
                 icon={<SaveOutlined />}
                 onClick={() => onSaveProject?.()}
@@ -2432,7 +2432,7 @@ export function BlocklyWorkspace({
               </Button>
               <Button
                 type="link"
-                size="middle"
+                size="small"
                 className="blockly-root__mini-toolbar-btn blockly-root__mini-tab"
                 icon={<ExportOutlined />}
                 href={

@@ -1,4 +1,6 @@
 import type { Express } from "express";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { randomBytes, randomUUID } from "crypto";
 import { z } from "zod";
 import { Prisma, type CourseModule } from "@prisma/client";
@@ -25,6 +27,32 @@ const EMPTY_MINI_PROJECT_SNAPSHOT: Record<string, unknown> = {
   blocklyState: "",
   workspaceLevel: 1
 };
+
+/** Один tabular-датасет из `public/Iris.csv` для пустой мини-разработки (колонка вида — последняя). */
+function irisTabularDatasetEntryFromPublicCsv(): Record<string, unknown> {
+  const fp = path.join(process.cwd(), "public", "Iris.csv");
+  const headers = ["sepal_length", "sepal_width", "petal_length", "petal_width", "species"];
+  const targetColumnIndex = 4;
+  let rows: string[][] = [];
+  if (existsSync(fp)) {
+    const text = readFileSync(fp, "utf8");
+    rows = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((line) => line.split(",").map((c) => c.trim()))
+      .filter((r) => r.length >= 5);
+  }
+  return {
+    id: "tabular_seed_iris_csv",
+    title: "Iris (Iris.csv)",
+    dataset: {
+      headers,
+      rows,
+      targetColumnIndex
+    }
+  };
+}
 
 function cloneJson<T>(v: T): T {
   return structuredClone(v);
@@ -2814,7 +2842,8 @@ export function registerLmsRoutes(app: Express) {
       } else if (parsed.kind === "empty") {
         snapshotPayload = {
           ...cloneJson(EMPTY_MINI_PROJECT_SNAPSHOT),
-          workspaceLevel: parsed.workspaceLevel
+          workspaceLevel: parsed.workspaceLevel,
+          tabularDatasets: [irisTabularDatasetEntryFromPublicCsv()]
         };
       } else {
         const ref = await prisma.project.findFirst({
@@ -3862,6 +3891,26 @@ export async function ensureModuleAQuestTemplate() {
 | 6.0 | 2.5 | 6.3 | 3.3 | Virginica |
 
 Строка = пример; числа = **признаки**; вид = **метка**; задача = классификация.`
+      },
+      {
+        id: "q04_archive_data",
+        type: "text",
+        body: `### Данные в разработке (без палитры блоков)
+
+Во вкладке **«Данные»** можно **загрузить свой CSV**: после разбора файла выбери **целевую колонку** (метку класса), если система угадала её неправильно.
+
+Для мини-разработки по этому делу в проект уже подставлен файл **Iris.csv** из учебных материалов — его можно сразу выбрать в **«Данные → Обучение»**.
+
+Чтобы прогнать **несколько** «подозреваемых» цветков подряд, заведи строки во вкладке **«Данные → Входы»** или вводи числа **вручную в блоке предсказания** — оба варианта рабочие.`
+      },
+      {
+        id: "q04_setosa_savior_example",
+        type: "text",
+        body: `### «Спасительный» вид и пример логики (не задание)
+
+В досье **setosa** — тот самый «спасительный» вид: по короткому лепестку модель почти всегда указывает на **Iris-setosa**.
+
+**Пример программы** (для идеи, не как обязательная миссия): несколько раз подряд запускаешь **«Предсказать»** на разных строках из «Входов»; к каждому шагу цепляешь **«если предсказанный класс»** сравниваешь с текстом \`Iris-setosa\` и при совпадении выводишь **«показать сообщение»** — так из серии проверок автоматически всплывает нужный цветок.`
       },
       {
         id: "q04_features_check",
