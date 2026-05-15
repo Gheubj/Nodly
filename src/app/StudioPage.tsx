@@ -45,6 +45,7 @@ import {
   listProjects,
   saveProjectSmart
 } from "@/features/project/projectRepository";
+import { ensureIrisInMiniSnapshot } from "@/features/project/irisMiniSeed";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 
@@ -582,8 +583,12 @@ export function StudioPage() {
         messageApi.error("Проект не найден");
         return;
       }
+      let snapshot = project.snapshot;
+      if (isMiniMode) {
+        snapshot = await ensureIrisInMiniSnapshot(snapshot);
+      }
       setActiveProject(project.meta);
-      loadProjectSnapshot(project.snapshot);
+      loadProjectSnapshot(snapshot);
       setSaveTitle(project.meta.title);
       if (!isMiniMode && !project.meta.readOnly) {
         writeLastStudioProjectId(resolvedUserId.trim() || "guest", project.meta.id);
