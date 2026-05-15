@@ -6,6 +6,7 @@ import type {
   ModelType,
   ModelEvaluation,
   PredictionResult,
+  TabularPredictionBatchRow,
   SavedModelEntry,
   TabularDataset,
   TabularDatasetEntry,
@@ -56,6 +57,8 @@ interface AppState {
   tabularPredictionInputs: TabularPredictionInput[];
   savedModels: SavedModelEntry[];
   prediction: PredictionResult | null;
+  /** Пакетное предсказание по всем строкам файла (таблица во «Визуализации»). */
+  predictionBatch: TabularPredictionBatchRow[] | null;
   evaluation: ModelEvaluation | null;
   trainingRunReport: TrainingRunReport | null;
   modelComparisonReport: ModelComparisonReport | null;
@@ -90,6 +93,7 @@ interface AppState {
   addSavedModel: (entry: SavedModelEntry) => void;
   removeSavedModel: (id: string) => void;
   setPrediction: (result: PredictionResult | null) => void;
+  setPredictionBatch: (rows: TabularPredictionBatchRow[] | null, last: PredictionResult | null) => void;
   setEvaluation: (value: ModelEvaluation | null) => void;
   setTrainingRunReport: (value: TrainingRunReport | null) => void;
   setModelComparisonReport: (value: ModelComparisonReport | null) => void;
@@ -119,6 +123,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   tabularPredictionInputs: [],
   savedModels: [],
   prediction: null,
+  predictionBatch: null,
   evaluation: null,
   trainingRunReport: null,
   modelComparisonReport: null,
@@ -275,7 +280,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({
       savedModels: state.savedModels.filter((m) => m.id !== id)
     })),
-  setPrediction: (result) => set({ prediction: result }),
+  setPrediction: (result) => set({ prediction: result, predictionBatch: null }),
+  setPredictionBatch: (rows, last) => set({ predictionBatch: rows, prediction: last }),
   setEvaluation: (value) => set({ evaluation: value }),
   setTrainingRunReport: (value) => set({ trainingRunReport: value }),
   setModelComparisonReport: (value) => set({ modelComparisonReport: value }),
@@ -324,6 +330,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       blocklyState: snapshot.blocklyState,
       workspaceLevel: normalizeWorkspaceLevelFromSnapshot(snapshot.workspaceLevel),
       prediction,
+      predictionBatch: null,
       evaluation,
       trainingRunReport,
       modelComparisonReport,

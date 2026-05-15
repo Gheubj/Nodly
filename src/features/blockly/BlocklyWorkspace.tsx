@@ -14,6 +14,7 @@ import {
 } from "@/features/model/mlEngine";
 import type { ModelEvaluation, ModelType, SavedModelEntry, TrainingRunReport } from "@/shared/types/ai";
 import { trackEvent } from "@/features/analytics/analytics";
+import { featureStringFromDatasetRow } from "@/shared/tabularRowFeatures";
 import { useHtmlDataTheme } from "@/hooks/useHtmlDataTheme";
 import type { StudioGoal } from "@/shared/types/lessonContent";
 import { MiniWorkspaceGoalsOverlay } from "@/features/blockly/MiniWorkspaceGoalsOverlay";
@@ -100,7 +101,14 @@ type BlockCommand =
       modelBId: string;
       modelCId: string;
     }
-  | { type: "predict"; savedModelId: string; inputRef: string; inlineTabular: string }
+  | {
+      type: "predict";
+      savedModelId: string;
+      inputRef: string;
+      inlineTabular: string;
+      /** Строка в файле (1-based) для режима `tabular_ds:…:single`. */
+      tabularDatasetRow1Based?: number;
+    }
   | { type: "save_model"; title: string }
   | { type: "wait"; seconds: number }
   | { type: "if"; condition: LogicExpr; thenCommands: BlockCommand[]; elseCommands: BlockCommand[] }
@@ -348,13 +356,18 @@ function getPredictL1DataSourceOptionsForBlock(predictBlock: Blockly.Block): [st
       : [["Добавьте изображение в «Данные»", "none"]];
   }
   const manual: [string, string] = ["Ввести в блоке", TABULAR_MANUAL_REF];
+  const fromDatasets: [string, string][] = state.tabularDatasets.flatMap((item) => [
+    [`${item.title} — одна строка`, `tabular_ds:${item.id}:single`],
+    [`${item.title} — весь файл`, `tabular_ds:${item.id}:all`]
+  ]);
   const fromLib = state.tabularPredictionInputs.map(
     (item) => [`Из данных: ${item.title}`, `tabular:${item.id}`] as [string, string]
   );
-  if (fromLib.length === 0) {
+  const tail = [...fromDatasets, ...fromLib];
+  if (tail.length === 0) {
     return [manual];
   }
-  return [manual, ...fromLib];
+  return [manual, ...tail];
 }
 
 function effectiveToolboxLevel(level: WorkspaceLevel): 1 | 2 {
@@ -400,7 +413,7 @@ function getPaletteItems(level: 1 | 2): PaletteItem[] {
         group: "predict",
         shape: "stack",
         description:
-          "После обучения — сразу по этой модели. Выбери: ввести признаки строкой в блоке или строку/файл из «Данные»."
+          "После обучения — сразу по этой модели. Вход: числа в блоке, строка из «Данные → Входы» или **файл из «Данные → Обучение»** (одна строка или весь файл — список во «Визуализации»)."
       },
       { type: "noda_if_then", title: "если ... то", group: "control", shape: "stack" },
       { type: "noda_if_then_only", title: "если ... то (без иначе)", group: "control", shape: "stack" },
@@ -530,9 +543,11 @@ function refreshNodlyPredictInlineRow(block: Blockly.Block) {
 /** Уровень 1: строка в блоке только для таблиц и только при выборе «Ввести в блоке». */
 function refreshNodlyPredictL1InlineRow(block: Blockly.Block) {
   const modelType = resolvePredictL1ModelType(block);
-  const ref = block.getFieldValue("INPUT_REF");
-  const show = !!modelType && modelType !== "image_knn" && ref === TABULAR_MANUAL_REF;
-  block.getInput("INLINE_ROW")?.setVisible(show);
+  const ref = String(block.getFieldValue("INPUT_REF") ?? "");
+  const showManual = !!modelType && modelType !== "image_knn" && ref === TABULAR_MANUAL_REF;
+  block.getInput("INLINE_ROW")?.setVisible(showManual);
+  const showDsRow = !!modelType && modelType !== "image_knn" && ref.startsWith("tabular_ds:") && ref.endsWith(":single");
+  block.getInput("DS_ROW_ROW")?.setVisible(showDsRow);
   const svg = block as Blockly.BlockSvg;
   if (svg.rendered) {
     svg.render();
@@ -914,6 +929,9 @@ function registerBlocks() {
       this.appendDummyInput("INLINE_ROW")
         .appendField("строка через запятую")
         .appendField(new Blockly.FieldTextInput("5.1,3.5,1.4,0.2"), "INLINE_TABULAR");
+      this.appendDummyInput("DS_ROW_ROW")
+        .appendField("строка в файле №")
+        .appendField(new Blockly.FieldNumber(1, 1, 9999, 1), "DS_ROW_1BASED");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(BLOCK_COLOR.predict);
@@ -923,7 +941,7 @@ function registerBlocks() {
           return;
         }
         const ce = e as Blockly.Events.BlockChange;
-        if (ce.element === "field" && ce.name === "INPUT_REF") {
+        if (ce.element === "field" && (ce.name === "INPUT_REF" || ce.name === "DS_ROW_1BASED")) {
           refreshNodlyPredictL1InlineRow(this);
         }
       });
@@ -1302,13 +1320,18 @@ export function BlocklyWorkspace({
         if (inputRef === "none") {
           throw new Error("В блоке «Предсказать» выбери источник входных данных.");
         }
+        let tabularDatasetRow1Based: number | undefined;
+        if (inputRef.startsWith("tabular_ds:") && inputRef.endsWith(":single")) {
+          tabularDatasetRow1Based = Number(current.getFieldValue("DS_ROW_1BASED")) || 1;
+        }
         commands.push({
           type: "predict",
           savedModelId: SESSION_TRAINED_MODEL_ID,
           inputRef,
           inlineTabular: String(
             current.getFieldValue("INLINE_TABULAR") ?? ""
-          ).trim()
+          ).trim(),
+          tabularDatasetRow1Based
         });
       } else if (current.type === "noda_wait_seconds") {
         commands.push({ type: "wait", seconds: Number(current.getFieldValue("SECONDS")) || 0 });
@@ -2058,47 +2081,104 @@ export function BlocklyWorkspace({
           }
         } else {
           const ref = command.inputRef;
-          let tabularLine = "";
-          if (ref === TABULAR_MANUAL_REF || ref === "none") {
-            tabularLine = command.inlineTabular.trim();
-          } else if (ref.startsWith("tabular:")) {
-            const sid = ref.slice("tabular:".length);
-            tabularLine =
-              state.tabularPredictionInputs.find((item) => item.id === sid)?.input.trim() ?? "";
-          }
-          if (!tabularLine) {
-            throw new Error(
-              "Для таблиц: либо выбери строку из библиотеки во «вход», либо «Вручную» и заполни признаки через запятую."
-            );
-          }
-          const result = await predictByModelType({
-            modelType,
-            predictionFile: null,
-            labelsMap,
-            tabularInput: tabularLine
-          });
-          state.setPrediction(result);
-          const duringPredTab = useAppStore.getState().training.scenarioActive;
-          state.setTraining({
-            isTraining: false,
-            message: "",
-            coachMood: duringPredTab ? "working" : "success"
-          });
-          if (miniStudioToolbar) {
-            queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
-          }
-          await trackEvent("prediction_run", {
-            modelType,
-            label: result?.title ?? null
-          });
-          onMiniStudioActivity?.({
-            type: "predict",
-            modelType,
-            inputRef: command.inputRef,
-            label: result?.title ?? null
-          });
-          if (!fromEvent) {
-            await runEventChain("predicted");
+
+          const finishTabularFlow = async (label: string | null) => {
+            const duringPredTab = useAppStore.getState().training.scenarioActive;
+            state.setTraining({
+              isTraining: false,
+              message: "",
+              coachMood: duringPredTab ? "working" : "success"
+            });
+            if (miniStudioToolbar) {
+              queueMicrotask(() => window.dispatchEvent(new Event("nodly-persist-studio")));
+            }
+            await trackEvent("prediction_run", {
+              modelType,
+              label
+            });
+            onMiniStudioActivity?.({
+              type: "predict",
+              modelType,
+              inputRef: command.inputRef,
+              label
+            });
+            if (!fromEvent) {
+              await runEventChain("predicted");
+            }
+          };
+
+          const predictOneLine = (line: string) =>
+            predictByModelType({
+              modelType,
+              predictionFile: null,
+              labelsMap,
+              tabularInput: line
+            });
+
+          if (ref.startsWith("tabular_ds:")) {
+            const segs = ref.split(":");
+            const dsId = segs[2];
+            const mode = segs[3];
+            const dsEntry = state.tabularDatasets.find((d) => d.id === dsId);
+            if (!dsEntry) {
+              throw new Error("Таблица не найдена в «Данные». Открой «Данные → Обучение» и проверь файлы.");
+            }
+            const { dataset } = dsEntry;
+            if (mode === "single") {
+              const r0 = Math.max(0, (command.tabularDatasetRow1Based ?? 1) - 1);
+              const line = featureStringFromDatasetRow(dataset, r0) ?? "";
+              if (!line) {
+                throw new Error("Нет такой строки в выбранном файле (проверь номер строки).");
+              }
+              const result = await predictOneLine(line);
+              state.setPrediction(result);
+              await finishTabularFlow(result?.title ?? null);
+            } else if (mode === "all") {
+              const batch: { rowIndex: number; title: string; confidence: number }[] = [];
+              for (let i = 0; i < dataset.rows.length; i += 1) {
+                const line = featureStringFromDatasetRow(dataset, i);
+                if (!line) {
+                  continue;
+                }
+                const result = await predictOneLine(line);
+                if (result) {
+                  batch.push({
+                    rowIndex: i + 1,
+                    title: result.title,
+                    confidence: result.confidence
+                  });
+                }
+              }
+              const last =
+                batch.length > 0
+                  ? {
+                      labelId: batch[batch.length - 1].title,
+                      title: batch[batch.length - 1].title,
+                      confidence: batch[batch.length - 1].confidence
+                    }
+                  : null;
+              state.setPredictionBatch(batch.length > 0 ? batch : null, last);
+              await finishTabularFlow(last?.title ?? null);
+            } else {
+              throw new Error("Неизвестный режим предсказания по файлу.");
+            }
+          } else {
+            let tabularLine = "";
+            if (ref === TABULAR_MANUAL_REF || ref === "none") {
+              tabularLine = command.inlineTabular.trim();
+            } else if (ref.startsWith("tabular:")) {
+              const sid = ref.slice("tabular:".length);
+              tabularLine =
+                state.tabularPredictionInputs.find((item) => item.id === sid)?.input.trim() ?? "";
+            }
+            if (!tabularLine) {
+              throw new Error(
+                "Для таблиц: выбери источник во входе «Предсказать» — файл из «Данные», строку из входов или «Ввести в блоке»."
+              );
+            }
+            const result = await predictOneLine(tabularLine);
+            state.setPrediction(result);
+            await finishTabularFlow(result?.title ?? null);
           }
         }
       }

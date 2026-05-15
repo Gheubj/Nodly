@@ -67,6 +67,13 @@ export interface TabularPredictionInput {
   input: string;
 }
 
+/** Результат пакетного предсказания по строкам файла (вкладка «Визуализация»). */
+export interface TabularPredictionBatchRow {
+  rowIndex: number;
+  title: string;
+  confidence: number;
+}
+
 export type CoachMood = "idle" | "working" | "success" | "error";
 
 export interface TrainingState {

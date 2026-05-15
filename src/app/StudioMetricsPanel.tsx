@@ -18,6 +18,7 @@ import type {
   ConfusionMatrixData,
   ModelComparisonReport,
   RegressionExampleRow,
+  TabularPredictionBatchRow,
   TrainingRunReport
 } from "@/shared/types/ai";
 import { metricsFromConfusionMatrix } from "@/shared/confusionMetrics";
@@ -88,6 +89,26 @@ function MetricsTable({ report }: { report: TrainingRunReport }) {
       dataSource={data}
     />
   );
+}
+
+const KID_TRAIN_METRIC_KEYS = new Set([
+  "testAccuracy",
+  "testLoss",
+  "accuracy",
+  "loss",
+  "valAccuracy",
+  "valLoss",
+  "samples"
+]);
+
+function filterKidTrainingMetrics(metrics: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(metrics)) {
+    if (KID_TRAIN_METRIC_KEYS.has(k) && typeof v === "number") {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 function EpochCharts({ report }: { report: TrainingRunReport }) {
@@ -583,73 +604,143 @@ function ComparisonPanel({ comparison }: { comparison: ModelComparisonReport }) 
 export type StudioMetricsPanelProps = {
   /** Внутри вкладки «Визуализация» — без дублирующего заголовка карточки и фиксированной ширины колонки. */
   embedded?: boolean;
+  /** Квест «Ирисы»: только простые метрики, без графиков и «лишних» таблиц. */
+  kidSimpleViz?: boolean;
 };
 
 /** Метрики последнего обучения, графики, матрица, примеры, последнее предсказание. */
-export function StudioMetricsPanel({ embedded = false }: StudioMetricsPanelProps) {
+export function StudioMetricsPanel({ embedded = false, kidSimpleViz = false }: StudioMetricsPanelProps) {
   const report = useAppStore((s) => s.trainingRunReport);
   const prediction = useAppStore((s) => s.prediction);
+  const predictionBatch = useAppStore((s) => s.predictionBatch);
   const comparison = useAppStore((s) => s.modelComparisonReport);
   const predictionIsRegression =
     prediction?.labelId === "regression_output" || report?.kind === "tabular_regression";
 
   const emptyBody = (
-    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Запусти обучение или предсказание — здесь появятся метрики и графики." />
+    <Empty
+      image={Empty.PRESENTED_IMAGE_SIMPLE}
+      description={
+        kidSimpleViz
+          ? "Запусти обучение или предсказание — здесь появятся цифры."
+          : "Запусти обучение или предсказание — здесь появятся метрики и графики."
+      }
+    />
   );
 
-  const filledBody = (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      {comparison ? <ComparisonPanel comparison={comparison} /> : null}
-      {report ? (
-        <>
-          <div>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-              По эпохам
-            </Title>
-            <EpochCharts report={report} />
-          </div>
-          <ConfusionTable report={report} />
-          <ExamplesTable report={report} />
-          <div>
-            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-              Итог обучения
-            </Title>
-            <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-              {report.summary}
-            </Text>
-            <MetricsTable report={report} />
-            {report.confusionMatrix ? <PerClassQualityTable cm={report.confusionMatrix} /> : null}
-          </div>
-        </>
-      ) : null}
-      {prediction ? (
-        <div>
-          <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-            Последнее предсказание
-          </Title>
-          <Text>
-            {predictionIsRegression ? "Прогноз" : "Класс"}: <strong>{prediction.title}</strong>
-          </Text>
-          <br />
-          {!predictionIsRegression ? (
-            <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+  const filledBody = useMemo(() => {
+    if (kidSimpleViz) {
+      return (
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          {report ? (
+            <div>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                Итог обучения
+              </Title>
+              <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                {report.summary}
+              </Text>
+              <MetricsTable report={{ ...report, metrics: filterKidTrainingMetrics(report.metrics) }} />
+            </div>
           ) : null}
-        </div>
-      ) : null}
-    </Space>
-  );
+          {predictionBatch && predictionBatch.length > 0 ? (
+            <div>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                Предсказания по файлу
+              </Title>
+              <Table<TabularPredictionBatchRow>
+                size="small"
+                pagination={false}
+                rowKey={(r) => `b-${r.rowIndex}`}
+                dataSource={predictionBatch}
+                columns={[
+                  { title: "Строка", dataIndex: "rowIndex", key: "r", width: 72 },
+                  { title: "Класс", dataIndex: "title", key: "t" },
+                  {
+                    title: "Уверенность",
+                    dataIndex: "confidence",
+                    key: "c",
+                    render: (v: number) => `${(v * 100).toFixed(1)}%`
+                  }
+                ]}
+              />
+            </div>
+          ) : null}
+          {prediction && (!predictionBatch || predictionBatch.length === 0) ? (
+            <div>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                Последнее предсказание
+              </Title>
+              <Text>
+                {predictionIsRegression ? "Прогноз" : "Класс"}: <strong>{prediction.title}</strong>
+              </Text>
+              <br />
+              {!predictionIsRegression ? (
+                <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+              ) : null}
+            </div>
+          ) : null}
+        </Space>
+      );
+    }
+    return (
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        {comparison ? <ComparisonPanel comparison={comparison} /> : null}
+        {report ? (
+          <>
+            <div>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                По эпохам
+              </Title>
+              <EpochCharts report={report} />
+            </div>
+            <ConfusionTable report={report} />
+            <ExamplesTable report={report} />
+            <div>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+                Итог обучения
+              </Title>
+              <Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                {report.summary}
+              </Text>
+              <MetricsTable report={report} />
+              {report.confusionMatrix ? <PerClassQualityTable cm={report.confusionMatrix} /> : null}
+            </div>
+          </>
+        ) : null}
+        {prediction ? (
+          <div>
+            <Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
+              Последнее предсказание
+            </Title>
+            <Text>
+              {predictionIsRegression ? "Прогноз" : "Класс"}: <strong>{prediction.title}</strong>
+            </Text>
+            <br />
+            {!predictionIsRegression ? (
+              <Text type="secondary">Уверенность: {(prediction.confidence * 100).toFixed(1)}%</Text>
+            ) : null}
+          </div>
+        ) : null}
+      </Space>
+    );
+  }, [kidSimpleViz, report, prediction, predictionBatch, comparison, predictionIsRegression]);
+
+  const hasContent = kidSimpleViz
+    ? Boolean(report || prediction || (predictionBatch && predictionBatch.length > 0))
+    : Boolean(report || prediction || comparison);
 
   if (embedded) {
     return (
       <div className="studio-metrics-panel studio-metrics-panel--embedded" aria-label="Визуализация">
         <Card size="small" className="studio-metrics-card" bordered={false}>
-          {!report && !prediction && !comparison ? emptyBody : filledBody}
+          {!hasContent ? emptyBody : filledBody}
         </Card>
       </div>
     );
   }
 
-  if (!report && !prediction && !comparison) {
+  if (!hasContent) {
     return (
       <aside className="studio-metrics-panel" aria-label="Визуализация">
         <Card size="small" title="Визуализация" className="studio-metrics-card">

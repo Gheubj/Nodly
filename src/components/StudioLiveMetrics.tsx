@@ -50,6 +50,30 @@ function pickF1(ev: ModelEvaluation | null): number | null {
   return null;
 }
 
+function pickTestLoss(ev: ModelEvaluation | null): number | null {
+  if (!ev?.metrics) {
+    return null;
+  }
+  const m = ev.metrics;
+  if (typeof m.testLoss === "number") {
+    return m.testLoss;
+  }
+  if (typeof m.valLoss === "number") {
+    return m.valLoss;
+  }
+  if (typeof m.loss === "number") {
+    return m.loss;
+  }
+  return null;
+}
+
+function lossToBarPortion(loss: number): number {
+  if (Number.isNaN(loss) || !Number.isFinite(loss) || loss <= 0) {
+    return 1;
+  }
+  return clamp01(1 / (1 + loss));
+}
+
 function pickRmse(ev: ModelEvaluation | null): number | null {
   if (!ev?.metrics) {
     return null;
@@ -87,12 +111,14 @@ type StudioLiveMetricsProps = {
   className?: string;
   /** Мини-сцена: чуть мельче типографика и полосы */
   compact?: boolean;
+  /** Только точность (без F1), для детского квеста. */
+  accuracyOnly?: boolean;
 };
 
 /**
  * Метрики последнего обучения: название и проценты над полосой, ниже — только прогресс.
  */
-export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps) {
+export function StudioLiveMetrics({ className, compact, accuracyOnly }: StudioLiveMetricsProps) {
   const evaluation = useAppStore((s) => s.evaluation);
   const training = useAppStore((s) => s.training);
   const liveTrainingStreamModelType = useAppStore((s) => s.liveTrainingStreamModelType);
@@ -100,8 +126,29 @@ export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps
   const rows = useMemo((): MetricRow[] => {
     const ev = evaluation;
     const acc = pickAccuracy(ev);
-    const f1 = pickF1(ev);
+    const f1 = accuracyOnly ? null : pickF1(ev);
     const rmse = pickRmse(ev);
+
+    if (accuracyOnly) {
+      const loss = pickTestLoss(ev);
+      const out: MetricRow[] = [];
+      if (acc != null) {
+        out.push({ key: "acc", name: "accuracy", fill: acc, pctLabel: pctLabel01(acc) });
+      }
+      if (loss != null) {
+        const fill = lossToBarPortion(loss);
+        out.push({ key: "loss", name: "loss", fill, pctLabel: loss.toFixed(4) });
+      }
+      if (out.length > 0) {
+        return out;
+      }
+      if (rmse != null) {
+        const fill = rmseToBarPortion(rmse);
+        const q = Math.round(fill * 100);
+        return [{ key: "rmse", name: "rmse (тест)", fill, pctLabel: `${q}%` }];
+      }
+      return [];
+    }
 
     if (acc != null && f1 != null) {
       return [
@@ -121,7 +168,7 @@ export function StudioLiveMetrics({ className, compact }: StudioLiveMetricsProps
       return [{ key: "rmse", name: "rmse (тест)", fill, pctLabel: `${q}%` }];
     }
     return [];
-  }, [evaluation]);
+  }, [evaluation, accuracyOnly]);
 
   const rootClass = [
     "nodly-promo-metrics",

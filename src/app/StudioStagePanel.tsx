@@ -92,6 +92,8 @@ export type StudioStagePanelProps = {
   allGoalsDone?: boolean;
   /** Если false — цели показываются только на воркспейсе (оверлей), здесь только персонаж и текст. */
   showGoalsInPanel?: boolean;
+  /** Квест «Ирисы»: проще метрики на сцене и без лишних графиков. */
+  irisQuestKidUi?: boolean;
 };
 
 /** Панель «сцены»: статус сценария; в мини-студии — персонаж, инструкция и цели. */
@@ -101,7 +103,8 @@ export function StudioStagePanel({
   goals = [],
   goalStatus = {},
   allGoalsDone = false,
-  showGoalsInPanel = true
+  showGoalsInPanel = true,
+  irisQuestKidUi = false
 }: StudioStagePanelProps) {
   const training = useAppStore((s) => s.training);
   const coachSrc = useMemo(() => coachPngForMood(resolveCoachMood(training)), [training]);
@@ -153,8 +156,14 @@ export function StudioStagePanel({
               ) : null}
               <CoachBriefBlock />
             </div>
-            <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
-            <StudioLiveMetrics compact className="studio-stage-panel__mini-metrics" />
+            {irisQuestKidUi ? null : (
+              <StudioTrainingLiveCharts compact className="studio-stage-panel__mini-live-charts" />
+            )}
+            <StudioLiveMetrics
+              compact
+              className="studio-stage-panel__mini-metrics"
+              accuracyOnly={irisQuestKidUi}
+            />
           </div>
         </Card>
       </aside>

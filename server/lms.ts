@@ -54,6 +54,36 @@ function irisTabularDatasetEntryFromPublicCsv(): Record<string, unknown> {
   };
 }
 
+/** Лабораторные записи измерений цветков (оранжерея), `public/Iris_lab_greenhouse.csv`. */
+function irisLabTabularDatasetEntryFromPublicCsv(): Record<string, unknown> {
+  const fp = path.join(process.cwd(), "public", "Iris_lab_greenhouse.csv");
+  const headers = ["sepal_length", "sepal_width", "petal_length", "petal_width", "species"];
+  const targetColumnIndex = 4;
+  let rows: string[][] = [];
+  if (existsSync(fp)) {
+    const text = readFileSync(fp, "utf8");
+    rows = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((line) => line.split(",").map((c) => c.trim()))
+      .filter((r) => r.length >= 5);
+  }
+  return {
+    id: "tabular_seed_iris_lab_csv",
+    title: "Оранжерея лаборатории (50 цветков)",
+    dataset: {
+      headers,
+      rows,
+      targetColumnIndex
+    }
+  };
+}
+
+function irisQuestMiniTabularDatasets(): Record<string, unknown>[] {
+  return [irisTabularDatasetEntryFromPublicCsv(), irisLabTabularDatasetEntryFromPublicCsv()];
+}
+
 function cloneJson<T>(v: T): T {
   return structuredClone(v);
 }
@@ -2840,10 +2870,14 @@ export function registerLmsRoutes(app: Express) {
       if (parsed.kind === "template") {
         snapshotPayload = normalizeProjectSnapshotPayload(lesson.starterPayload);
       } else if (parsed.kind === "empty") {
+        const tabularDatasets =
+          lesson.id === "lt_module_a_keeper_quest"
+            ? irisQuestMiniTabularDatasets()
+            : [irisTabularDatasetEntryFromPublicCsv()];
         snapshotPayload = {
           ...cloneJson(EMPTY_MINI_PROJECT_SNAPSHOT),
           workspaceLevel: parsed.workspaceLevel,
-          tabularDatasets: [irisTabularDatasetEntryFromPublicCsv()]
+          tabularDatasets
         };
       } else {
         const ref = await prisma.project.findFirst({
@@ -3825,7 +3859,11 @@ export async function ensureModuleAQuestTemplate() {
         type: "text",
         body: `### Датасет и входы
 
-**Датасет** — таблица примеров (например Iris): столбцы **признаков** и столбец **метки**. **Вход при предсказании** — новые числа одного цветка, не строки из обучения.`
+**Датасет** — таблица примеров (например Iris): в каждой строке **четыре числа** — измерения чашелистика и лепестка (длина/ширина), это **признаки**; последний столбец — **метка** (вид цветка). Такие строки — как **записи параметров цветков** в журнале лаборатории.
+
+**Учебный датасет** — много размеченных примеров, на которых модель **учится**. **Лабораторный файл** — новые измерения из оранжереи: по ним проверяют модель и ищут нужный вид.
+
+**Вход при предсказании** — либо одна новая строка чисел, либо целый файл таких строк (без переобучения на нём).`
       },
       {
         id: "q03_datasets_check",
@@ -4044,7 +4082,7 @@ export async function ensureModuleAQuestTemplate() {
 
 - **Старт** — шляпа цепочки: запуск по кнопке «Старт».
 - **Обучить модель** — обучение на датасете из «Данные → Обучение».
-- **Предсказать** — прогон по уже обученной модели; вход из блока или из «Данные → Входы».
+- **Предсказать** — прогон по уже обученной модели; источник: **ввести числа в блоке**, строка из **«Данные → Входы»**, либо **файл из «Данные → Обучение»** (одна строка по номеру или **весь файл** — таблица ответов во «Визуализации»).
 - **если … то**, **если … то (без иначе)** — ветвление по условию.
 - **ждать … сек** — пауза.
 - **\[ \] > \[ \]**, **\[ \] и \[ \]**, **\[ \] или \[ \]**, **не \[ \]** — логические кирпичики для условий.
@@ -4052,7 +4090,7 @@ export async function ensureModuleAQuestTemplate() {
 - **число**, **текст** — константы в цепочку.
 - **показать результат**, **показать сообщение**, **добавить в журнал** — вывод для ученика.
 
-Типичная цепочка: **Старт → Обучить модель → Предсказать → уверенность / предсказанный класс → показать результат**.`
+Типичная цепочка: **Старт → Обучить модель → Предсказать → (если нужно) если … то → показать сообщение / результат**.`
       },
       {
         id: "q08_blocks_check",
@@ -4089,6 +4127,19 @@ export async function ensureModuleAQuestTemplate() {
       { id: "q_div_08c", type: "divider" },
 
       {
+        id: "q09_two_datasets",
+        type: "text",
+        body: `### Учебный стол и лаборатория
+
+В мини-разработке в **«Данные → Обучение»** лежат **два CSV**:
+
+1. **Iris (Iris.csv)** — классический **учебный** набор: на нём модель **учится** отличать три вида.
+2. **Оранжерея лаборатории (50 цветков)** — **записи параметров** свежих цветков из теплицы (те же четыре числа + метка вида для проверки). Этот файл **не** смешивают с обучением: по нему только **проверяют** модель.
+
+В блоке **«Предсказать»** выбери **одну строку** лабораторного файла (поле «строка в файле №») или **весь файл** — тогда во вкладке **«Визуализация»** появится **таблица** ответов по строкам.`
+      },
+
+      {
         id: "q09_lab_title",
         type: "text",
         textScale: "lg",
@@ -4096,12 +4147,14 @@ export async function ensureModuleAQuestTemplate() {
 
 В **Nodly** по шагам:
 
-1. В **«Данные → Обучение»** выбери таблицу **Iris** (или уже подставленный файл).
-2. В блоке **«Обучить модель»** выбери **«Таблица: классификация»** — модель учится отличать **вид** по четырём числам в строке.
-3. Запусти обучение и посмотри **метрики** после прогона: например **точность на проверке** и **loss**. Так видно, насколько модель реально выучилась, а не «на словах».
-4. Сделай **предсказание** для нового примера и сверь ответ с тем, что ждёшь по досье.
+1. В **«Данные → Обучение»** в блоке **«Обучить модель»** выбери **только учебный** файл **Iris (Iris.csv)** — на нём модель учится.
+2. Тип модели: **«Таблица: классификация»**. Запусти обучение и посмотри **точность** и **loss** во вкладке **«Визуализация»** (без лишних «взрослых» таблиц в этом уроке).
+3. В **«Предсказать»** выбери **лабораторный** файл: **одна строка** (подставь номер строки) или **весь файл** — ответы появятся во **«Визуализации»**.
+4. Собери **ветку «если … то (без иначе)»**: если **предсказанный класс** совпадает с нужным видом (например **Iris-versicolor** — линия с нужным пигментом по досье), выведи **«показать сообщение»** с коротким текстом вроде «Эта линия — для Серебряной пыльцы». Иначе — другое сообщение или тишина в ветке.
 
-Ниже — мини-разработка: повтори то же по **целям** в окне.`
+**Образец цепочки блоков:** \`Старт → Обучить модель (Iris учебный) → Предсказать (лаборатория, одна строка) → если [предсказанный класс] = [текст «Iris-versicolor»] → показать сообщение\` (подставь свой вид, если выбрал другой из трёх).
+
+Ниже — мини-разработка: те же шаги по **целям** в окне.`
       },
       {
         id: "q09_lab_image",
@@ -4114,14 +4167,15 @@ export async function ensureModuleAQuestTemplate() {
         id: "q09_studio",
         type: "studio",
         instruction:
-          "Iris в «Данные → Обучение». В «Обучить модель» выбери «Таблица: классификация», запусти обучение, посмотри метрики (точность, loss). Потом предсказание для проверочного цветка.",
+          "Обучение только на **Iris (Iris.csv)**. Классификация, запуск обучения. Потом «Предсказать» по **Оранжерея лаборатории** — одна строка или весь файл; во «Визуализации» смотри таблицу. Добавь **«если … то (без иначе)»**: если предсказанный класс совпадает с выбранным видом (например Iris-versicolor) — «показать сообщение».",
         studioPracticeKind: "empty",
         studioWorkspaceLevel: 1,
         goals: [
           { id: "q_goal_dataset", title: "Выбери tabular-датасет Iris", type: "select_dataset", datasetKind: "tabular" },
           { id: "q_goal_train_block", title: "Добавь блок «Обучить модель»", type: "add_block", blockType: "noda_train_model_simple" },
+          { id: "q_goal_if", title: "Добавь «если … то (без иначе)» для проверки вида", type: "add_block", blockType: "noda_if_then_only" },
           { id: "q_goal_train", title: "Запусти обучение модели", type: "train_model" },
-          { id: "q_goal_predict", title: "Сделай предсказание", type: "run_prediction" }
+          { id: "q_goal_predict", title: "Сделай предсказание (лабораторный файл или строка)", type: "run_prediction" }
         ]
       },
       {
@@ -4129,9 +4183,9 @@ export async function ensureModuleAQuestTemplate() {
         type: "text",
         body: `### После практики
 
-В **Nodly**, в разделе **«Данные»**, можно загрузить свой CSV и указать **целевую колонку**. Если таблиц в проекте нет, подставляется **Iris.csv** — выбери его в **«Обучение»**. Несколько строк для проверки — в **«Входы»** или вручную в блоке предсказания.
+В **«Данные»** можно загрузить свой CSV и указать **целевую колонку**. В этом деле в мини-студии уже лежат **учебный Iris** и **лабораторный файл** — не путай: **учимся** на первом, **проверяем** на втором.
 
-Если метрики после обучения «плохие», чаще проблема в данных или в типе модели — вернись к сценам про **данные**, **train/test** и **тип модели**.`
+Если метрики «плохие», вернись к сценам про **данные**, **train/test** и **тип модели**.`
       },
       { id: "q_div_09", type: "divider" },
 
@@ -4187,7 +4241,7 @@ export async function ensureModuleAQuestTemplate() {
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Архив Noda, Нодус, Iris и одна практика в Nodly."
+      studentSummary: "Два набора ирисов: учёба и лаборатория; предсказание по файлу и простая визуализация в Nodly."
     },
     update: {
       title: "Дело Ирисового шифра",
@@ -4197,7 +4251,7 @@ export async function ensureModuleAQuestTemplate() {
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Архив Noda, Нодус, Iris и одна практика в Nodly."
+      studentSummary: "Два набора ирисов: учёба и лаборатория; предсказание по файлу и простая визуализация в Nodly."
     }
   });
 }

@@ -19,12 +19,13 @@ type CommonProps = {
 
 export type StudioSidePanelTabsProps =
   | ({ variant: "full" } & CommonProps)
-  | ({ variant: "mini" } & MiniSideProps & CommonProps);
+  | ({ variant: "mini" } & MiniSideProps & CommonProps & { irisQuestKidUi?: boolean });
 
 /** Одна колонка справа от Blockly: вкладки «Сцена» и «Визуализация» (как раньше по ширине). */
 export function StudioSidePanelTabs(props: StudioSidePanelTabsProps) {
   const isMini = props.variant === "mini";
   const omitAnchor = props.omitOnboardingAnchor === true;
+  const irisQuestKidUi = props.variant === "mini" && props.irisQuestKidUi === true;
   const rootClass = `studio-page__side-tabs${isMini ? " studio-page__side-tabs--mini" : " studio-page__side-tabs--full"}`;
 
   const sceneChildren =
@@ -36,6 +37,7 @@ export function StudioSidePanelTabs(props: StudioSidePanelTabsProps) {
         goalStatus={props.goalStatus}
         allGoalsDone={props.allGoalsDone}
         showGoalsInPanel={props.showGoalsInPanel ?? true}
+        irisQuestKidUi={irisQuestKidUi}
       />
     ) : (
       <StudioStagePanel />
@@ -43,7 +45,7 @@ export function StudioSidePanelTabs(props: StudioSidePanelTabsProps) {
 
   const tabItems = [
     { key: "scene", label: "Сцена", children: sceneChildren },
-    { key: "viz", label: "Визуализация", children: <StudioMetricsPanel embedded /> }
+    { key: "viz", label: "Визуализация", children: <StudioMetricsPanel embedded kidSimpleViz={irisQuestKidUi} /> }
   ];
   if (!isMini) {
     tabItems.push({ key: "sprite", label: "Персонаж", children: <StudioSpriteSettingsTab /> });

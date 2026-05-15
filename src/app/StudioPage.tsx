@@ -45,7 +45,8 @@ import {
   listProjects,
   saveProjectSmart
 } from "@/features/project/projectRepository";
-import { ensureIrisInMiniSnapshot } from "@/features/project/irisMiniSeed";
+import { ensureIrisInMiniSnapshot, ensureIrisQuestLabDatasetInSnapshot } from "@/features/project/irisMiniSeed";
+import { IRIS_QUEST_LESSON_TEMPLATE_ID } from "@/shared/irisQuestLesson";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
 
@@ -194,6 +195,8 @@ export function StudioPage() {
   const hasLessonEmbed = Boolean(embedLesson && miniLessonId && miniBlockId);
   /** Мини-режим в iframe (`mini=1`) или урок в полной студии (`embed=lesson` + ids блока). */
   const isMiniMode = isMiniLegacy || hasLessonEmbed;
+  const irisQuestMiniLesson =
+    isMiniMode && miniLessonId === IRIS_QUEST_LESSON_TEMPLATE_ID && Boolean(miniBlockId);
   type MiniCoachPayload = { instruction: string; goals: StudioGoal[] };
   const [miniCoach, setMiniCoach] = useState<MiniCoachPayload | null>(null);
   const [goalUiStatus, setGoalUiStatus] = useState<Record<string, boolean>>({});
@@ -586,6 +589,9 @@ export function StudioPage() {
       let snapshot = project.snapshot;
       if (isMiniMode) {
         snapshot = await ensureIrisInMiniSnapshot(snapshot);
+        if (irisQuestMiniLesson) {
+          snapshot = await ensureIrisQuestLabDatasetInSnapshot(snapshot);
+        }
       }
       setActiveProject(project.meta);
       loadProjectSnapshot(snapshot);
@@ -1076,6 +1082,7 @@ export function StudioPage() {
           goalStatus={goalUiStatus}
           allGoalsDone={allLessonGoalsDone}
           showGoalsInPanel={false}
+          irisQuestKidUi={irisQuestMiniLesson}
         />
       ) : null}
       {/* Десктоп / планшет шире 720px: side-panel инлайн в строке.
