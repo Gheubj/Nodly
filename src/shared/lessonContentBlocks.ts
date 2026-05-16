@@ -111,13 +111,16 @@ export function flattenDeckToBlocks(deck: LessonContentDeck): LessonContentBlock
 }
 
 /** Сохранение режима слайдов: дублируем `blocks` для серверных сводок и чекпоинтов. */
-export function lessonContentFromDeck(deck: LessonContentDeck): LessonContent {
+export function lessonContentFromDeck(
+  deck: LessonContentDeck,
+  options?: { questLayout?: boolean }
+): LessonContent {
   const normalized = flattenDeckToBlocks(deck).map(normalizeBlock);
   const firstPdf = normalized.find(
     (b): b is { type: "media"; kind: "pdf"; id: string; url: string; caption?: string | null } =>
       b.type === "media" && b.kind === "pdf"
   );
-  return {
+  const base: LessonContent = {
     schemaVersion: 2,
     deck,
     blocks: normalized,
@@ -127,6 +130,10 @@ export function lessonContentFromDeck(deck: LessonContentDeck): LessonContent {
     checkpoints: [],
     hints: []
   };
+  if (options?.questLayout !== undefined) {
+    base.questLayout = options.questLayout;
+  }
+  return base;
 }
 
 /** Если в контенте уже есть blocks — используем их; иначе собираем из legacy-полей (одна «лента»). */
@@ -194,13 +201,16 @@ export function expandLessonContentToBlocks(lc: LessonContent): LessonContentBlo
 }
 
 /** Сохраняем в БД: плеер читает `blocks`, legacy-поля очищаем, чтобы не дублировать. Режим «лента» — без `deck`. */
-export function lessonContentFromBlocks(blocks: LessonContentBlock[]): LessonContent {
+export function lessonContentFromBlocks(
+  blocks: LessonContentBlock[],
+  options?: { questLayout?: boolean }
+): LessonContent {
   const normalized = blocks.map(normalizeBlock);
   const firstPdf = normalized.find(
     (b): b is { type: "media"; kind: "pdf"; id: string; url: string; caption?: string | null } =>
       b.type === "media" && b.kind === "pdf"
   );
-  return {
+  const base: LessonContent = {
     schemaVersion: 2,
     blocks: normalized,
     presentationPdfUrl: firstPdf?.url ?? null,
@@ -209,4 +219,8 @@ export function lessonContentFromBlocks(blocks: LessonContentBlock[]): LessonCon
     checkpoints: [],
     hints: []
   };
+  if (options?.questLayout !== undefined) {
+    base.questLayout = options.questLayout;
+  }
+  return base;
 }

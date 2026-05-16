@@ -629,6 +629,7 @@ const lessonContentZ = z
     schemaVersion: z.number().int().min(1).max(10).optional(),
     blocks: z.array(lessonBlockZ).max(100).optional(),
     deck: lessonContentDeckZ.optional(),
+    questLayout: z.boolean().optional(),
     presentationPdfUrl: presentationPdfUrlZ,
     slides: z.array(lessonContentSlideZ).default([]),
     practiceSteps: z.array(lessonContentPracticeStepZ).default([]),
@@ -3736,6 +3737,7 @@ export async function ensureModuleAQuestTemplate() {
   const guide = LESSON_GUIDE_SEED.lt_module_a_keeper_quest;
   const questContent: Prisma.InputJsonValue = {
     schemaVersion: 2,
+    questLayout: true,
     blocks: [
       {
         id: "q00_briefing_title",

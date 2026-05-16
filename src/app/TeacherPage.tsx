@@ -1008,7 +1008,10 @@ export function TeacherPage() {
   const openLessonEditor = (lesson: TeacherCourseLesson) => {
     setLessonEditorLesson(lesson);
     setLessonEditorSummary(lesson.studentSummary ?? "");
-    const content = lesson.lessonContent ?? EMPTY_LESSON_CONTENT;
+    const content: LessonContent = {
+      ...EMPTY_LESSON_CONTENT,
+      ...(typeof lesson.lessonContent === "object" && lesson.lessonContent ? (lesson.lessonContent as LessonContent) : {})
+    };
     setLessonEditorBlocks(expandLessonContentToBlocks(content));
     setLessonEditorOpen(true);
   };
@@ -1017,7 +1020,15 @@ export function TeacherPage() {
     if (!lessonEditorLesson) {
       return;
     }
-    const lessonContent: LessonContent = lessonContentFromBlocks(lessonEditorBlocks);
+    const prevLc: LessonContent = {
+      ...EMPTY_LESSON_CONTENT,
+      ...(typeof lessonEditorLesson.lessonContent === "object" && lessonEditorLesson.lessonContent
+        ? (lessonEditorLesson.lessonContent as LessonContent)
+        : {})
+    };
+    const lessonContent: LessonContent = lessonContentFromBlocks(lessonEditorBlocks, {
+      questLayout: prevLc.questLayout
+    });
     setLessonEditorSaving(true);
     try {
       await apiClient.patch(`/api/admin/lesson-templates/${lessonEditorLesson.id}/content`, {

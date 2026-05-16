@@ -116,6 +116,11 @@ export interface LessonContent {
   blocks?: LessonContentBlock[];
   /** Если задан и не пуст — плеер «книжка»; `blocks` дублируют порядок для LMS. */
   deck?: LessonContentDeck;
+  /**
+   * Режим «квест»: боковая карта миссий, разделители (`divider`) делят ленту на сцены.
+   * Включается админом или наследуется для шаблона модуля A (см. IRIS_QUEST_LESSON_TEMPLATE_ID).
+   */
+  questLayout?: boolean;
   presentationPdfUrl?: string | null;
   slides: LessonContentSlide[];
   practiceSteps: LessonContentPracticeStep[];

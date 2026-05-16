@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Modal, Segmented, Space, Spin, Typography, message } from "antd";
+import { Alert, Button, Card, Modal, Segmented, Space, Spin, Switch, Typography, message } from "antd";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSessionStore } from "@/store/useSessionStore";
 import { apiClient } from "@/shared/api/client";
@@ -47,6 +47,7 @@ export function AdminLessonTemplateEditorPage() {
   const [blocks, setBlocks] = useState<LessonContentBlock[]>([]);
   const [deck, setDeck] = useState<LessonContentDeck>(emptyLessonContentDeck());
   const [editorMode, setEditorMode] = useState<"flow" | "deck">("flow");
+  const [questLayout, setQuestLayout] = useState(false);
 
   const title = useMemo(() => template?.title ?? "Шаблон урока", [template?.title]);
 
@@ -70,6 +71,7 @@ export function AdminLessonTemplateEditorPage() {
         setEditorMode(useDeck ? "deck" : "flow");
         setDeck(useDeck && lc.deck ? lc.deck : emptyLessonContentDeck());
         setBlocks(expandLessonContentToBlocks(lc));
+        setQuestLayout(lc.questLayout === true);
       } catch (e) {
         if (!cancelled) {
           messageApi.error(e instanceof Error ? e.message : "Не удалось загрузить шаблон");
@@ -155,15 +157,34 @@ export function AdminLessonTemplateEditorPage() {
           </div>
 
           <div className="admin-lesson-editor__panel">
-            <Segmented
-              value={editorMode}
-              onChange={(v) => void requestModeChange(v as "flow" | "deck")}
-              options={[
-                { label: "Лента", value: "flow" },
-                { label: "Слайды (канвас)", value: "deck" }
-              ]}
-              style={{ marginBottom: 12 }}
-            />
+            <Space direction="vertical" size="small" style={{ width: "100%" }}>
+              <Segmented
+                value={editorMode}
+                onChange={(v) => void requestModeChange(v as "flow" | "deck")}
+                options={[
+                  { label: "Лента", value: "flow" },
+                  { label: "Слайды (канвас)", value: "deck" }
+                ]}
+              />
+              <div className="admin-lesson-editor__quest-toggle">
+                <Switch checked={questLayout} onChange={setQuestLayout} />
+                <div>
+                  <Text strong>Квест: карта миссий</Text>
+                  <Paragraph type="secondary" style={{ marginBottom: 0, marginTop: 4, maxWidth: 720 }}>
+                    Ученик видит слева дорожку шагов, справа — активную миссию. Разбейте ленту блоков разделителями
+                    («Разделитель» в редакторе): каждый отрезок между разделителями станет отдельной миссией с
+                    заголовком из первого текстового блока.
+                  </Paragraph>
+                </div>
+              </div>
+              {questLayout && editorMode === "deck" ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="В режиме квеста ученику показывается линейная лента, собранная из слайдов сверху вниз. Раскладка на канвасе влияет только на порядок блоков."
+                />
+              ) : null}
+            </Space>
             {editorMode === "flow" ? (
               <AdminLessonBlockEditor blocks={blocks} onChange={setBlocks} />
             ) : (
@@ -181,7 +202,9 @@ export function AdminLessonTemplateEditorPage() {
                 setSaving(true);
                 try {
                   const lessonContent =
-                    editorMode === "deck" ? lessonContentFromDeck(deck) : lessonContentFromBlocks(blocks);
+                    editorMode === "deck"
+                      ? lessonContentFromDeck(deck, { questLayout })
+                      : lessonContentFromBlocks(blocks, { questLayout });
                   await apiClient.patch(`/api/admin/lesson-templates/${encodeURIComponent(templateId)}/content`, {
                     studentSummary: template?.studentSummary ?? null,
                     lessonContent

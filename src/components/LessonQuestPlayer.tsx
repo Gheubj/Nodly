@@ -142,6 +142,8 @@ export function LessonQuestPlayer({
   const sceneDone = (s: QuestScene): boolean =>
     s.checkpointIds.every((id) => checkpointOk(id)) && s.studioIds.every((id) => miniDevDone(id));
 
+  const missionLabel = `${safeIndex + 1} / ${scenes.length}`;
+
   const unlocked = (idx: number): boolean => {
     return idx >= 0 && idx < scenes.length;
   };
@@ -338,43 +340,56 @@ export function LessonQuestPlayer({
 
   return (
     <div className="lesson-quest-player">
-      <aside className="lesson-quest-player__map">
-        <div className="lesson-quest-player__map-head">
-          <div>
-            <Title level={5} style={{ margin: 0 }}>
-              {title ?? "Квест по ИИ"}
-            </Title>
-            <Text type="secondary">{summary?.trim() || "Следуй шагам миссий."}</Text>
-            {hubNav ? (
-              <div style={{ marginTop: 6 }}>
-                <Link to={hubNav.to}>{hubNav.label}</Link>
-              </div>
-            ) : null}
+      <aside className="lesson-quest-player__map" aria-label="Карта миссий">
+        <div className="lesson-quest-player__map-top">
+          <div className="lesson-quest-player__map-head">
+            <div>
+              <Title level={5} style={{ margin: 0 }}>
+                {title ?? "Квест по ИИ"}
+              </Title>
+              <Text type="secondary">{summary?.trim() || "Следуй шагам миссий."}</Text>
+              {hubNav ? (
+                <div style={{ marginTop: 6 }}>
+                  <Link to={hubNav.to}>{hubNav.label}</Link>
+                </div>
+              ) : null}
+            </div>
           </div>
+          <Progress percent={completionPct} size="small" />
         </div>
-        <Progress percent={completionPct} size="small" />
-        <Space direction="vertical" style={{ width: "100%" }} size="small">
-          {scenes.map((s, idx) => {
-            const done = sceneDone(s);
-            const canOpen = unlocked(idx);
-            const active = idx === safeIndex;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                className={`lesson-quest-player__node${active ? " lesson-quest-player__node--active" : ""}`}
-                disabled={!canOpen}
-                onClick={() => setSceneIndex(idx)}
-              >
-                <span className="lesson-quest-player__node-index">{idx + 1}</span>
-                <span className="lesson-quest-player__node-title">{s.title}</span>
-                <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Закрыто" : "Дело"}</Tag>
-              </button>
-            );
-          })}
-        </Space>
+        <div className="lesson-quest-player__map-scroll">
+          <Space direction="vertical" style={{ width: "100%" }} size="small">
+            {scenes.map((s, idx) => {
+              const done = sceneDone(s);
+              const canOpen = unlocked(idx);
+              const active = idx === safeIndex;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`lesson-quest-player__node${active ? " lesson-quest-player__node--active" : ""}`}
+                  disabled={!canOpen}
+                  onClick={() => setSceneIndex(idx)}
+                >
+                  <span className="lesson-quest-player__node-index">{idx + 1}</span>
+                  <span className="lesson-quest-player__node-title">{s.title}</span>
+                  <Tag color={done ? "success" : canOpen ? "processing" : "default"}>{done ? "Закрыто" : "Дело"}</Tag>
+                </button>
+              );
+            })}
+          </Space>
+        </div>
       </aside>
-      <section className="lesson-quest-player__stage">
+      <section className="lesson-quest-player__stage" aria-label="Текущая миссия">
+        <div className="lesson-quest-player__stage-rail">
+          <Title level={5} className="lesson-quest-player__stage-title" style={{ margin: 0 }}>
+            <span className="lesson-quest-player__stage-kicker">Миссия {missionLabel}</span>
+            <span className="lesson-quest-player__stage-title-sep" aria-hidden>
+              {" "}
+            </span>
+            <span className="lesson-quest-player__stage-heading">{scene.title}</span>
+          </Title>
+        </div>
         <div className="lesson-quest-player__blocks">
           {scene.blocks.map((block) => (
             <div key={block.id}>{renderBlock(block)}</div>

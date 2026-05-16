@@ -116,7 +116,8 @@ export function LessonPlayerPage() {
     return { ...EMPTY_LESSON_CONTENT, ...(bootstrap.lessonContent as LessonContent) };
   }, [bootstrap]);
 
-  const useQuestPlayer = lessonId === IRIS_QUEST_LESSON_TEMPLATE_ID;
+  const useQuestPlayer =
+    lessonContent.questLayout === true || lessonId === IRIS_QUEST_LESSON_TEMPLATE_ID;
   const useDeckPlayer =
     !useQuestPlayer && lessonHasRenderableDeck(lessonContent) && Boolean(lessonContent.deck);
 
