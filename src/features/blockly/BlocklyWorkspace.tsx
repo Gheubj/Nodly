@@ -126,6 +126,28 @@ function commandsTailContainsIf(commands: BlockCommand[]): boolean {
   return false;
 }
 
+/**
+ * Ссылка вида `tabular_ds:<datasetId>:single|all`.
+ * Разбор через последний «:», чтобы id датасета мог содержать двоеточия (на будущее).
+ */
+function parseTabularDsPredictRef(ref: string): { dsId: string; mode: "single" | "all" } {
+  const prefix = "tabular_ds:";
+  if (!ref.startsWith(prefix)) {
+    throw new Error("Внутренняя ошибка: ожидался tabular_ds.");
+  }
+  const rest = ref.slice(prefix.length);
+  const lastColon = rest.lastIndexOf(":");
+  if (lastColon <= 0) {
+    throw new Error("Некорректная ссылка на таблицу в блоке «Предсказать».");
+  }
+  const dsId = rest.slice(0, lastColon);
+  const mode = rest.slice(lastColon + 1);
+  if (mode !== "single" && mode !== "all") {
+    throw new Error("Неизвестный режим предсказания по файлу.");
+  }
+  return { dsId, mode };
+}
+
 type LogicExpr =
   | { type: "bool"; value: boolean }
   | { type: "num"; value: number }
@@ -2157,9 +2179,7 @@ export function BlocklyWorkspace({
             });
 
           if (ref.startsWith("tabular_ds:")) {
-            const segs = ref.split(":");
-            const dsId = segs[2];
-            const mode = segs[3];
+            const { dsId, mode } = parseTabularDsPredictRef(ref);
             const dsEntry = state.tabularDatasets.find((d) => d.id === dsId);
             if (!dsEntry) {
               throw new Error("Таблица не найдена в «Данные». Открой «Данные → Обучение» и проверь файлы.");

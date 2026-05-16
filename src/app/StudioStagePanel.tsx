@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import type { StudioGoal } from "@/shared/types/lessonContent";
+import type { TabularPredictionBatchRow } from "@/shared/types/ai";
 import { coachPngForMood, resolveCoachMood } from "@/shared/coachMood";
 import { COACH_AUTO_RESULTS_LEAD, buildCoachBriefLines } from "@/shared/coachCaption";
 import { StudioLiveMetrics } from "@/components/StudioLiveMetrics";
@@ -107,6 +108,59 @@ function CoachBriefBlock() {
   );
 }
 
+function formatPredictionBatchPlain(rows: TabularPredictionBatchRow[]): string {
+  return rows
+    .map((r) => `Строка ${r.rowIndex}: ${r.title} (${(r.confidence * 100).toFixed(1)}%)`)
+    .join("\n");
+}
+
+/** Список пакетного предсказания: приоритет у текста сценария, иначе — сырой predictionBatch. */
+function StageBatchFileResultsBlock(props: {
+  scenarioBatchReport: string | null;
+  predictionBatch: TabularPredictionBatchRow[] | null;
+  compact?: boolean;
+}) {
+  const { scenarioBatchReport, predictionBatch, compact } = props;
+  const fromScenario = scenarioBatchReport?.trim();
+  const fromStore =
+    !fromScenario && predictionBatch && predictionBatch.length > 0
+      ? ["Все строки:", "", formatPredictionBatchPlain(predictionBatch)].join("\n")
+      : "";
+  const body = fromScenario || fromStore;
+  if (!body) {
+    return null;
+  }
+  const fontSize = compact ? 12 : 13;
+  const maxHeight = compact ? 220 : 360;
+  return (
+    <div
+      className={
+        compact
+          ? "studio-stage-panel__scenario-batch"
+          : "studio-stage-panel__scenario-batch studio-stage-panel__scenario-batch--full"
+      }
+      style={{ marginTop: 12 }}
+    >
+      <Text strong style={{ display: "block", marginBottom: 6 }}>
+        Результаты по файлу
+      </Text>
+      <Text
+        type="secondary"
+        style={{
+          whiteSpace: "pre-wrap",
+          fontSize,
+          lineHeight: 1.45,
+          display: "block",
+          maxHeight,
+          overflow: "auto"
+        }}
+      >
+        {body}
+      </Text>
+    </div>
+  );
+}
+
 export type StudioStagePanelProps = {
   /** `mini_coach` — урок; иначе — полная разработка с персонажем. */
   mode?: "scratch" | "mini_coach";
@@ -138,6 +192,7 @@ export function StudioStagePanel({
   );
   const caption = useCoachBubbleText();
   const scenarioBatchReport = useAppStore((s) => s.scenarioBatchReport);
+  const predictionBatch = useAppStore((s) => s.predictionBatch);
   const captionIsSecondary = caption === IDLE_HINT || caption === SCENARIO_WORKING_HINT;
 
   if (mode === "mini_coach") {
@@ -183,19 +238,6 @@ export function StudioStagePanel({
                   )}
                 </div>
               ) : null}
-              {scenarioBatchReport?.trim() ? (
-                <div className="studio-stage-panel__scenario-batch">
-                  <Text strong style={{ display: "block", marginBottom: 6 }}>
-                    Результаты по файлу
-                  </Text>
-                  <Text
-                    type="secondary"
-                    style={{ whiteSpace: "pre-wrap", fontSize: 12, lineHeight: 1.45, display: "block", maxHeight: 220, overflow: "auto" }}
-                  >
-                    {scenarioBatchReport.trim()}
-                  </Text>
-                </div>
-              ) : null}
               <CoachBriefBlock />
             </div>
             {irisQuestKidUi ? null : (
@@ -205,6 +247,11 @@ export function StudioStagePanel({
               compact
               className="studio-stage-panel__mini-metrics"
               accuracyOnly={irisQuestKidUi}
+            />
+            <StageBatchFileResultsBlock
+              scenarioBatchReport={scenarioBatchReport}
+              predictionBatch={predictionBatch}
+              compact
             />
           </div>
         </Card>
@@ -229,22 +276,13 @@ export function StudioStagePanel({
                 )}
               </div>
             ) : null}
-            {scenarioBatchReport?.trim() ? (
-              <div className="studio-stage-panel__scenario-batch studio-stage-panel__scenario-batch--full">
-                <Text strong style={{ display: "block", marginBottom: 6 }}>
-                  Результаты по файлу
-                </Text>
-                <Text
-                  type="secondary"
-                  style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.45, display: "block", maxHeight: 280, overflow: "auto" }}
-                >
-                  {scenarioBatchReport.trim()}
-                </Text>
-              </div>
-            ) : null}
             <CoachBriefBlock />
             <StudioTrainingLiveCharts className="studio-stage-panel__live-charts" />
             <StudioLiveMetrics className="studio-stage-panel__promo-metrics" />
+            <StageBatchFileResultsBlock
+              scenarioBatchReport={scenarioBatchReport}
+              predictionBatch={predictionBatch}
+            />
           </div>
         </div>
       </Card>
