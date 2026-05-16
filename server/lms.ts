@@ -3729,14 +3729,14 @@ export async function ensureModuleAQuestTemplate() {
         type: "media",
         kind: "image",
         url: "/api/coach/nodus-agency-hall.png",
-        caption: "Зал Агентства историй Нодус: архив, печати и дела о подлинности записей."
+        caption: "Зал Агентства — и Нодус ведёт дело о печати и проверке улик."
       },
       {
         id: "q00_greenhouse",
         type: "media",
         kind: "image",
         url: "/api/coach/iris-quest-greenhouse.png",
-        caption: "Оранжерея: те же цветы, но подписи в файле после саботажа не совпадают с реальностью."
+        caption: "Оранжерея: сырьё для печати; Нодус напоминает — в файле после саботажа подписи ненадёжны."
       },
       {
         id: "q00_story_lab",
@@ -3918,6 +3918,7 @@ export async function ensureModuleAQuestTemplate() {
         type: "media",
         kind: "image",
         url: "/api/coach/iris-quest-dossier.png",
+        caption: "Панель досье в Архиве — Нодус поясняет три вида и признаки к делу о setosa."
       },
       {
         id: "q04_table",
@@ -4157,7 +4158,7 @@ export async function ensureModuleAQuestTemplate() {
         type: "media",
         kind: "image",
         url: "/api/coach/iris-quest-greenhouse.png",
-        caption: "Оранжерея в деле: дальше две вкладки мини-студии по очереди."
+        caption: "Лабораторная оранжерея; Нодус — дальше две вкладки мини-студии по очереди."
       },
       { id: "q_div_practice_1", type: "divider" },
       {
@@ -4233,7 +4234,7 @@ export async function ensureModuleAQuestTemplate() {
         type: "media",
         kind: "image",
         url: "/api/coach/iris-quest-finale.png",
-        caption: "Стол в Архиве после работы."
+        caption: "Стол в Архиве после работы — Нодус закрывает дело, печать снова под контролем."
       },
       {
         id: "q10_final_hook",

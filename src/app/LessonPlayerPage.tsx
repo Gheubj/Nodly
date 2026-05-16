@@ -26,6 +26,7 @@ import {
   parseLessonPlayerState,
   type LessonPlayerStateV1
 } from "@/shared/types/lessonPlayerState";
+import { IRIS_QUEST_LESSON_TEMPLATE_ID } from "@/shared/irisQuestLesson";
 
 const { Content } = Layout;
 const { Title, Paragraph } = Typography;
@@ -115,7 +116,7 @@ export function LessonPlayerPage() {
     return { ...EMPTY_LESSON_CONTENT, ...(bootstrap.lessonContent as LessonContent) };
   }, [bootstrap]);
 
-  const useQuestPlayer = bootstrap?.title === "Дело Ирисового шифра";
+  const useQuestPlayer = lessonId === IRIS_QUEST_LESSON_TEMPLATE_ID;
   const useDeckPlayer =
     !useQuestPlayer && lessonHasRenderableDeck(lessonContent) && Boolean(lessonContent.deck);
 

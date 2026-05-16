@@ -182,8 +182,21 @@ export function LessonQuestPlayer({
     if (block.type === "media" || block.type === "image" || block.type === "pdf") {
       const kind = block.type === "media" ? block.kind : block.type;
       const url = block.url;
+      /** Фон локации + Нодус поверх (агентство, оранжерея, досье, финал). */
       const isLabWithNodus =
-        kind === "image" && (url.includes("iris-quest-hero") || url.includes("iris-quest-finale"));
+        kind === "image" &&
+        (url.includes("iris-quest-hero") ||
+          url.includes("iris-quest-finale") ||
+          url.includes("nodus-agency-hall") ||
+          url.includes("iris-quest-greenhouse") ||
+          url.includes("iris-quest-dossier"));
+      const nodusOverlayUrl = url.includes("greenhouse")
+        ? "/api/coach/working.png"
+        : url.includes("finale")
+          ? "/api/coach/success.png"
+          : url.includes("dossier")
+            ? "/api/coach/talking.png"
+            : "/api/coach/idle.png";
       const diagramMat =
         kind === "image" &&
         (url.includes("iris-quest-dataset-split") || url.includes("iris-quest-overfit"));
@@ -206,7 +219,7 @@ export function LessonQuestPlayer({
               <div className="lesson-quest-player__lab-scrim" aria-hidden />
               <img
                 className="lesson-quest-player__lab-nodus"
-                src={resolveLessonMediaUrl("/api/coach/idle.png")}
+                src={resolveLessonMediaUrl(nodusOverlayUrl)}
                 alt="Нодус"
               />
             </div>
