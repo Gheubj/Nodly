@@ -3740,24 +3740,24 @@ export async function ensureModuleAQuestTemplate() {
     create: {
       id: MODULE_A_QUEST_TEMPLATE_ID,
       title: "Дело Ирисового шифра",
-      description: "Ирисы в Архиве: обучение и сохранение модели, затем проверка лабораторного файла с условием в Nodly.",
+      description: "Детективное дело: основы ИИ, Iris dataset и первая модель в Noda.",
       moduleKey: "module_a",
       sortOrder: 0,
       starterPayload: EMPTY_SNAPSHOT,
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Две миссии в мини-Nodly: сначала Iris и сохранение модели, затем та же сессия — предсказание по оранжерее с «если»."
+      studentSummary: "Детективный квест: Нодус вводит стажера в основы ИИ, затем ученик собирает модель для дела Ирисового шифра."
     },
     update: {
       title: "Дело Ирисового шифра",
-      description: "Ирисы в Архиве: обучение и сохранение модели, затем проверка лабораторного файла с условием в Nodly.",
+      description: "Детективное дело: основы ИИ, Iris dataset и первая модель в Noda.",
       moduleKey: "module_a",
       sortOrder: 0,
       lessonContent: questContent,
       published: true,
       teacherGuideMd: guide.teacherGuideMd,
-      studentSummary: "Две миссии в мини-Nodly: сначала Iris и сохранение модели, затем та же сессия — предсказание по оранжерее с «если»."
+      studentSummary: "Детективный квест: Нодус вводит стажера в основы ИИ, затем ученик собирает модель для дела Ирисового шифра."
     }
   });
 }
